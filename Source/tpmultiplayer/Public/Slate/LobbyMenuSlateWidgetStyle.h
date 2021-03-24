@@ -26,7 +26,9 @@ struct TPMULTIPLAYER_API FLobbyMenuSlateStyle : public FSlateWidgetStyle
 	FSlateBrush BackgroundBrush;
 	
 	UPROPERTY(EditAnywhere, Category = "Editable Text")
-	FName EditableTextDefaultText;
+	FName SessionName;
+	UPROPERTY(EditAnywhere, Category = "Editable Text")
+	FName PlayerName;
 	UPROPERTY(EditAnywhere, Category = "Editable Text")
 	FSlateColor EditableTextBackgroundColor;
 	UPROPERTY(EditAnywhere, Category = "Editable Text")
@@ -36,10 +38,14 @@ struct TPMULTIPLAYER_API FLobbyMenuSlateStyle : public FSlateWidgetStyle
 	UPROPERTY(EditAnywhere, Category = "Editable Text")
 	FSlateBrush EditableTextCaretBrush;
 
+	UPROPERTY(EditAnywhere, Category = "Waiting Text")
+	FTextBlockStyle WaitingTextStyle;
+
 	UPROPERTY(EditAnywhere, Category = "Button")
 	FTextBlockStyle ButtonTextStyle;
 
-	const FText GetEditTextDefaultText() const { return FText::FromName(EditableTextDefaultText); };
+	const FText GetSessionNameDefaultText() const { return FText::FromName(SessionName); };
+	const FText GetPlayerNameDefaultText() const { return FText::FromName(PlayerName); };
 
 	//
 

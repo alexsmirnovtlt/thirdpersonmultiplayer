@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
-#include "General/GameModes/LobbyGameMode.h"
 
 /**
  * Main widget for lobby, where player is able to host a game or join one that was already created
@@ -20,6 +19,25 @@ public:
 
 	void Construct(const FArguments& InArgs);
 
-//private:
-	//TWeakObjectPtr<class ALobbyGameMode> LobbyGameMode;
+private:
+
+	void OnSessionNameChanged(const FText& InText, ETextCommit::Type);
+	void OnPlayerNameChanged(const FText& InText, ETextCommit::Type);
+
+	FReply OnHostButtonClick();
+	FReply OnSearchButtonClick();
+	FReply OnJoinButtonClick();
+
+	FText SessionName;
+	FText PlayerName;
+
+	TSharedPtr<class STextBlock> WaitingTextBlock;
+
+	TSharedPtr<class SVerticalBox> FoundGamesVerticalBox;
+
+	TSharedPtr<class SButton> HostButton;
+	TSharedPtr<class SButton> JoinButton;
+	TSharedPtr<class SButton> SearchButton;
+
+	TWeakObjectPtr<class ALobbyGameMode> LobbyGameMode;
 };

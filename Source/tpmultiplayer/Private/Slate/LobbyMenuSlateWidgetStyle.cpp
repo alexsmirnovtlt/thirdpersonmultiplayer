@@ -5,7 +5,8 @@
 
 FLobbyMenuSlateStyle::FLobbyMenuSlateStyle()
 {
-	EditableTextDefaultText = TEXT("GameSession");
+	SessionName = TEXT("GameSession");
+	PlayerName = TEXT("Player1");
 }
 
 FLobbyMenuSlateStyle::~FLobbyMenuSlateStyle()

@@ -43,12 +43,17 @@ AActor* ALobbyGameMode::FindPlayerStart_Implementation(AController* Player, cons
 	return Player; // Instead of looking for PlayerStart actors just get Controller`s location (should be FVector::ZeroVector)
 }
 
-void ALobbyGameMode::OnButtonPress_Host()
+void ALobbyGameMode::OnStartHosting(FText& SessionName, FText& PlayerName)
 {
-
-
+	UE_LOG(LogTemp, Warning, TEXT("%s %s"), *SessionName.ToString(), *PlayerName.ToString());
 }
-void ALobbyGameMode::OnButtonPress_Join()
-{
 
+void ALobbyGameMode::OnStartSearchingGames()
+{
+	UE_LOG(LogTemp, Warning, TEXT("OnStartSearchingGames"));
+}
+
+void ALobbyGameMode::OnStartJoining(FText& SessionName, FText& PlayerName)
+{
+	UE_LOG(LogTemp, Warning, TEXT("%s %s"), *SessionName.ToString(), *PlayerName.ToString());
 }

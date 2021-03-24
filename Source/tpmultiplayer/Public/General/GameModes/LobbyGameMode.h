@@ -21,8 +21,9 @@ public:
 	virtual void StartPlay() override;
 	AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName) override;
 
-	void OnButtonPress_Host();
-	void OnButtonPress_Join();
+	void OnStartHosting(FText& SessionName, FText& PlayerName);
+	void OnStartSearchingGames();
+	void OnStartJoining(FText& SessionName, FText& PlayerName);
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Slate Styling")
