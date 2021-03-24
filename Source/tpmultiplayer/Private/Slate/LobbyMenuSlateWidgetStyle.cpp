@@ -5,6 +5,7 @@
 
 FLobbyMenuSlateStyle::FLobbyMenuSlateStyle()
 {
+	EditableTextDefaultText = TEXT("GameSession");
 }
 
 FLobbyMenuSlateStyle::~FLobbyMenuSlateStyle()
@@ -21,6 +22,10 @@ const FLobbyMenuSlateStyle& FLobbyMenuSlateStyle::GetDefault()
 
 void FLobbyMenuSlateStyle::GetResources(TArray<const FSlateBrush*>& OutBrushes) const
 {
-	// Add any brush resources here so that Slate can correctly atlas and reference them
+	Super::GetResources(OutBrushes);
+	
+	OutBrushes.Add(&EditableTextBackgroundBrush);
+	OutBrushes.Add(&EditableTextCaretBrush);
+	OutBrushes.Add(&BackgroundBrush);
 }
 

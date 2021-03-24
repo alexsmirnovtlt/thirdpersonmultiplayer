@@ -20,10 +20,27 @@ struct TPMULTIPLAYER_API FLobbyMenuSlateStyle : public FSlateWidgetStyle
 	virtual ~FLobbyMenuSlateStyle();
 
 	// Custom properties
-	UPROPERTY(EditAnywhere, Category = "Text Styles")
-	FTextBlockStyle MainButtonTextStyle;
-	UPROPERTY(EditAnywhere, Category = "Editable Text Styles")
+	UPROPERTY(EditAnywhere, Category = "Background")
+	FSlateColor BackgroundColor;
+	UPROPERTY(EditAnywhere, Category = "Background")
+	FSlateBrush BackgroundBrush;
+	
+	UPROPERTY(EditAnywhere, Category = "Editable Text")
+	FName EditableTextDefaultText;
+	UPROPERTY(EditAnywhere, Category = "Editable Text")
+	FSlateColor EditableTextBackgroundColor;
+	UPROPERTY(EditAnywhere, Category = "Editable Text")
 	FEditableTextStyle EditableTextStyle;
+	UPROPERTY(EditAnywhere, Category = "Editable Text")
+	FSlateBrush EditableTextBackgroundBrush;
+	UPROPERTY(EditAnywhere, Category = "Editable Text")
+	FSlateBrush EditableTextCaretBrush;
+
+	UPROPERTY(EditAnywhere, Category = "Button")
+	FTextBlockStyle ButtonTextStyle;
+
+	const FText GetEditTextDefaultText() const { return FText::FromName(EditableTextDefaultText); };
+
 	//
 
 	// FSlateWidgetStyle
