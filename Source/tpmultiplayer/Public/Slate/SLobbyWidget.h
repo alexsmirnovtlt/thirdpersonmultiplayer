@@ -14,7 +14,8 @@ public:
 	SLATE_BEGIN_ARGS(SLobbyWidget)
 	{}
 	SLATE_ARGUMENT(TWeakObjectPtr<class ALobbyGameMode>, LobbyGameMode)
-	SLATE_ARGUMENT(struct FLobbyMenuSlateStyle*, LobbyStyle)
+	SLATE_ARGUMENT(TWeakObjectPtr<class ULobbyMenuSlateWidgetStyle>, LobbyStyle)
+	SLATE_ARGUMENT(TWeakObjectPtr<class ULobbyFoundGameInfoWidgetStyle>, SessionItemStyle)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -31,6 +32,8 @@ private:
 	FText SessionName;
 	FText PlayerName;
 
+	TWeakObjectPtr<const class ULobbyFoundGameInfoWidgetStyle> SessionItemStyle;
+
 	TSharedPtr<class STextBlock> WaitingTextBlock;
 
 	TSharedPtr<class SVerticalBox> FoundGamesVerticalBox;
@@ -40,4 +43,6 @@ private:
 	TSharedPtr<class SButton> SearchButton;
 
 	TWeakObjectPtr<class ALobbyGameMode> LobbyGameMode;
+
+	TArray <TSharedPtr<class SLobbyFoundGameInfoWidget>> RunningGamesArray;
 };

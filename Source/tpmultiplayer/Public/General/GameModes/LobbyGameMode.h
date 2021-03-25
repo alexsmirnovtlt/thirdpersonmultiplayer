@@ -28,6 +28,8 @@ public:
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Slate Styling")
 	TSubclassOf<class ULobbyMenuSlateWidgetStyle> MenuStyleClass;
+	UPROPERTY(EditDefaultsOnly, Category = "Slate Styling")
+	TSubclassOf<class ULobbyFoundGameInfoWidgetStyle> SessionItemStyleClass;
 
 	TSharedPtr<class SLobbyWidget> LobbyWidget;
 	TSharedPtr<class SWeakWidget> LobbyWidgetContainer;

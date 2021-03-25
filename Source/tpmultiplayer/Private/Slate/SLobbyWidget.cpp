@@ -9,23 +9,23 @@
 #include "Widgets/Images/SImage.h"
 
 #include "General/Gamemodes/LobbyGameMode.h"
+#include "Slate/SLobbyFoundGameInfoWidget.h"
+
 
 #define LOCTEXT_NAMESPACE "LobbyWidget"
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 void SLobbyWidget::Construct(const FArguments& InArgs)
 {
+	if (!InArgs._LobbyStyle.IsValid()) return;
+
 	LobbyGameMode = InArgs._LobbyGameMode;
+	SessionItemStyle = InArgs._SessionItemStyle;
 
-	auto Styles = InArgs._LobbyStyle;
+	const FLobbyMenuSlateStyle& MainStyles = InArgs._LobbyStyle.Get()->WidgetStyle;
 
-	TArray<const FSlateBrush*> SlateBrushes;
-	Styles->GetResources(SlateBrushes);
-
-	const int32 LastBrushSizeIndex = SlateBrushes.Num() - 1;
-
-	SessionName = Styles->GetSessionNameDefaultText();
-	PlayerName = Styles->GetPlayerNameDefaultText();
+	SessionName = MainStyles.GetSessionNameDefaultText();
+	PlayerName = MainStyles.GetPlayerNameDefaultText();
 
 	ChildSlot
 	.VAlign(VAlign_Fill)
@@ -38,8 +38,8 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 		.HAlign(HAlign_Fill)
 		[
 			SNew(SImage)
-			.ColorAndOpacity(Styles->BackgroundColor)
-			.Image(SlateBrushes[LastBrushSizeIndex])
+			.ColorAndOpacity(MainStyles.BackgroundColor)
+			.Image(&MainStyles.BackgroundBrush)
 		]
 
 		+ SOverlay::Slot()
@@ -72,7 +72,7 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 				.HAlign(HAlign_Center)
 				[
 					SAssignNew(WaitingTextBlock, STextBlock)
-					.TextStyle(&Styles->WaitingTextStyle)
+					.TextStyle(&MainStyles.WaitingTextStyle)
 					.Justification(ETextJustify::Center)
 					.Text(LOCTEXT("lobby.waiting", "Waiting to load ..."))
 				]
@@ -107,8 +107,8 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 								.HAlign(HAlign_Fill)
 								[
 									SNew(SImage)
-									.ColorAndOpacity(Styles->EditableTextBackgroundColor)
-									.Image(SlateBrushes[LastBrushSizeIndex - 2])
+									.ColorAndOpacity(MainStyles.EditableTextBackgroundColor)
+									.Image(&MainStyles.EditableTextBackgroundBrush)
 								]
 								+ SOverlay::Slot()
 								.VAlign(VAlign_Fill)
@@ -116,9 +116,9 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 								[
 									SNew(SEditableText)
 							
-									.Style(&Styles->EditableTextStyle)
+									.Style(&MainStyles.EditableTextStyle)
 									.Justification(ETextJustify::Center)
-									.CaretImage(SlateBrushes[LastBrushSizeIndex - 1])
+									.CaretImage(&MainStyles.EditableTextCaretBrush)
 									.Text(SessionName)
 									.OnTextCommitted_Raw(this, &SLobbyWidget::OnSessionNameChanged)
 								]
@@ -138,7 +138,7 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 								[
 									SNew(STextBlock)
 									.Justification(ETextJustify::Center)
-									.TextStyle(&Styles->ButtonTextStyle)
+									.TextStyle(&MainStyles.ButtonTextStyle)
 									.Text(LOCTEXT("lobby.host", "Host"))
 								]
 							]
@@ -162,8 +162,8 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 								.HAlign(HAlign_Fill)
 								[
 									SNew(SImage)
-									.ColorAndOpacity(Styles->EditableTextBackgroundColor)
-									.Image(SlateBrushes[LastBrushSizeIndex - 2])
+									.ColorAndOpacity(MainStyles.EditableTextBackgroundColor)
+									.Image(&MainStyles.EditableTextBackgroundBrush)
 								]
 								+ SOverlay::Slot()
 								.VAlign(VAlign_Fill)
@@ -171,9 +171,9 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 								[
 									SNew(SEditableText)
 
-									.Style(&Styles->EditableTextStyle)
+									.Style(&MainStyles.EditableTextStyle)
 									.Justification(ETextJustify::Center)
-									.CaretImage(SlateBrushes[LastBrushSizeIndex - 1])
+									.CaretImage(&MainStyles.EditableTextCaretBrush)
 									.Text(PlayerName)
 									.OnTextCommitted_Raw(this, &SLobbyWidget::OnPlayerNameChanged)
 								]
@@ -193,7 +193,7 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 								[
 									SNew(STextBlock)
 									.Justification(ETextJustify::Center)
-									.TextStyle(&Styles->ButtonTextStyle)
+									.TextStyle(&MainStyles.ButtonTextStyle)
 									.Text(LOCTEXT("lobby.join", "Join"))
 								]
 							]
@@ -212,7 +212,7 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 								[
 									SNew(STextBlock)
 									.Justification(ETextJustify::Center)
-									.TextStyle(&Styles->ButtonTextStyle)
+									.TextStyle(&MainStyles.ButtonTextStyle)
 									.Text(LOCTEXT("lobby.search", "Search"))
 								]
 							]
@@ -241,13 +241,15 @@ FReply SLobbyWidget::OnHostButtonClick()
 FReply SLobbyWidget::OnSearchButtonClick()
 {
 	//SearchButton.Get()->SetEnabled(false);
+	// UNCOMMENT
 
-	/*
-	FoundGamesVerticalBox.Get()->AddSlot()
-		[
-			SNew(SButton)
-		];
-	*/
+	// DEBUG
+	TSharedPtr<SLobbyFoundGameInfoWidget> NewItem;
+
+	FoundGamesVerticalBox.Get()->AddSlot() [ SAssignNew(NewItem, SLobbyFoundGameInfoWidget).SlateStyle(SessionItemStyle).ParentLobbyWidget(this) ].AutoHeight().HAlign(HAlign_Fill);
+	RunningGamesArray.Add(NewItem);
+
+	// DEBUG
 
 	LobbyGameMode->OnStartSearchingGames();
 	return FReply::Handled();
@@ -258,8 +260,13 @@ FReply SLobbyWidget::OnJoinButtonClick()
 	if (SessionName.IsEmpty() || PlayerName.IsEmpty()) return FReply::Handled();
 
 	HostButton.Get()->SetEnabled(false);
-	JoinButton.Get()->SetEnabled(false);
-	SearchButton.Get()->SetEnabled(false);
+	//JoinButton.Get()->SetEnabled(false);
+	//SearchButton.Get()->SetEnabled(false);
+
+	// DEBUG
+	FoundGamesVerticalBox.Get()->RemoveSlot(RunningGamesArray[0].ToSharedRef());
+	RunningGamesArray.RemoveAt(0);
+	// DEBUG
 
 	return FReply::Handled();
 }

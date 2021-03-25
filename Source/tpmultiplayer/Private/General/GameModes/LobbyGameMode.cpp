@@ -6,6 +6,7 @@
 #include "Widgets/SWeakWidget.h"
 
 #include "Slate/SLobbyWidget.h"
+#include "Slate/LobbyFoundGameInfoWidgetStyle.h"
 
 void ALobbyGameMode::StartPlay()
 {
@@ -13,13 +14,14 @@ void ALobbyGameMode::StartPlay()
 
 	// Some checks before Slate Widget creation 
 	if (!GEngine || (GEngine && !GEngine->GameViewport)) return;
-	if (!MenuStyleClass) { UE_LOG(LogTemp, Error, TEXT("ALobbyGameMode: MenuStyleClass must be assigned!")); return; };
+	if (!MenuStyleClass || !SessionItemStyleClass) { UE_LOG(LogTemp, Error, TEXT("ALobbyGameMode: Default slate classes must be assigned!")); return; };
 
 	// Getting widget style info that we specified in blueprint. Will be used in SLobbyWidget::Construct()
-	FLobbyMenuSlateStyle& Style = MenuStyleClass.GetDefaultObject()->WidgetStyle;
+	auto MainStyle = MenuStyleClass.GetDefaultObject();
+	auto ItemStyle = SessionItemStyleClass.GetDefaultObject();
 
 	// Creating Lobby Slate Widget and passing parameters to it
-	LobbyWidget = SNew(SLobbyWidget).LobbyGameMode(this).LobbyStyle(&Style);
+	LobbyWidget = SNew(SLobbyWidget).LobbyGameMode(this).LobbyStyle(MainStyle).SessionItemStyle(ItemStyle);
 	
 	// Placing SLobbyWidget in a WeakPtr container so when this GameMode gets destroyed, TSharedPtr LobbyWidget will decrement one reference and LobbyWidget will be destroyed
 	GEngine->GameViewport->AddViewportWidgetContent(
