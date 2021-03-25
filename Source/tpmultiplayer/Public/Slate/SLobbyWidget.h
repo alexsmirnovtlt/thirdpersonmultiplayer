@@ -20,6 +20,16 @@ public:
 
 	void Construct(const FArguments& InArgs);
 
+	void SetButtonEnabled_Host(bool bIsEnabled);
+	void SetButtonEnabled_Join(bool bIsEnabled);
+	void SetButtonEnabled_Search(bool bIsEnabled);
+
+	void ClearSessionsList();
+	void DisplayNoSessionsFound();
+	void EnableButtonsAfterSearch();
+	void AddFoundSession(FString& SessionNameStr, int32 CurrentPlayersCount, int32 MaxPlayersCount, int32 Index);
+	void OnSessionItemSelected(int32 index);
+
 private:
 
 	void OnSessionNameChanged(const FText& InText, ETextCommit::Type);
@@ -35,6 +45,7 @@ private:
 	TWeakObjectPtr<const class ULobbyFoundGameInfoWidgetStyle> SessionItemStyle;
 
 	TSharedPtr<class STextBlock> WaitingTextBlock;
+	TSharedPtr<class STextBlock> NothingFoundTextBlock;
 
 	TSharedPtr<class SVerticalBox> FoundGamesVerticalBox;
 
@@ -45,4 +56,6 @@ private:
 	TWeakObjectPtr<class ALobbyGameMode> LobbyGameMode;
 
 	TArray <TSharedPtr<class SLobbyFoundGameInfoWidget>> RunningGamesArray;
+
+	int32 ChosenSessionIndex = -1;
 };

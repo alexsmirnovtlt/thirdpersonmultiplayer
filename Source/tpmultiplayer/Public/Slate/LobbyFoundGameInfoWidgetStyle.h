@@ -20,12 +20,10 @@ struct TPMULTIPLAYER_API FLobbyFoundGameInfoStyle : public FSlateWidgetStyle
 	virtual ~FLobbyFoundGameInfoStyle();
 
 	UPROPERTY(EditAnywhere, Category = "Default")
-	FSlateColor BackgroundDefaultColor;
-	UPROPERTY(EditAnywhere, Category = "Default")
-	FSlateBrush BackgroundDefautBrush;
+	FButtonStyle DefaultButtonStyle;
 
-	UPROPERTY(EditAnywhere, Category = "Selected")
-	FSlateColor BackgroundSelectedColor;
+	UPROPERTY(EditAnywhere, Category = "Default")
+	FTextBlockStyle DefaultTextStyle;
 
 	// FSlateWidgetStyle
 	virtual void GetResources(TArray<const FSlateBrush*>& OutBrushes) const override;

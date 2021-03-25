@@ -10,7 +10,7 @@
 
 #include "General/Gamemodes/LobbyGameMode.h"
 #include "Slate/SLobbyFoundGameInfoWidget.h"
-
+#include "Slate/LobbyMenuSlateWidgetStyle.h"
 
 #define LOCTEXT_NAMESPACE "LobbyWidget"
 
@@ -76,6 +76,16 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 					.Justification(ETextJustify::Center)
 					.Text(LOCTEXT("lobby.waiting", "Waiting to load ..."))
 				]
+				+ SOverlay::Slot()
+				.VAlign(VAlign_Center)
+				.HAlign(HAlign_Center)
+				[
+					SAssignNew(NothingFoundTextBlock, STextBlock)
+					.TextStyle(&MainStyles.WaitingTextStyle)
+					.Justification(ETextJustify::Center)
+					.Visibility(EVisibility::Hidden)
+					.Text(LOCTEXT("lobby.empty", "Nothing was found"))
+				]
 			]
 
 			// Right Side - Buttons and TextEdit
@@ -134,6 +144,7 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 								SAssignNew(HostButton, SButton)
 								.ContentPadding(FMargin(10.f, 0, 10.f, 0))
 								.OnClicked_Raw(this, &SLobbyWidget::OnHostButtonClick)
+								.IsEnabled(false)
 								.Content()
 								[
 									SNew(STextBlock)
@@ -189,6 +200,7 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 								SAssignNew(JoinButton, SButton)
 								.ContentPadding(FMargin(10.f, 0, 10.f, 0))
 								.OnClicked_Raw(this, &SLobbyWidget::OnJoinButtonClick)
+								.IsEnabled(false)
 								.Content()
 								[
 									SNew(STextBlock)
@@ -208,6 +220,7 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 								SAssignNew(SearchButton, SButton)
 								.ContentPadding(FMargin(10.f, 0, 10.f, 0))
 								.OnClicked_Raw(this, &SLobbyWidget::OnSearchButtonClick)
+								.IsEnabled(false)
 								.Content()
 								[
 									SNew(STextBlock)
@@ -225,6 +238,8 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 }
 END_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
+#undef LOCTEXT_NAMESPACE
+
 FReply SLobbyWidget::OnHostButtonClick()
 {
 	if (SessionName.IsEmpty() || PlayerName.IsEmpty()) return FReply::Handled();
@@ -240,18 +255,15 @@ FReply SLobbyWidget::OnHostButtonClick()
 
 FReply SLobbyWidget::OnSearchButtonClick()
 {
-	//SearchButton.Get()->SetEnabled(false);
-	// UNCOMMENT
+	WaitingTextBlock.Get()->SetVisibility(EVisibility::Visible);
+	NothingFoundTextBlock.Get()->SetVisibility(EVisibility::Hidden);
 
-	// DEBUG
-	TSharedPtr<SLobbyFoundGameInfoWidget> NewItem;
-
-	FoundGamesVerticalBox.Get()->AddSlot() [ SAssignNew(NewItem, SLobbyFoundGameInfoWidget).SlateStyle(SessionItemStyle).ParentLobbyWidget(this) ].AutoHeight().HAlign(HAlign_Fill);
-	RunningGamesArray.Add(NewItem);
-
-	// DEBUG
+	HostButton.Get()->SetEnabled(false);
+	JoinButton.Get()->SetEnabled(false);
+	SearchButton.Get()->SetEnabled(false);
 
 	LobbyGameMode->OnStartSearchingGames();
+
 	return FReply::Handled();
 }
 
@@ -260,13 +272,10 @@ FReply SLobbyWidget::OnJoinButtonClick()
 	if (SessionName.IsEmpty() || PlayerName.IsEmpty()) return FReply::Handled();
 
 	HostButton.Get()->SetEnabled(false);
-	//JoinButton.Get()->SetEnabled(false);
-	//SearchButton.Get()->SetEnabled(false);
+	JoinButton.Get()->SetEnabled(false);
+	SearchButton.Get()->SetEnabled(false);
 
-	// DEBUG
-	FoundGamesVerticalBox.Get()->RemoveSlot(RunningGamesArray[0].ToSharedRef());
-	RunningGamesArray.RemoveAt(0);
-	// DEBUG
+	LobbyGameMode.Get()->OnStartJoining(SessionName, PlayerName);
 
 	return FReply::Handled();
 }
@@ -281,4 +290,72 @@ void SLobbyWidget::OnPlayerNameChanged(const FText& InText, ETextCommit::Type Co
 	PlayerName = InText;
 }
 
-#undef LOCTEXT_NAMESPACE
+void SLobbyWidget::SetButtonEnabled_Host(bool bIsEnabled)
+{
+	HostButton.Get()->SetEnabled(bIsEnabled);
+}
+
+void SLobbyWidget::SetButtonEnabled_Join(bool bIsEnabled)
+{
+	JoinButton.Get()->SetEnabled(bIsEnabled);
+}
+
+void SLobbyWidget::SetButtonEnabled_Search(bool bIsEnabled)
+{
+	SearchButton.Get()->SetEnabled(bIsEnabled);
+}
+
+void SLobbyWidget::ClearSessionsList()
+{
+	WaitingTextBlock.Get()->SetVisibility(EVisibility::Hidden);
+
+	for (auto& Item : RunningGamesArray)
+	{
+		FoundGamesVerticalBox.Get()->RemoveSlot(Item.ToSharedRef());
+	}
+
+	RunningGamesArray.Empty();
+}
+
+void SLobbyWidget::EnableButtonsAfterSearch()
+{
+	HostButton.Get()->SetEnabled(true);
+	JoinButton.Get()->SetEnabled(false);
+	SearchButton.Get()->SetEnabled(true);
+}
+
+void SLobbyWidget::DisplayNoSessionsFound()
+{
+	NothingFoundTextBlock.Get()->SetVisibility(EVisibility::Visible);
+}
+
+void SLobbyWidget::OnSessionItemSelected(int32 index)
+{
+	if (ChosenSessionIndex > -1) RunningGamesArray[ChosenSessionIndex].Get()->Deselect();
+
+	JoinButton.Get()->SetEnabled(true);
+
+	ChosenSessionIndex = index;
+}
+
+void SLobbyWidget::AddFoundSession(FString& SessionNameStr, int32 CurrentPlayersCount, int32 MaxPlayersCount, int32 Index)
+{
+	if (!SessionItemStyle.IsValid()) return;
+
+	TSharedPtr<SLobbyFoundGameInfoWidget> NewItem;
+
+	FoundGamesVerticalBox.Get()->AddSlot()
+	[
+		SAssignNew(NewItem, SLobbyFoundGameInfoWidget)
+		.SlateStyle(SessionItemStyle.Get())
+		.ParentLobbyWidget(this)
+		.SessionNameStr(SessionNameStr)
+		.CurrentPlayersCount(CurrentPlayersCount)
+		.MaxPlayersCount(MaxPlayersCount)
+		.OnlineSubsystemIndex(Index)
+	]
+	.AutoHeight()
+	.HAlign(HAlign_Fill);
+
+	RunningGamesArray.Add(NewItem);
+}

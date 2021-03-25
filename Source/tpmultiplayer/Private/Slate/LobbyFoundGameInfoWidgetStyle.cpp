@@ -21,8 +21,6 @@ const FLobbyFoundGameInfoStyle& FLobbyFoundGameInfoStyle::GetDefault()
 
 void FLobbyFoundGameInfoStyle::GetResources(TArray<const FSlateBrush*>& OutBrushes) const
 {
-	Super::GetResources(OutBrushes);
 
-	OutBrushes.Add(&BackgroundDefautBrush);
 }
 

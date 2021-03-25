@@ -23,8 +23,6 @@ const FLobbyMenuSlateStyle& FLobbyMenuSlateStyle::GetDefault()
 
 void FLobbyMenuSlateStyle::GetResources(TArray<const FSlateBrush*>& OutBrushes) const
 {
-	Super::GetResources(OutBrushes);
-	
 	OutBrushes.Add(&EditableTextBackgroundBrush);
 	OutBrushes.Add(&EditableTextCaretBrush);
 	OutBrushes.Add(&BackgroundBrush);

@@ -12,34 +12,76 @@
 #include "Slate/SLobbyWidget.h"
 #include "Slate/LobbyFoundGameInfoWidgetStyle.h"
 
+const FString SLobbyFoundGameInfoWidget::SeparatorStr("/");
+
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 void SLobbyFoundGameInfoWidget::Construct(const FArguments& InArgs)
 {
-	if (!InArgs._SlateStyle.IsValid()) return;
+	const auto& Style = InArgs._SlateStyle->WidgetStyle;
+	
+	SubsystemIndex = InArgs._OnlineSubsystemIndex;
 
-	const auto& Style = InArgs._SlateStyle.Get()->WidgetStyle;
+	ParentLobbyWidget = InArgs._ParentLobbyWidget;
+
+	FText SessionName = FText::FromString(InArgs._SessionNameStr);
+	FString PlayerNumbersStr = FString::FromInt(InArgs._CurrentPlayersCount) + SeparatorStr + FString::FromInt(InArgs._MaxPlayersCount);
+	FText PlayerNumbers = FText::FromString(PlayerNumbersStr);
 
 	ChildSlot
 	.VAlign(VAlign_Fill)
 	.HAlign(HAlign_Fill)
-	.Padding(0, 0, 0, 15.f)
+	.Padding(50.f, 0, 50.f, 15.f)
 	[
 		SNew(SOverlay)
+
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Fill)
+		[
+			SAssignNew(Button, SButton)
+			.OnClicked_Raw(this, &SLobbyFoundGameInfoWidget::OnClicked)
+			.ButtonStyle(&Style.DefaultButtonStyle)
+		]
 
 		+ SOverlay::Slot()
 		.VAlign(VAlign_Fill)
 		.HAlign(HAlign_Fill)
 		[
-			SNew(SImage)
-			.ColorAndOpacity(Style.BackgroundDefaultColor)
-			.Image(&Style.BackgroundDefautBrush)
+			SNew(SHorizontalBox)
+			.Visibility(EVisibility::HitTestInvisible)
+
+			+ SHorizontalBox::Slot()
+			.Padding(30.0f, 20.f, 30.f, 20.f)
+			.HAlign(HAlign_Left)
+			[
+				SNew(STextBlock)
+				.TextStyle(&Style.DefaultTextStyle)
+				.Justification(ETextJustify::Center)
+				.Text(SessionName)
+			]
+
+			+ SHorizontalBox::Slot()
+			.Padding(30.0f, 20.f, 30.f, 20.f)
+			.HAlign(HAlign_Right)
+			[
+				SNew(STextBlock)
+				.TextStyle(&Style.DefaultTextStyle)
+				.Justification(ETextJustify::Center)
+				.Text(PlayerNumbers)
+			]
 		]
-		/*+ SOverlay::Slot()
-		.VAlign(VAlign_Fill)
-		.HAlign(HAlign_Fill)
-		[
-			//SNew(SButton)
-		]*/
 	];
 }
 END_SLATE_FUNCTION_BUILD_OPTIMIZATION
+
+void SLobbyFoundGameInfoWidget::Deselect()
+{
+	Button.Get()->SetEnabled(true);
+}
+
+FReply SLobbyFoundGameInfoWidget::OnClicked()
+{
+	ParentLobbyWidget->OnSessionItemSelected(SubsystemIndex);
+
+	Button.Get()->SetEnabled(false);
+	return FReply::Handled();
+}
