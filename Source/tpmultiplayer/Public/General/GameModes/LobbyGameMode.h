@@ -23,7 +23,7 @@ public:
 
 	void OnStartHosting(FText& SessionName, FText& PlayerName);
 	void OnStartSearchingGames();
-	void OnStartJoining(FText& SessionName, FText& PlayerName);
+	void OnStartJoining(FText& SessionName, FText& PlayerName, int32 SessionIndex);
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Slate Styling")
@@ -46,7 +46,7 @@ protected:
 
 	void OnCreateSessionComplete(FName SessionName, bool Success);
 	void OnFindSessionsComplete(bool Success);
-	void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type);
+	void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type SessionType);
 	void OnDestroySessionComplete(FName SessionName, bool Success);
 
 	TSharedPtr<class FOnlineSessionSearch> SessionSearchResults;

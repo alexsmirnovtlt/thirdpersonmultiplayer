@@ -26,7 +26,7 @@ public:
 
 	void ClearSessionsList();
 	void DisplayNoSessionsFound();
-	void EnableButtonsAfterSearch();
+	void ResetButtonState();
 	void AddFoundSession(FString& SessionNameStr, int32 CurrentPlayersCount, int32 MaxPlayersCount, int32 Index);
 	void OnSessionItemSelected(int32 index);
 

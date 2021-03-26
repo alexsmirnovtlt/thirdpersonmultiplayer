@@ -74,6 +74,7 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 					SAssignNew(WaitingTextBlock, STextBlock)
 					.TextStyle(&MainStyles.WaitingTextStyle)
 					.Justification(ETextJustify::Center)
+					.Visibility(EVisibility::Hidden)
 					.Text(LOCTEXT("lobby.waiting", "Waiting to load ..."))
 				]
 				+ SOverlay::Slot()
@@ -144,7 +145,7 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 								SAssignNew(HostButton, SButton)
 								.ContentPadding(FMargin(10.f, 0, 10.f, 0))
 								.OnClicked_Raw(this, &SLobbyWidget::OnHostButtonClick)
-								.IsEnabled(false)
+								.IsEnabled(true)
 								.Content()
 								[
 									SNew(STextBlock)
@@ -220,7 +221,7 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 								SAssignNew(SearchButton, SButton)
 								.ContentPadding(FMargin(10.f, 0, 10.f, 0))
 								.OnClicked_Raw(this, &SLobbyWidget::OnSearchButtonClick)
-								.IsEnabled(false)
+								.IsEnabled(true)
 								.Content()
 								[
 									SNew(STextBlock)
@@ -275,7 +276,7 @@ FReply SLobbyWidget::OnJoinButtonClick()
 	JoinButton.Get()->SetEnabled(false);
 	SearchButton.Get()->SetEnabled(false);
 
-	LobbyGameMode.Get()->OnStartJoining(SessionName, PlayerName);
+	LobbyGameMode.Get()->OnStartJoining(SessionName, PlayerName, ChosenSessionIndex);
 
 	return FReply::Handled();
 }
@@ -317,8 +318,11 @@ void SLobbyWidget::ClearSessionsList()
 	RunningGamesArray.Empty();
 }
 
-void SLobbyWidget::EnableButtonsAfterSearch()
+void SLobbyWidget::ResetButtonState()
 {
+	WaitingTextBlock.Get()->SetVisibility(EVisibility::Hidden);
+	NothingFoundTextBlock.Get()->SetVisibility(EVisibility::Hidden);
+
 	HostButton.Get()->SetEnabled(true);
 	JoinButton.Get()->SetEnabled(false);
 	SearchButton.Get()->SetEnabled(true);

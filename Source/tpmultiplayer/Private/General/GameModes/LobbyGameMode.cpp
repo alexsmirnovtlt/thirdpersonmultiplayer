@@ -9,10 +9,15 @@
 
 #include "Slate/LobbyFoundGameInfoWidgetStyle.h"
 #include "Slate/LobbyMenuSlateWidgetStyle.h"
+#include "General/MultiplayerGameInstance.h"
 #include "Slate/SLobbyWidget.h"
 
 FName ALobbyGameMode::CreatedSessionName(TEXT(""));
 const FName ALobbyGameMode::SERVER_NAME_SETTINGS_KEY("ServerName");
+
+// TODO delegate handle
+// TODO less button enable calls
+// Lobby widget reference to session items
 
 void ALobbyGameMode::StartPlay()
 {
@@ -53,14 +58,15 @@ void ALobbyGameMode::InitOnlineSubsystem()
 		auto ExistingSession = SessionInterface->GetNamedSession(CreatedSessionName);
 		if (ExistingSession != nullptr)
 		{
-			//HostButton->SetIsEnabled(false);
-			 SessionInterface->OnDestroySessionCompleteDelegates.AddUObject(this, &ALobbyGameMode::OnDestroySessionComplete);
+			LobbyWidget.Get()->SetButtonEnabled_Host(false);
+			LobbyWidget.Get()->SetButtonEnabled_Search(false);
+			LobbyWidget.Get()->SetButtonEnabled_Join(false);
+
+			SessionInterface->OnDestroySessionCompleteDelegates.AddUObject(this, &ALobbyGameMode::OnDestroySessionComplete);
 			SessionInterface->DestroySession(CreatedSessionName);
 			return;
 		}
 	}
-
-	OnStartSearchingGames(); // Immediately starting to search for sessions 
 }
 
 void ALobbyGameMode::CreateMainWidget()
@@ -81,11 +87,6 @@ void ALobbyGameMode::CreateMainWidget()
 		SAssignNew(LobbyWidgetContainer, SWeakWidget)
 		.PossiblyNullContent(LobbyWidget)
 	);
-}
-
-void ALobbyGameMode::OnCreateSessionComplete(FName SessionName, bool Success)
-{
-
 }
 
 void ALobbyGameMode::OnFindSessionsComplete(bool Success)
@@ -120,32 +121,58 @@ void ALobbyGameMode::OnFindSessionsComplete(bool Success)
 		int32 currentPlayers = maxPlayers - resultItem.Session.NumOpenPublicConnections;
 		if (maxPlayers == currentPlayers) continue;
 
-		FString ServerName = "";
-		resultItem.Session.SessionSettings.Get(SERVER_NAME_SETTINGS_KEY, ServerName);
-		if (ServerName.IsEmpty()) continue;
+		FString SessioNameStr = "";
+		resultItem.Session.SessionSettings.Get(SERVER_NAME_SETTINGS_KEY, SessioNameStr);
+		if (SessioNameStr.IsEmpty()) continue;
 
-		SLobbyWidget->AddFoundSession(ServerName, currentPlayers, maxPlayers, index);
+		SLobbyWidget->AddFoundSession(SessioNameStr, currentPlayers, maxPlayers, index);
 	}
 
 	if (sessionsShown == 0) SLobbyWidget->DisplayNoSessionsFound();
 	
-	SLobbyWidget->EnableButtonsAfterSearch();
-}
-
-void ALobbyGameMode::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result)
-{
-
+	SLobbyWidget->ResetButtonState();
 }
 
 void ALobbyGameMode::OnDestroySessionComplete(FName SessionName, bool Success)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Session \"%s\" was destroyed"), *SessionName.ToString());
-	OnStartSearchingGames();
+	LobbyWidget.Get()->ResetButtonState();
 }
 
 void ALobbyGameMode::OnStartHosting(FText& SessionName, FText& PlayerName)
 {
-	UE_LOG(LogTemp, Warning, TEXT("%s %s"), *SessionName.ToString(), *PlayerName.ToString());
+	if (!SessionInterface.IsValid() || !GetWorld()) return;
+
+	CreatedSessionName = FName(*SessionName.ToString());
+
+	auto GameInstance = CastChecked<UMultiplayerGameInstance>(GetWorld()->GetGameInstance());
+
+	// TODO delegate
+
+	FOnlineSessionSettings SessionSettings;
+	SessionSettings.bIsLANMatch = true; // For Null Online Subsystem to work, should be changed in a real application 
+	SessionSettings.NumPublicConnections = GameInstance->GetMaxOnlinePlayers();
+	SessionSettings.bShouldAdvertise = true;
+	SessionSettings.bUsesPresence = true;
+
+	// Passing our custom parameter to correctly display available session names to browsing players
+	SessionSettings.Set(SERVER_NAME_SETTINGS_KEY, SessionName.ToString(), EOnlineDataAdvertisementType::Type::ViaOnlineServiceAndPing);
+
+	SessionInterface->CreateSession(0, CreatedSessionName, SessionSettings);
+}
+
+void ALobbyGameMode::OnCreateSessionComplete(FName SessionName, bool Success)
+{
+	auto World = GetWorld();
+	if (!World || !Success)
+	{
+		LobbyWidget.Get()->ResetButtonState();
+		return;
+	}
+
+	auto GameInstance = CastChecked<UMultiplayerGameInstance>(GetWorld()->GetGameInstance());
+
+	World->ServerTravel(GameInstance->GetGameplayMapNameForHost(), true);
 }
 
 void ALobbyGameMode::OnStartSearchingGames()
@@ -162,7 +189,29 @@ void ALobbyGameMode::OnStartSearchingGames()
 	SessionInterface->FindSessions(0, SessionSearchResults.ToSharedRef());
 }
 
-void ALobbyGameMode::OnStartJoining(FText& SessionName, FText& PlayerName)
+void ALobbyGameMode::OnStartJoining(FText& SessionName, FText& PlayerName, int32 SessionIndex)
 {
-	UE_LOG(LogTemp, Warning, TEXT("%s %s"), *SessionName.ToString(), *PlayerName.ToString());
+	if (!SessionInterface.IsValid()) return;
+
+	// TODO delegate
+
+	SessionInterface->JoinSession(
+		0,
+		FName(*SessionName.ToString()),
+		SessionSearchResults->SearchResults[SessionIndex]
+	);
+}
+
+void ALobbyGameMode::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type SessionType)
+{
+	if (!SessionInterface.IsValid()) return;
+
+	FString Address;
+	if (!SessionInterface->GetResolvedConnectString(SessionName, Address)) {
+		UE_LOG(LogTemp, Warning, TEXT("Could not get connect string."));
+		return;
+	}
+
+	if (APlayerController* PlayerController = GetWorld()->GetFirstPlayerController())
+		PlayerController->ClientTravel(Address, ETravelType::TRAVEL_Absolute);
 }
