@@ -96,7 +96,7 @@ END_SLATE_FUNCTION_BUILD_OPTIMIZATION
 FReply SGameplayMainMenuWidget::OnPlayButtonPress()
 {
 	if (!PlayerController.IsValid()) return FReply::Handled();
-	DisableButtons();
+
 	PlayerController.Get()->JoinGameAsPlayer();
 	return FReply::Handled();
 }
@@ -104,7 +104,7 @@ FReply SGameplayMainMenuWidget::OnPlayButtonPress()
 FReply SGameplayMainMenuWidget::OSpectateButtonPress()
 {
 	if (!PlayerController.IsValid()) return FReply::Handled();
-	DisableButtons();
+
 	PlayerController.Get()->JoinGameAsSpectator();
 	return FReply::Handled();
 }
@@ -112,8 +112,10 @@ FReply SGameplayMainMenuWidget::OSpectateButtonPress()
 FReply SGameplayMainMenuWidget::OnBackToLobbyButtonPress()
 {
 	if (!PlayerController.IsValid()) return FReply::Handled();
+
 	DisableButtons();
 	PlayerController.Get()->ReturnToLobby();
+
 	return FReply::Handled();
 }
 

@@ -16,6 +16,11 @@ class TPMULTIPLAYER_API AGameplayHUD : public AHUD
 
 public:
 	void BeginPlay() override;
+	void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+public:
+	void MainMenu_Show();
+	void MainMenu_Hide();
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Slate")
@@ -23,4 +28,5 @@ protected:
 
 	TSharedPtr<class SGameplayMainMenuWidget> MainMenuWidget;
 	TSharedPtr<class SWeakWidget> MainMenuWidgetContainer;
+
 };

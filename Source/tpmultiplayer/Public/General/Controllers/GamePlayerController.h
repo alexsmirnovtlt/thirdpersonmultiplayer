@@ -13,9 +13,14 @@ UCLASS()
 class TPMULTIPLAYER_API AGamePlayerController : public APlayerController
 {
 	GENERATED_BODY()
+public:
+	void BeginPlay() override;
 
 public:
 	void JoinGameAsPlayer();
 	void JoinGameAsSpectator();
 	void ReturnToLobby();
+
+protected:
+	class AGameplayHUD* GameplayHUD;
 };

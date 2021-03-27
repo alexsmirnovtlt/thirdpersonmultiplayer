@@ -80,7 +80,8 @@ void SLobbyFoundGameInfoWidget::Deselect()
 
 FReply SLobbyFoundGameInfoWidget::OnClicked()
 {
-	ParentLobbyWidget->OnSessionItemSelected(SubsystemIndex);
+	if (!ParentLobbyWidget.IsValid()) return FReply::Handled();
+	ParentLobbyWidget.Pin()->OnSessionItemSelected(SubsystemIndex);
 
 	Button.Get()->SetEnabled(false);
 	return FReply::Handled();

@@ -4,15 +4,28 @@
 #include "General/Controllers/GamePlayerController.h"
 
 #include "General/MultiplayerGameInstance.h"
+#include "General/HUD/GameplayHUD.h"
+
+void AGamePlayerController::BeginPlay()
+{
+	Super::BeginPlay();
+
+	GameplayHUD = GetHUD<AGameplayHUD>();
+
+	// Showing mouse cursor because HUD will spawn a menu
+	FInputModeUIOnly InputModeData = FInputModeUIOnly();
+	this->SetInputMode(InputModeData);
+	this->bShowMouseCursor = true;
+}
 
 void AGamePlayerController::JoinGameAsPlayer()
 {
-
+	GameplayHUD->MainMenu_Hide();
 }
 
 void AGamePlayerController::JoinGameAsSpectator()
 {
-
+	GameplayHUD->MainMenu_Hide();
 }
 
 void AGamePlayerController::ReturnToLobby()
@@ -29,13 +42,12 @@ void AGamePlayerController::ReturnToLobby()
 		}
 		else
 		{
-			auto worldContext = GetGameInstance()->GetWorldContext();
-			const TCHAR* textURL = *LobbyMapName;
-			FURL url = FURL(nullptr, textURL, ETravelType::TRAVEL_Absolute);
-			FString errorStr;
+			auto WorldContext = GetGameInstance()->GetWorldContext();
+			FURL URL = FURL(*LobbyMapName);
+			FString ErrorStr;
 
+			GEngine->Browse(*WorldContext, URL, ErrorStr);
 			// Session will be closed on return to lobby
-			GEngine->Browse(*worldContext, url, errorStr);
 		}
 	}
 	else

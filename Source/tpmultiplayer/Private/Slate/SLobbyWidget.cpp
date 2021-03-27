@@ -350,7 +350,7 @@ void SLobbyWidget::AddFoundSession(FString& SessionNameStr, int32 CurrentPlayers
 
 	TSharedRef<SLobbyFoundGameInfoWidget> NewItem = SNew(SLobbyFoundGameInfoWidget)
 		.SlateStyle(SessionItemStyle.Get())
-		.ParentLobbyWidget(this)
+		.ParentLobbyWidget(SharedThis(this))
 		.SessionNameStr(SessionNameStr)
 		.CurrentPlayersCount(CurrentPlayersCount)
 		.MaxPlayersCount(MaxPlayersCount)

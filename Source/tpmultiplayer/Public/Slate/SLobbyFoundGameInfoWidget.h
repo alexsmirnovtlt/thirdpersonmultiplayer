@@ -15,7 +15,7 @@ class TPMULTIPLAYER_API SLobbyFoundGameInfoWidget : public SCompoundWidget
 public:
 	SLATE_BEGIN_ARGS(SLobbyFoundGameInfoWidget)
 	{}
-	SLATE_ARGUMENT(class SLobbyWidget*, ParentLobbyWidget)
+	SLATE_ARGUMENT(TWeakPtr<class SLobbyWidget>, ParentLobbyWidget)
 	SLATE_ARGUMENT(const class ULobbyFoundGameInfoWidgetStyle*, SlateStyle)
 	SLATE_ARGUMENT(FString, SessionNameStr)
 	SLATE_ARGUMENT(int32, CurrentPlayersCount)
@@ -31,12 +31,10 @@ protected:
 
 	FReply OnClicked();
 
-	//bool bIsSelected = false;
-
 	TSharedPtr<SButton> Button;
 
 	int32 SubsystemIndex;
-	class SLobbyWidget* ParentLobbyWidget; // TODO change from raw pointer
+	TWeakPtr<class SLobbyWidget> ParentLobbyWidget;
 
 	static const FString SeparatorStr;
 };

@@ -14,7 +14,7 @@ public:
 	SLATE_BEGIN_ARGS(SGameplayMainMenuWidget)
 	{}
 	SLATE_ARGUMENT(TWeakObjectPtr<class AGamePlayerController>, PlayerController)
-	SLATE_ARGUMENT(class UGameplayMainMenuWidgetStyle*, MainMenuStyle)
+	SLATE_ARGUMENT(const class UGameplayMainMenuWidgetStyle*, MainMenuStyle)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);

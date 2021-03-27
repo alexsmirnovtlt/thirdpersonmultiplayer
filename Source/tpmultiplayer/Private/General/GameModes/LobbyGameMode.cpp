@@ -34,12 +34,17 @@ void ALobbyGameMode::StartPlay()
 
 void ALobbyGameMode::Logout(AController* Exiting)
 {
+	if (GEngine && GEngine->GameViewport)
+		GEngine->GameViewport->RemoveViewportWidgetContent(LobbyWidgetContainer.ToSharedRef());
+
 	if (SessionInterface.IsValid())
 	{
 		SessionInterface->OnCreateSessionCompleteDelegates.RemoveAll(this);
 		SessionInterface->OnFindSessionsCompleteDelegates.RemoveAll(this);
 		SessionInterface->OnJoinSessionCompleteDelegates.RemoveAll(this);
 	}
+
+	Super::Logout(Exiting);
 }
 
 AActor* ALobbyGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
@@ -88,7 +93,7 @@ void ALobbyGameMode::CreateMainWidget()
 	// Creating Lobby Slate Widget and passing parameters to it
 	LobbyWidget = SNew(SLobbyWidget).LobbyGameMode(this).LobbyStyle(MainStyle).SessionItemStyle(ItemStyle);
 
-	// Placing SLobbyWidget in a WeakPtr container so when this GameMode gets destroyed, TSharedPtr LobbyWidget will decrement one reference and LobbyWidget will be destroyed
+	// Placing SLobbyWidget in a WeakPtr container so when this GameMode gets destroyed, TSharedPtr LobbyWidget will decrement one reference and will be destroyed. GameViewport will hold invalid weak pointer 
 	GEngine->GameViewport->AddViewportWidgetContent(
 		SAssignNew(LobbyWidgetContainer, SWeakWidget)
 		.PossiblyNullContent(LobbyWidget)
