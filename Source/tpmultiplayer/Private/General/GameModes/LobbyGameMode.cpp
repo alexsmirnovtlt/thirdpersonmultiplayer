@@ -15,9 +15,6 @@
 FName ALobbyGameMode::CreatedSessionName(TEXT(""));
 const FName ALobbyGameMode::SERVER_NAME_SETTINGS_KEY("ServerName");
 
-// TODO delegate handle
-// TODO less button enable calls
-// Lobby widget reference to session items
 
 void ALobbyGameMode::StartPlay()
 {
@@ -35,6 +32,16 @@ void ALobbyGameMode::StartPlay()
 	}
 }
 
+void ALobbyGameMode::Logout(AController* Exiting)
+{
+	if (SessionInterface.IsValid())
+	{
+		SessionInterface->OnCreateSessionCompleteDelegates.RemoveAll(this);
+		SessionInterface->OnFindSessionsCompleteDelegates.RemoveAll(this);
+		SessionInterface->OnJoinSessionCompleteDelegates.RemoveAll(this);
+	}
+}
+
 AActor* ALobbyGameMode::FindPlayerStart_Implementation(AController* Player, const FString& IncomingName)
 {
 	return Player; // Instead of looking for PlayerStart actors just get Controller`s location (should be FVector::ZeroVector)
@@ -47,23 +54,22 @@ void ALobbyGameMode::InitOnlineSubsystem()
 
 	SessionInterface = OnlineSubsystem->GetSessionInterface();
 	if (!SessionInterface.IsValid()) return;
-	
+
 	SessionInterface->OnCreateSessionCompleteDelegates.AddUObject(this, &ALobbyGameMode::OnCreateSessionComplete);
 	SessionInterface->OnFindSessionsCompleteDelegates.AddUObject(this, &ALobbyGameMode::OnFindSessionsComplete);
 	SessionInterface->OnJoinSessionCompleteDelegates.AddUObject(this, &ALobbyGameMode::OnJoinSessionComplete);
 
-	// Closing previous session if exists (happens when hosting player returned from gameplay level or reopened the application)
+	// Closing previous session if exists. Happens for clients and server when they are returning back from gameplay level
 	if (!CreatedSessionName.IsNone())
 	{
 		auto ExistingSession = SessionInterface->GetNamedSession(CreatedSessionName);
 		if (ExistingSession != nullptr)
 		{
-			LobbyWidget.Get()->SetButtonEnabled_Host(false);
-			LobbyWidget.Get()->SetButtonEnabled_Search(false);
-			LobbyWidget.Get()->SetButtonEnabled_Join(false);
+			LobbyWidget.Get()->SetButtonsEnabled(false, false, false);
 
 			SessionInterface->OnDestroySessionCompleteDelegates.AddUObject(this, &ALobbyGameMode::OnDestroySessionComplete);
 			SessionInterface->DestroySession(CreatedSessionName);
+			CreatedSessionName = TEXT("");
 			return;
 		}
 	}
@@ -76,8 +82,8 @@ void ALobbyGameMode::CreateMainWidget()
 	if (!MenuStyleClass || !SessionItemStyleClass) { UE_LOG(LogTemp, Error, TEXT("ALobbyGameMode: Default slate classes must be assigned!")); return; };
 
 	// Getting widget style info that we specified in blueprint. Will be used in SLobbyWidget::Construct()
-	auto MainStyle = MenuStyleClass.GetDefaultObject();
-	auto ItemStyle = SessionItemStyleClass.GetDefaultObject();
+	auto* MainStyle = MenuStyleClass.GetDefaultObject();
+	auto* ItemStyle = SessionItemStyleClass.GetDefaultObject();
 
 	// Creating Lobby Slate Widget and passing parameters to it
 	LobbyWidget = SNew(SLobbyWidget).LobbyGameMode(this).LobbyStyle(MainStyle).SessionItemStyle(ItemStyle);
@@ -91,11 +97,11 @@ void ALobbyGameMode::CreateMainWidget()
 
 void ALobbyGameMode::OnFindSessionsComplete(bool Success)
 {
+	if (!LobbyWidget.IsValid() || !SessionSearchResults.IsValid()) return;
+
 	auto SLobbyWidget = LobbyWidget.Get();
 
-	SLobbyWidget->SetButtonEnabled_Host(true);
-	SLobbyWidget->SetButtonEnabled_Search(true);
-
+	SLobbyWidget->ResetButtonState();
 	SLobbyWidget->ClearSessionsList();
 
 	if (!Success || !SessionSearchResults.IsValid())
@@ -126,11 +132,10 @@ void ALobbyGameMode::OnFindSessionsComplete(bool Success)
 		if (SessioNameStr.IsEmpty()) continue;
 
 		SLobbyWidget->AddFoundSession(SessioNameStr, currentPlayers, maxPlayers, index);
+		sessionsShown++;
 	}
 
 	if (sessionsShown == 0) SLobbyWidget->DisplayNoSessionsFound();
-	
-	SLobbyWidget->ResetButtonState();
 }
 
 void ALobbyGameMode::OnDestroySessionComplete(FName SessionName, bool Success)
@@ -139,15 +144,13 @@ void ALobbyGameMode::OnDestroySessionComplete(FName SessionName, bool Success)
 	LobbyWidget.Get()->ResetButtonState();
 }
 
-void ALobbyGameMode::OnStartHosting(FText& SessionName, FText& PlayerName)
+void ALobbyGameMode::OnStartHosting(FText& SessionName)
 {
 	if (!SessionInterface.IsValid() || !GetWorld()) return;
 
 	CreatedSessionName = FName(*SessionName.ToString());
 
 	auto GameInstance = CastChecked<UMultiplayerGameInstance>(GetWorld()->GetGameInstance());
-
-	// TODO delegate
 
 	FOnlineSessionSettings SessionSettings;
 	SessionSettings.bIsLANMatch = true; // For Null Online Subsystem to work, should be changed in a real application 
@@ -171,8 +174,9 @@ void ALobbyGameMode::OnCreateSessionComplete(FName SessionName, bool Success)
 	}
 
 	auto GameInstance = CastChecked<UMultiplayerGameInstance>(GetWorld()->GetGameInstance());
+	const FString& OptionsStr = GameInstance->GetGameplayMapNameForHost() + "?CustomName=" + LobbyWidget.Get()->GetPlayerName();
 
-	World->ServerTravel(GameInstance->GetGameplayMapNameForHost(), true);
+	World->ServerTravel(OptionsStr, true);
 }
 
 void ALobbyGameMode::OnStartSearchingGames()
@@ -181,7 +185,7 @@ void ALobbyGameMode::OnStartSearchingGames()
 
 	if (!SessionSearchResults.IsValid())
 	{
-		SessionSearchResults = MakeShareable(new FOnlineSessionSearch());
+		SessionSearchResults = MakeShared<FOnlineSessionSearch>(FOnlineSessionSearch());
 		SessionSearchResults->MaxSearchResults = MaxSearchResults;
 		SessionSearchResults->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
 	}
@@ -189,17 +193,20 @@ void ALobbyGameMode::OnStartSearchingGames()
 	SessionInterface->FindSessions(0, SessionSearchResults.ToSharedRef());
 }
 
-void ALobbyGameMode::OnStartJoining(FText& SessionName, FText& PlayerName, int32 SessionIndex)
+void ALobbyGameMode::OnStartJoining(FText& SessionName, int32 SessionIndex)
 {
-	if (!SessionInterface.IsValid()) return;
+	if (!SessionInterface.IsValid() || !SessionSearchResults.IsValid()) return;
+	if (SessionIndex >= SessionSearchResults->SearchResults.Num()) return;
 
-	// TODO delegate
+	CreatedSessionName = FName(*SessionName.ToString());
 
 	SessionInterface->JoinSession(
 		0,
 		FName(*SessionName.ToString()),
 		SessionSearchResults->SearchResults[SessionIndex]
 	);
+
+	// Calls OnJoinSessionComplete() when ready
 }
 
 void ALobbyGameMode::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type SessionType)
@@ -211,6 +218,8 @@ void ALobbyGameMode::OnJoinSessionComplete(FName SessionName, EOnJoinSessionComp
 		UE_LOG(LogTemp, Warning, TEXT("Could not get connect string."));
 		return;
 	}
+
+	Address.Append("?CustomName=" + LobbyWidget.Get()->GetPlayerName());
 
 	if (APlayerController* PlayerController = GetWorld()->GetFirstPlayerController())
 		PlayerController->ClientTravel(Address, ETravelType::TRAVEL_Absolute);

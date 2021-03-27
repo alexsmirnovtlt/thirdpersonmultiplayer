@@ -17,12 +17,13 @@
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 void SLobbyWidget::Construct(const FArguments& InArgs)
 {
-	if (!InArgs._LobbyStyle.IsValid()) return;
+	if (!IsValid(InArgs._LobbyStyle)) return;
+	if (!InArgs._SessionItemStyle.IsValid()) return;
 
 	LobbyGameMode = InArgs._LobbyGameMode;
 	SessionItemStyle = InArgs._SessionItemStyle;
 
-	const FLobbyMenuSlateStyle& MainStyles = InArgs._LobbyStyle.Get()->WidgetStyle;
+	const FLobbyMenuSlateStyle& MainStyles = InArgs._LobbyStyle->WidgetStyle;
 
 	SessionName = MainStyles.GetSessionNameDefaultText();
 	PlayerName = MainStyles.GetPlayerNameDefaultText();
@@ -245,11 +246,9 @@ FReply SLobbyWidget::OnHostButtonClick()
 {
 	if (SessionName.IsEmpty() || PlayerName.IsEmpty()) return FReply::Handled();
 
-	HostButton.Get()->SetEnabled(false);
-	JoinButton.Get()->SetEnabled(false);
-	SearchButton.Get()->SetEnabled(false);
+	SetButtonsEnabled(false, false, false);
 
-	LobbyGameMode->OnStartHosting(SessionName, PlayerName);
+	LobbyGameMode->OnStartHosting(SessionName);
 
 	return FReply::Handled();
 }
@@ -259,9 +258,7 @@ FReply SLobbyWidget::OnSearchButtonClick()
 	WaitingTextBlock.Get()->SetVisibility(EVisibility::Visible);
 	NothingFoundTextBlock.Get()->SetVisibility(EVisibility::Hidden);
 
-	HostButton.Get()->SetEnabled(false);
-	JoinButton.Get()->SetEnabled(false);
-	SearchButton.Get()->SetEnabled(false);
+	SetButtonsEnabled(false, false, false);
 
 	LobbyGameMode->OnStartSearchingGames();
 
@@ -272,11 +269,9 @@ FReply SLobbyWidget::OnJoinButtonClick()
 {
 	if (SessionName.IsEmpty() || PlayerName.IsEmpty()) return FReply::Handled();
 
-	HostButton.Get()->SetEnabled(false);
-	JoinButton.Get()->SetEnabled(false);
-	SearchButton.Get()->SetEnabled(false);
+	SetButtonsEnabled(false, false, false);
 
-	LobbyGameMode.Get()->OnStartJoining(SessionName, PlayerName, ChosenSessionIndex);
+	LobbyGameMode.Get()->OnStartJoining(SessionName, ChosenSessionIndex);
 
 	return FReply::Handled();
 }
@@ -306,14 +301,19 @@ void SLobbyWidget::SetButtonEnabled_Search(bool bIsEnabled)
 	SearchButton.Get()->SetEnabled(bIsEnabled);
 }
 
+void SLobbyWidget::SetButtonsEnabled(bool bHost, bool bJoin, bool bSearch)
+{
+	HostButton.Get()->SetEnabled(bHost);
+	JoinButton.Get()->SetEnabled(bJoin);
+	SearchButton.Get()->SetEnabled(bSearch);
+}
+
 void SLobbyWidget::ClearSessionsList()
 {
 	WaitingTextBlock.Get()->SetVisibility(EVisibility::Hidden);
 
 	for (auto& Item : RunningGamesArray)
-	{
-		FoundGamesVerticalBox.Get()->RemoveSlot(Item.ToSharedRef());
-	}
+		FoundGamesVerticalBox.Get()->RemoveSlot(Item);
 
 	RunningGamesArray.Empty();
 }
@@ -322,10 +322,7 @@ void SLobbyWidget::ResetButtonState()
 {
 	WaitingTextBlock.Get()->SetVisibility(EVisibility::Hidden);
 	NothingFoundTextBlock.Get()->SetVisibility(EVisibility::Hidden);
-
-	HostButton.Get()->SetEnabled(true);
-	JoinButton.Get()->SetEnabled(false);
-	SearchButton.Get()->SetEnabled(true);
+	SetButtonsEnabled(true, false, true);
 }
 
 void SLobbyWidget::DisplayNoSessionsFound()
@@ -335,29 +332,31 @@ void SLobbyWidget::DisplayNoSessionsFound()
 
 void SLobbyWidget::OnSessionItemSelected(int32 index)
 {
-	if (ChosenSessionIndex > -1) RunningGamesArray[ChosenSessionIndex].Get()->Deselect();
+	if (ChosenSessionIndex > -1) RunningGamesArray[ChosenSessionIndex]->Deselect();
 
 	JoinButton.Get()->SetEnabled(true);
 
 	ChosenSessionIndex = index;
 }
 
+const FString& SLobbyWidget::GetPlayerName() const
+{
+	return PlayerName.ToString();
+}
+
 void SLobbyWidget::AddFoundSession(FString& SessionNameStr, int32 CurrentPlayersCount, int32 MaxPlayersCount, int32 Index)
 {
 	if (!SessionItemStyle.IsValid()) return;
 
-	TSharedPtr<SLobbyFoundGameInfoWidget> NewItem;
-
-	FoundGamesVerticalBox.Get()->AddSlot()
-	[
-		SAssignNew(NewItem, SLobbyFoundGameInfoWidget)
+	TSharedRef<SLobbyFoundGameInfoWidget> NewItem = SNew(SLobbyFoundGameInfoWidget)
 		.SlateStyle(SessionItemStyle.Get())
 		.ParentLobbyWidget(this)
 		.SessionNameStr(SessionNameStr)
 		.CurrentPlayersCount(CurrentPlayersCount)
 		.MaxPlayersCount(MaxPlayersCount)
-		.OnlineSubsystemIndex(Index)
-	]
+		.OnlineSubsystemIndex(Index);
+
+	FoundGamesVerticalBox.Get()->AddSlot() [ NewItem ]
 	.AutoHeight()
 	.HAlign(HAlign_Fill);
 

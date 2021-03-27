@@ -18,12 +18,13 @@ class TPMULTIPLAYER_API ALobbyGameMode : public AGameModeBase
 	
 public:
 	virtual void StartPlay() override;
-
+	virtual void Logout(AController* Exiting) override;
+	
 	AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName) override;
 
-	void OnStartHosting(FText& SessionName, FText& PlayerName);
+	void OnStartHosting(FText& SessionName);
 	void OnStartSearchingGames();
-	void OnStartJoining(FText& SessionName, FText& PlayerName, int32 SessionIndex);
+	void OnStartJoining(FText& SessionName, int32 SessionIndex);
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Slate Styling")
@@ -43,13 +44,12 @@ protected:
 	// Begin Online Sybsystem
 
 	TSharedPtr<class IOnlineSession, ESPMode::ThreadSafe> SessionInterface;
+	TSharedPtr<class FOnlineSessionSearch> SessionSearchResults;
 
 	void OnCreateSessionComplete(FName SessionName, bool Success);
 	void OnFindSessionsComplete(bool Success);
 	void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type SessionType);
 	void OnDestroySessionComplete(FName SessionName, bool Success);
-
-	TSharedPtr<class FOnlineSessionSearch> SessionSearchResults;
 
 	static FName CreatedSessionName;
 	static const FName SERVER_NAME_SETTINGS_KEY;

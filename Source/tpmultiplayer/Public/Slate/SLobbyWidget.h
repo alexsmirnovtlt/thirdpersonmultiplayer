@@ -14,7 +14,7 @@ public:
 	SLATE_BEGIN_ARGS(SLobbyWidget)
 	{}
 	SLATE_ARGUMENT(TWeakObjectPtr<class ALobbyGameMode>, LobbyGameMode)
-	SLATE_ARGUMENT(TWeakObjectPtr<class ULobbyMenuSlateWidgetStyle>, LobbyStyle)
+	SLATE_ARGUMENT(const class ULobbyMenuSlateWidgetStyle*, LobbyStyle)
 	SLATE_ARGUMENT(TWeakObjectPtr<class ULobbyFoundGameInfoWidgetStyle>, SessionItemStyle)
 	SLATE_END_ARGS()
 
@@ -23,12 +23,14 @@ public:
 	void SetButtonEnabled_Host(bool bIsEnabled);
 	void SetButtonEnabled_Join(bool bIsEnabled);
 	void SetButtonEnabled_Search(bool bIsEnabled);
+	void SetButtonsEnabled(bool bHost, bool bJoin, bool bSearch);
 
 	void ClearSessionsList();
 	void DisplayNoSessionsFound();
 	void ResetButtonState();
 	void AddFoundSession(FString& SessionNameStr, int32 CurrentPlayersCount, int32 MaxPlayersCount, int32 Index);
 	void OnSessionItemSelected(int32 index);
+	const FString& GetPlayerName() const;
 
 private:
 
@@ -55,7 +57,7 @@ private:
 
 	TWeakObjectPtr<class ALobbyGameMode> LobbyGameMode;
 
-	TArray <TSharedPtr<class SLobbyFoundGameInfoWidget>> RunningGamesArray;
+	TArray <TSharedRef<class SLobbyFoundGameInfoWidget>> RunningGamesArray;
 
 	int32 ChosenSessionIndex = -1;
 };
