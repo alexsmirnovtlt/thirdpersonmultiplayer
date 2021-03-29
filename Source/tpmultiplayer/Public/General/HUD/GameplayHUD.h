@@ -21,6 +21,7 @@ public:
 public:
 	void MainMenu_Show();
 	void MainMenu_Hide();
+	void MainMenu_Toggle();
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Slate")
@@ -29,4 +30,5 @@ protected:
 	TSharedPtr<class SGameplayMainMenuWidget> MainMenuWidget;
 	TSharedPtr<class SWeakWidget> MainMenuWidgetContainer;
 
+	class AGamePlayerController* GameplayPlayerController;
 };

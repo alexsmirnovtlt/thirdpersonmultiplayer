@@ -20,6 +20,9 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 	if (!IsValid(InArgs._LobbyStyle)) return;
 	if (!InArgs._SessionItemStyle.IsValid()) return;
 
+	auto ptr = SharedThis(this);
+	UE_LOG(LogTemp, Warning, TEXT("GetSharedReferenceCount - %d"), ptr.GetSharedReferenceCount());
+
 	LobbyGameMode = InArgs._LobbyGameMode;
 	SessionItemStyle = InArgs._SessionItemStyle;
 
@@ -348,9 +351,11 @@ void SLobbyWidget::AddFoundSession(FString& SessionNameStr, int32 CurrentPlayers
 {
 	if (!SessionItemStyle.IsValid()) return;
 
+	auto ptr = SharedThis(this);
+
 	TSharedRef<SLobbyFoundGameInfoWidget> NewItem = SNew(SLobbyFoundGameInfoWidget)
 		.SlateStyle(SessionItemStyle.Get())
-		.ParentLobbyWidget(SharedThis(this))
+		.ParentLobbyWidget(ptr)
 		.SessionNameStr(SessionNameStr)
 		.CurrentPlayersCount(CurrentPlayersCount)
 		.MaxPlayersCount(MaxPlayersCount)

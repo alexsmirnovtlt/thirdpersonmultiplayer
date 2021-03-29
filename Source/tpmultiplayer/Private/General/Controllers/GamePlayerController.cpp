@@ -3,6 +3,8 @@
 
 #include "General/Controllers/GamePlayerController.h"
 
+#include "GameFramework/SpectatorPawn.h"
+
 #include "General/MultiplayerGameInstance.h"
 #include "General/HUD/GameplayHUD.h"
 
@@ -10,22 +12,31 @@ void AGamePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	GameplayHUD = GetHUD<AGameplayHUD>();
+	// TODO Menu cannot be closed now without clicking on a button - change
+	// TODO Client cant bind input on join
 
 	// Showing mouse cursor because HUD will spawn a menu
-	FInputModeUIOnly InputModeData = FInputModeUIOnly();
-	this->SetInputMode(InputModeData);
-	this->bShowMouseCursor = true;
+	ChangeInputMode(true);
+}
+
+void AGamePlayerController::EndPlay(EEndPlayReason::Type Type)
+{
+	Super::EndPlay(Type);
+
+	
 }
 
 void AGamePlayerController::JoinGameAsPlayer()
 {
-	GameplayHUD->MainMenu_Hide();
+	GetGameplayHUD()->MainMenu_Hide();
+	ChangeInputMode(false);
 }
 
 void AGamePlayerController::JoinGameAsSpectator()
 {
-	GameplayHUD->MainMenu_Hide();
+	GetGameplayHUD()->MainMenu_Hide();
+	ChangeInputMode(false);
+	Server_PlayerWantsToSpectate();
 }
 
 void AGamePlayerController::ReturnToLobby()
@@ -47,11 +58,47 @@ void AGamePlayerController::ReturnToLobby()
 			FString ErrorStr;
 
 			GEngine->Browse(*WorldContext, URL, ErrorStr);
-			// Session will be closed on return to lobby
 		}
+	}
+	else ClientTravel(LobbyMapName, ETravelType::TRAVEL_Absolute);
+
+	// Session will be closed on return to lobby
+}
+
+void AGamePlayerController::ChangeInputMode(bool UIOnly)
+{
+	if (UIOnly)
+	{
+		FInputModeUIOnly InputModeData = FInputModeUIOnly();
+		this->SetInputMode(InputModeData);
 	}
 	else
 	{
-		ClientTravel(LobbyMapName, ETravelType::TRAVEL_Absolute);
+		FInputModeGameOnly InputModeData = FInputModeGameOnly();
+		this->SetInputMode(InputModeData);
 	}
+
+	this->bShowMouseCursor = UIOnly;
 }
+
+AGameplayHUD* AGamePlayerController::GetGameplayHUD()
+{
+	if(!IsValid(GameplayHUD)) GameplayHUD = GetHUD<AGameplayHUD>();
+	return GameplayHUD;
+}
+
+void AGamePlayerController::Server_PlayerWantsToSpectate_Implementation()
+{
+	StartSpectatingOnly();
+}
+
+// Input Bindings
+
+const FName AGamePlayerController::HorizontalAxisBindingName("AxisHorizontal");
+const FName AGamePlayerController::VerticalAxisBindingName("AxisVertical");
+const FName AGamePlayerController::MoveForwardAxisBindingName("MoveForward");
+const FName AGamePlayerController::MoveRightAxisBindingName("MoveRight");
+const FName AGamePlayerController::PrimaryActionAxisBindingName("AxisPrimaryAction");
+const FName AGamePlayerController::SecondaryActionAxisBindingName("AxisSecondaryAction");
+
+const FName AGamePlayerController::MenuActionBindingName("Menu");
