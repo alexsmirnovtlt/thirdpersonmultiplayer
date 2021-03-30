@@ -4,6 +4,7 @@
 #include "General/Controllers/GamePlayerController.h"
 
 #include "GameFramework/SpectatorPawn.h"
+#include "GameFramework/Pawn.h"
 
 #include "General/MultiplayerGameInstance.h"
 #include "General/HUD/GameplayHUD.h"
@@ -12,11 +13,15 @@ void AGamePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// TODO Menu cannot be closed now without clicking on a button - change
-	// TODO Client cant bind input on join
+	if (IsLocalController())
+	{
+		GameplayHUD = GetHUD<AGameplayHUD>();
 
-	// Showing mouse cursor because HUD will spawn a menu
-	ChangeInputMode(true);
+		if (IsValid(InputComponent))
+			InputComponent->BindAction(MenuActionBindingName, EInputEvent::IE_Pressed, this, &AGamePlayerController::MenuActionInput);
+
+		ChangeInputMode(true); // Changing input to menu because HUD will spawn it
+	}
 }
 
 void AGamePlayerController::EndPlay(EEndPlayReason::Type Type)
@@ -28,15 +33,19 @@ void AGamePlayerController::EndPlay(EEndPlayReason::Type Type)
 
 void AGamePlayerController::JoinGameAsPlayer()
 {
-	GetGameplayHUD()->MainMenu_Hide();
+	GameplayHUD->MainMenu_Hide();
 	ChangeInputMode(false);
+
+	Server_PlayerWantsToPlay();
 }
 
 void AGamePlayerController::JoinGameAsSpectator()
 {
-	GetGameplayHUD()->MainMenu_Hide();
+	GameplayHUD->MainMenu_Hide();
 	ChangeInputMode(false);
-	Server_PlayerWantsToSpectate();
+	
+	StartSpectatingOnly();
+	if(!HasAuthority()) Server_PlayerWantsToSpectate();
 }
 
 void AGamePlayerController::ReturnToLobby()
@@ -65,35 +74,54 @@ void AGamePlayerController::ReturnToLobby()
 	// Session will be closed on return to lobby
 }
 
-void AGamePlayerController::ChangeInputMode(bool UIOnly)
+void AGamePlayerController::ChangeInputMode(bool bMenuMode)
 {
-	if (UIOnly)
+	auto CurrentPawn = GetSpectatorPawn();
+
+	if (bMenuMode)
 	{
-		FInputModeUIOnly InputModeData = FInputModeUIOnly();
+		if (IsValid(CurrentPawn)) CurrentPawn->DisableInput(this);
+		FInputModeGameAndUI InputModeData = FInputModeGameAndUI();
 		this->SetInputMode(InputModeData);
 	}
 	else
 	{
+		if (IsValid(CurrentPawn)) CurrentPawn->EnableInput(this);
 		FInputModeGameOnly InputModeData = FInputModeGameOnly();
 		this->SetInputMode(InputModeData);
 	}
 
-	this->bShowMouseCursor = UIOnly;
+	this->bShowMouseCursor = bMenuMode;
 }
 
-AGameplayHUD* AGamePlayerController::GetGameplayHUD()
+void AGamePlayerController::MenuActionInput()
 {
-	if(!IsValid(GameplayHUD)) GameplayHUD = GetHUD<AGameplayHUD>();
-	return GameplayHUD;
+	if (IsValid(GameplayHUD)) GameplayHUD->MainMenu_Toggle();
+}
+
+// BEGIN Server logic
+
+void AGamePlayerController::Server_PlayerWantsToPlay_Implementation()
+{
+	// Player Trying to join a Match as a player
+
+	// TODO Add more logic
 }
 
 void AGamePlayerController::Server_PlayerWantsToSpectate_Implementation()
 {
-	StartSpectatingOnly();
+	// Player Joined a Match as a spectator
+
+	StartSpectatingOnly(); // Spectator pawn can only be spawned locally, so this was executed on a client and then on a server so PlayerState parameters would be updated on a server
+	
+	// TODO Add more logic
 }
 
-// Input Bindings
+// END Server logic
 
+// BEGIN Input Bindings
+
+// Axes
 const FName AGamePlayerController::HorizontalAxisBindingName("AxisHorizontal");
 const FName AGamePlayerController::VerticalAxisBindingName("AxisVertical");
 const FName AGamePlayerController::MoveForwardAxisBindingName("MoveForward");
@@ -101,4 +129,7 @@ const FName AGamePlayerController::MoveRightAxisBindingName("MoveRight");
 const FName AGamePlayerController::PrimaryActionAxisBindingName("AxisPrimaryAction");
 const FName AGamePlayerController::SecondaryActionAxisBindingName("AxisSecondaryAction");
 
+// Actions
 const FName AGamePlayerController::MenuActionBindingName("Menu");
+
+// END Input Bindings

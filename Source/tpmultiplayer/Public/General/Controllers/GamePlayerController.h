@@ -22,9 +22,9 @@ public:
 	void JoinGameAsSpectator();
 	void ReturnToLobby();
 
-	class AGameplayHUD* GetGameplayHUD();
+	class AGameplayHUD* GetGameplayHUD() { return GameplayHUD; };
 
-	void ChangeInputMode(bool UIOnly);
+	void ChangeInputMode(bool bMenuMode);
 
 protected:
 
@@ -32,6 +32,11 @@ protected:
 	void Server_PlayerWantsToSpectate();
 	void Server_PlayerWantsToSpectate_Implementation();
 	bool Server_PlayerWantsToSpectate_Validate() { return true; };
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_PlayerWantsToPlay();
+	void Server_PlayerWantsToPlay_Implementation();
+	bool Server_PlayerWantsToPlay_Validate() { return true; };
 
 	class AGameplayHUD* GameplayHUD;
 
@@ -46,6 +51,8 @@ public:
 	static const FName PrimaryActionAxisBindingName;
 	static const FName SecondaryActionAxisBindingName;
 	static const FName MenuActionBindingName;
+
+	void MenuActionInput();
 
 	// END Input
 };

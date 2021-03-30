@@ -32,7 +32,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Slate Styling")
 	TSubclassOf<class ULobbyFoundGameInfoWidgetStyle> SessionItemStyleClass;
 
-	UPROPERTY(EditDefaultsOnly, Category = "OnlineSybsystem")
+	UPROPERTY(EditDefaultsOnly, Category = "OnlineSubsystem")
 	int32 MaxSearchResults = 10;
 
 	TSharedPtr<class SLobbyWidget> LobbyWidget;

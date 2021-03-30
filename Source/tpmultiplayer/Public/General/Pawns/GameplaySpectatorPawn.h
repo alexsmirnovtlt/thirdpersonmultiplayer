@@ -7,19 +7,14 @@
 #include "GameplaySpectatorPawn.generated.h"
 
 /**
- * 
+ * Default spectator Pawn for a gameplay map
  */
 UCLASS()
 class TPMULTIPLAYER_API AGameplaySpectatorPawn : public ASpectatorPawn
 {
 	GENERATED_BODY()
-
 public:
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
-
 protected:
-	class AGameplayHUD* GameHUD;
-
-	void MenuActionInput();
 	void MoveDown_World(float value) { MoveUp_World(-value); };
 };

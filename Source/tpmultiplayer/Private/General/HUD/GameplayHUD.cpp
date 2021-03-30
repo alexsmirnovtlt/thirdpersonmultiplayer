@@ -58,7 +58,6 @@ void AGameplayHUD::MainMenu_Hide()
 
 void AGameplayHUD::MainMenu_Toggle()
 {
-	UE_LOG(LogTemp, Warning, TEXT("AGameplayHUD::MainMenu_Toggle"));
 	if (MainMenuWidget.IsValid()) MainMenu_Hide();
 	else MainMenu_Show();
 }
