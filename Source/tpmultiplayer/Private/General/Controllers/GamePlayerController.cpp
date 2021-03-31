@@ -6,6 +6,7 @@
 #include "GameFramework/SpectatorPawn.h"
 #include "GameFramework/Pawn.h"
 
+#include "General/States/GameplayGameState.h"
 #include "General/MultiplayerGameInstance.h"
 #include "General/HUD/GameplayHUD.h"
 
@@ -41,11 +42,20 @@ void AGamePlayerController::JoinGameAsPlayer()
 
 void AGamePlayerController::JoinGameAsSpectator()
 {
-	GameplayHUD->MainMenu_Hide();
-	ChangeInputMode(false);
+	if (!GetPawn())
+	{
+		// Its our first join as a spectator that has no pawn. Without this check spectator will probably spawn at FVector::ZeroVector with zero rotation. We have a special Player Start for that
+		auto GameState = GetWorld()->GetGameState<AGameplayGameState>();
+		ControlRotation = GameState->GetSpectatorInitialSpawnRotation(); // Spectator pawn`s rotation is set from Control Rotation
+		StartSpectatingOnly(); // Creating and posessing local Spectator Pawn
+		GetSpectatorPawn()->SetActorLocation(GameState->GetSpectatorInitialSpawnLocation()); // Manually setting spectator`s location
+	}
+	else StartSpectatingOnly();
 	
-	StartSpectatingOnly();
-	if(!HasAuthority()) Server_PlayerWantsToSpectate();
+	if (!HasAuthority()) Server_PlayerWantsToSpectate(); // Server will update state to spectating
+
+	ChangeInputMode(false);
+	GameplayHUD->MainMenu_Hide();
 }
 
 void AGamePlayerController::ReturnToLobby()
@@ -112,7 +122,7 @@ void AGamePlayerController::Server_PlayerWantsToSpectate_Implementation()
 {
 	// Player Joined a Match as a spectator
 
-	StartSpectatingOnly(); // Spectator pawn can only be spawned locally, so this was executed on a client and then on a server so PlayerState parameters would be updated on a server
+	StartSpectatingOnly(); // Spectator pawn can only be spawned locally despite that in replicates by default (look at APlayerController::SpawnSpectatorPawn()), so this was executed on a client and then on a server so PlayerState parameters would be updated on a server
 	
 	// TODO Add more logic
 }
