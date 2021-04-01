@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerStart.h"
 
-#include "General/States/GameplayPlayerState.h"
+#include "General/States/GameplayGameState.h"
 
 #include "GameplayPlayerStart.generated.h"
 

@@ -17,6 +17,8 @@ void AGamePlayerController::BeginPlay()
 	if (IsLocalController())
 	{
 		GameplayHUD = GetHUD<AGameplayHUD>();
+		GameplayState = GetWorld()->GetGameState<AGameplayGameState>();
+		if (!GameplayHUD || !GameplayState) { ensure(GameplayHUD && GameplayState); return; }
 
 		if (IsValid(InputComponent))
 			InputComponent->BindAction(MenuActionBindingName, EInputEvent::IE_Pressed, this, &AGamePlayerController::MenuActionInput);
@@ -37,22 +39,28 @@ void AGamePlayerController::JoinGameAsPlayer()
 	GameplayHUD->MainMenu_Hide();
 	ChangeInputMode(false);
 
+	// TODO Probably want to keep menu open until posession because we spawned at 0,0,0
+
 	Server_PlayerWantsToPlay();
 }
 
 void AGamePlayerController::JoinGameAsSpectator()
 {
-	if (!GetPawn())
+	if (IsInState(NAME_Inactive))
 	{
 		// Its our first join as a spectator that has no pawn. Without this check spectator will probably spawn at FVector::ZeroVector with zero rotation. We have a special Player Start for that
 		auto GameState = GetWorld()->GetGameState<AGameplayGameState>();
 		ControlRotation = GameState->GetSpectatorInitialSpawnRotation(); // Spectator pawn`s rotation is set from Control Rotation
-		StartSpectatingOnly(); // Creating and posessing local Spectator Pawn
+		ChangeState(NAME_Spectating); // Creating and posessing local Spectator Pawn
 		GetSpectatorPawn()->SetActorLocation(GameState->GetSpectatorInitialSpawnLocation()); // Manually setting spectator`s location
 	}
-	else StartSpectatingOnly();
-	
-	if (!HasAuthority()) Server_PlayerWantsToSpectate(); // Server will update state to spectating
+	else if (IsInState(NAME_Playing))
+	{
+		
+	}
+	else return; // Somehow we are already spectating, do nothing
+
+	Server_PlayerWantsToSpectate(); // Server will update state to spectating
 
 	ChangeInputMode(false);
 	GameplayHUD->MainMenu_Hide();
@@ -115,16 +123,22 @@ void AGamePlayerController::Server_PlayerWantsToPlay_Implementation()
 {
 	// Player Trying to join a Match as a player
 
-	// TODO Add more logic
+	GameplayState->AddPlayerToAMatch(this);
 }
 
 void AGamePlayerController::Server_PlayerWantsToSpectate_Implementation()
 {
 	// Player Joined a Match as a spectator
 
-	StartSpectatingOnly(); // Spectator pawn can only be spawned locally despite that in replicates by default (look at APlayerController::SpawnSpectatorPawn()), so this was executed on a client and then on a server so PlayerState parameters would be updated on a server
-	
-	// TODO Add more logic
+	if (IsInState(NAME_Inactive))
+	{
+		StateName = NAME_Spectating;
+	}
+	else if (IsInState(NAME_Playing))
+	{
+		if (GameplayState) GameplayState->RemovePlayerFromAMatch(this);
+		ChangeState(NAME_Spectating);
+	}
 }
 
 // END Server logic

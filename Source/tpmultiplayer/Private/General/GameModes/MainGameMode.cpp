@@ -4,10 +4,6 @@
 #include "General/GameModes/MainGameMode.h"
 
 #include "GameFramework/PlayerController.h"
-#include "EngineUtils.h"
-
-#include "General/Pawns/ThirdPersonCharacter.h"
-#include "General/Actors/GameplayPlayerStart.h"
 
 const FString AMainGameMode::NewPlayerOptionsNameKey(TEXT("CustomName"));
 
@@ -15,9 +11,7 @@ void AMainGameMode::StartPlay()
 {
 	Super::StartPlay();
 
-	if (!GameplayPawnClass_RedTeam || !GameplayPawnClass_BlueTeam) { ensure(GameplayPawnClass_RedTeam && GameplayPawnClass_BlueTeam); return; };
 
-	if(!SpectatorSpawn) SetupSpawnLocations();
 }
 
 APlayerController* AMainGameMode::Login(UPlayer* NewPlayer, ENetRole InRemoteRole, const FString& Portal, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
@@ -40,21 +34,3 @@ void AMainGameMode::Logout(AController* Exiting)
 {
 	Super::Logout(Exiting);
 }
-
-// BEGIN Protected Functions
-
-void AMainGameMode::SetupSpawnLocations()
-{
-	for (TActorIterator<AGameplayPlayerStart> It(GetWorld()); It; ++It)
-	{
-		AGameplayPlayerStart* FoundActor = *It;
-
-		if (FoundActor->TeamType == ETeamType::BlueTeam) TeamSpawns_Blue.Add(FoundActor);
-		else if (FoundActor->TeamType == ETeamType::RedTeam) TeamSpawns_Red.Add(FoundActor);
-		else SpectatorSpawn = FoundActor;
-	}
-
-	if (!SpectatorSpawn) UE_LOG(LogTemp, Error, TEXT("AMainGameMode::SetupSpawnLocations Not enough Player Starts were found!"));
-}
-
-// END Protected Functions

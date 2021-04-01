@@ -39,6 +39,7 @@ protected:
 	bool Server_PlayerWantsToPlay_Validate() { return true; };
 
 	class AGameplayHUD* GameplayHUD;
+	class AGameplayGameState* GameplayState;
 
 	// BEGIN Input 
 
