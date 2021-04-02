@@ -14,11 +14,7 @@
 
 AGameplayGameState::AGameplayGameState()
 {
-	WarmupPeriodSec = 3; // TODO Change to 5
-	MatchPeriodSec = 4; // TODO Change to 150
-	EndRoundPeriodSec = 2; // TODO Change to 5
-	MaxGameRounds = 3; // TODO Change to 5
-	MaxGameRoundsToWin = 2; // TODO Change to 3
+	MatchParameters = FMatchParameters();
 }
 
 void AGameplayGameState::BeginPlay()
@@ -96,10 +92,8 @@ void AGameplayGameState::SetupPlayableCharacters()
 void AGameplayGameState::OnMatchStateChanged()
 {
 	// TODO Remove debug info
-	if(HasAuthority())
-		UE_LOG(LogTemp, Warning, TEXT("SERVER AGameplayGameState::OnMatchStateChanged: %s"), *CurrentMatchData.DebugToString());
-	if (HasAuthority())
-		UE_LOG(LogTemp, Warning, TEXT("CLIENT AGameplayGameState::OnMatchStateChanged: %s"), *CurrentMatchData.DebugToString());
+	if (HasAuthority()) { UE_LOG(LogTemp, Warning, TEXT("SERVER AGameplayGameState::OnMatchStateChanged: %s"), *CurrentMatchData.DebugToString()); }
+	else { UE_LOG(LogTemp, Warning, TEXT("CLIENT AGameplayGameState::OnMatchStateChanged: %s"), *CurrentMatchData.DebugToString()); }
 	//
 
 	OnMatchDataChangedEvent.Broadcast();
@@ -107,10 +101,11 @@ void AGameplayGameState::OnMatchStateChanged()
 
 void AGameplayGameState::InitialMatchStateSetup()
 {
-	CurrentMatchData = FMatchData(CurrentPlayers_RedTeam, CurrentPlayers_BlueTeam, GetServerWorldTimeSeconds());
-
+	CurrentMatchData = FMatchData(CurrentPlayers_RedTeam, CurrentPlayers_BlueTeam, MatchParameters.MaxGameRounds, GetServerWorldTimeSeconds());
+	
 	// DEBUG
-	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AGameplayGameState::OnMatchTimerEnded, WarmupPeriodSec, false);
+	if (HasAuthority())OnMatchStateChanged();
+	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AGameplayGameState::OnMatchTimerEnded, MatchParameters.WarmupPeriodSec, false);
 	//
 }
 
@@ -122,8 +117,33 @@ void AGameplayGameState::ProceedToNextMatchState()
 void AGameplayGameState::OnMatchTimerEnded()
 {
 	// DEBUG
-	UE_LOG(LogTemp, Warning, TEXT("AGameplayGameState::OnMatchTimerEnded"));
-	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AGameplayGameState::OnMatchTimerEnded, WarmupPeriodSec, false);
+	int32 NextMatchState = (int32)CurrentMatchData.MatchState + 1;
+	if (NextMatchState > 2) NextMatchState = 0;
+
+	CurrentMatchData.MatchState = (EMatchState) NextMatchState;
+	
+	float TimerTime;
+
+	if (CurrentMatchData.MatchState == EMatchState::Warmup)
+	{
+		TimerTime = MatchParameters.WarmupPeriodSec;
+	}
+	else if (CurrentMatchData.MatchState == EMatchState::Gameplay)
+	{
+		TimerTime = MatchParameters.MatchPeriodSec;
+	}
+	else if (CurrentMatchData.MatchState == EMatchState::RoundEnd)
+	{
+		TimerTime = MatchParameters.EndRoundPeriodSec;
+	}
+
+	CurrentMatchData.MatchStartServerTime = GetServerWorldTimeSeconds();
+
+	//
+	if(HasAuthority())OnMatchStateChanged();
+
+	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AGameplayGameState::OnMatchTimerEnded, TimerTime, false);
+
 	//
 }
 

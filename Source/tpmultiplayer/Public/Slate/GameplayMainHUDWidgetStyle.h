@@ -19,6 +19,13 @@ struct TPMULTIPLAYER_API FGameplayMainHUDStyle : public FSlateWidgetStyle
 	FGameplayMainHUDStyle();
 	virtual ~FGameplayMainHUDStyle();
 
+	UPROPERTY(EditAnywhere, Category = "Default")
+	FTextBlockStyle RegularTextStyle;
+	UPROPERTY(EditAnywhere, Category = "Default")
+	FTextBlockStyle RedTeamNotificationTextStyle;
+	UPROPERTY(EditAnywhere, Category = "Default")
+	FTextBlockStyle BlueTeamNotificationTextStyle;
+
 	// FSlateWidgetStyle
 	virtual void GetResources(TArray<const FSlateBrush*>& OutBrushes) const override;
 	static const FName TypeName;
@@ -28,7 +35,7 @@ struct TPMULTIPLAYER_API FGameplayMainHUDStyle : public FSlateWidgetStyle
 
 /**
  */
-UCLASS(hidecategories=Object, MinimalAPI)
+UCLASS(Blueprintable, abstract, hidecategories=Object, MinimalAPI)
 class UGameplayMainHUDWidgetStyle : public USlateWidgetStyleContainerBase
 {
 	GENERATED_BODY()

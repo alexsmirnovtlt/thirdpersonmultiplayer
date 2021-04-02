@@ -34,17 +34,19 @@ struct FMatchData
 {
 	GENERATED_BODY()
 
-	FMatchData() : FMatchData(0, 0, 0.f) {};
-	FMatchData(uint8 PlayersAlive_FirstTeam, uint8 PlayersAlive_SecondTeam, float ServerTime)
-		: FirstTeam_PlayersAlive(PlayersAlive_FirstTeam), SecondTeam_PlayersAlive(PlayersAlive_SecondTeam), MatchStartServerTime(ServerTime)
+	FMatchData() : FMatchData(0, 0, 0, 0.f) {};
+	FMatchData(uint8 PlayersAlive_FirstTeam, uint8 PlayersAlive_SecondTeam, uint8 MaxRoundsNum, float ServerTime)
+		: FirstTeam_PlayersAlive(PlayersAlive_FirstTeam), SecondTeam_PlayersAlive(PlayersAlive_SecondTeam), MaxRounds(MaxRoundsNum), MatchStartServerTime(ServerTime)
 	{
 		MatchState = EMatchState::Warmup;
+		SpecialMessage = EInGameSpecialMessage::Nothing;
 		FirstTeam_MatchesWon = 0;
 		SecondTeam_MatchesWon = 0;
 	}
 
 public:
 	EMatchState MatchState;
+	EInGameSpecialMessage SpecialMessage;
 
 	uint8 FirstTeam_PlayersAlive;
 	uint8 FirstTeam_MatchesWon;
@@ -54,10 +56,46 @@ public:
 
 	float MatchStartServerTime;
 
-	const FString DebugToString()
+	uint8 MaxRounds;
+
+	const FString GetRoundProgressString() const
 	{
-		return FString::Printf(TEXT("%d - %d/%d - %d/%d -- started at %d	PlayersAlive/MatchesWon"), MatchState, FirstTeam_PlayersAlive, FirstTeam_MatchesWon, SecondTeam_PlayersAlive, SecondTeam_MatchesWon, MatchStartServerTime);
+		return FString::Printf(TEXT("%d/%d"), FirstTeam_MatchesWon + SecondTeam_MatchesWon + 1, MaxRounds);
 	}
+
+	const FString DebugToString() const
+	{
+		return FString::Printf(TEXT("MatchState:%d - Round:%d/%d, FirstTeam(Alive/MatchesWon): %d/%d	SecondTeam(Alive/MatchesWon):%d/%d	 started at %f"), MatchState, FirstTeam_MatchesWon + SecondTeam_MatchesWon + 1, MaxRounds, FirstTeam_PlayersAlive, FirstTeam_MatchesWon, SecondTeam_PlayersAlive, SecondTeam_MatchesWon, MatchStartServerTime);
+	}
+};
+
+
+USTRUCT(Blueprintable)
+struct FMatchParameters
+{
+	GENERATED_BODY()
+	// Time periods are like csgo, WarmupPeriodSec when players spawned but cant move,
+	// EndgamePeriodSec is time after one of the teams won the round, before respawn and Warmup again
+	FMatchParameters()
+	{
+		WarmupPeriodSec = 3; // TODO Change to 5
+		MatchPeriodSec = 4; // TODO Change to 150
+		EndRoundPeriodSec = 2; // TODO Change to 5
+		MaxGameRounds = 3; // TODO Change to 5
+		MaxGameRoundsToWin = 2; // TODO Change to 3
+	}
+
+public:
+	UPROPERTY(EditAnywhere)
+	int32 WarmupPeriodSec;
+	UPROPERTY(EditAnywhere)
+	int32 MatchPeriodSec;
+	UPROPERTY(EditAnywhere)
+	int32 EndRoundPeriodSec;
+	UPROPERTY(EditAnywhere)
+	int32 MaxGameRounds;
+	UPROPERTY(EditAnywhere)
+	int32 MaxGameRoundsToWin;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMatchDataChangedDelegate);
@@ -81,6 +119,7 @@ public:
 	void RemovePlayerFromAMatch(class APlayerController* PlayerController);
 
 	const FMatchData& GetCurrentMatchData() { return CurrentMatchData; };
+	const FMatchParameters& GetMatchParameters() { return MatchParameters; };
 
 	uint8 GetNumPlayers_Redteam() { return CurrentPlayers_RedTeam; };
 	uint8 GetNumPlayers_Blueteam() { return CurrentPlayers_BlueTeam; };
@@ -98,15 +137,7 @@ protected:
 	TSubclassOf<class AThirdPersonCharacter> GameplayPawnClass_BlueTeam;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Time Periods And Score Setup")
-	int32 WarmupPeriodSec; // Time periods are like csgo, WarmupPeriodSec when players spawned but cant move, EndgamePeriodSec is time after one of the teams won the round, before respawn and Warmup again
-	UPROPERTY(EditDefaultsOnly, Category = "Time Periods And Score Setup")
-	int32 MatchPeriodSec;
-	UPROPERTY(EditDefaultsOnly, Category = "Time Periods And Score Setup")
-	int32 EndRoundPeriodSec;
-	UPROPERTY(EditDefaultsOnly, Category = "Time Periods And Score Setup")
-	int32 MaxGameRounds;
-	UPROPERTY(EditDefaultsOnly, Category = "Time Periods And Score Setup")
-	int32 MaxGameRoundsToWin;
+	FMatchParameters MatchParameters;
 
 	void SetupSpawnLocations(); // Getting all PlayerStarts from level to have locations for players to spawn
 	void SetupPlayableCharacters(); // Happend once on BeginPlay() - occupies all available spawn points with AI controlled characters so new players can possess them or just watch

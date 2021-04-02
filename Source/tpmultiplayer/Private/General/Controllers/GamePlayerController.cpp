@@ -21,7 +21,10 @@ void AGamePlayerController::BeginPlay()
 		if (!GameplayHUD || !GameplayState) { ensure(GameplayHUD && GameplayState); return; }
 
 		if (IsValid(InputComponent))
+		{
 			InputComponent->BindAction(MenuActionBindingName, EInputEvent::IE_Pressed, this, &AGamePlayerController::MenuActionInput);
+			InputComponent->BindAction(GamePlayHUDBindingName, EInputEvent::IE_Pressed, this, &AGamePlayerController::HUDToggleActionInput);
+		}
 
 		ChangeInputMode(true); // Changing input to menu because HUD will spawn it
 	}
@@ -40,6 +43,9 @@ void AGamePlayerController::JoinGameAsPlayer()
 	ChangeInputMode(false);
 
 	// TODO Probably want to keep menu open until posession because we spawned at 0,0,0
+
+	// TEMP
+	if (IsLocalController()) HUDToggleActionInput();
 
 	Server_PlayerWantsToPlay();
 }
@@ -112,11 +118,6 @@ void AGamePlayerController::ChangeInputMode(bool bMenuMode)
 	this->bShowMouseCursor = bMenuMode;
 }
 
-void AGamePlayerController::MenuActionInput()
-{
-	if (IsValid(GameplayHUD)) GameplayHUD->MainMenu_Toggle();
-}
-
 // BEGIN Server logic
 
 void AGamePlayerController::Server_PlayerWantsToPlay_Implementation()
@@ -155,5 +156,17 @@ const FName AGamePlayerController::SecondaryActionAxisBindingName("AxisSecondary
 
 // Actions
 const FName AGamePlayerController::MenuActionBindingName("Menu");
+const FName AGamePlayerController::GamePlayHUDBindingName("HUDToggle");
+
+void AGamePlayerController::MenuActionInput()
+{
+	if (IsValid(GameplayHUD)) GameplayHUD->MainMenu_Toggle();
+}
+
+void AGamePlayerController::HUDToggleActionInput()
+{
+	if (IsValid(GameplayHUD)) GameplayHUD->GameplayMenu_Toggle();
+}
+
 
 // END Input Bindings

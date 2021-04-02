@@ -23,6 +23,7 @@ public:
 	void ReturnToLobby();
 
 	class AGameplayHUD* GetGameplayHUD() { return GameplayHUD; };
+	class AGameplayGameState* GetGameplayState() { return GameplayState; };
 
 	void ChangeInputMode(bool bMenuMode);
 
@@ -52,8 +53,10 @@ public:
 	static const FName PrimaryActionAxisBindingName;
 	static const FName SecondaryActionAxisBindingName;
 	static const FName MenuActionBindingName;
+	static const FName GamePlayHUDBindingName;
 
 	void MenuActionInput();
+	void HUDToggleActionInput();
 
 	// END Input
 };
