@@ -115,9 +115,6 @@ public:
 
 public:
 
-	void AddPlayerToAMatch(class APlayerController* PlayerController);
-	void RemovePlayerFromAMatch(class APlayerController* PlayerController);
-
 	const FMatchData& GetCurrentMatchData() { return CurrentMatchData; };
 	const FMatchParameters& GetMatchParameters() { return MatchParameters; };
 
@@ -131,33 +128,23 @@ public:
 
 protected:
 
-	UPROPERTY(EditDefaultsOnly, Category = "Gameplay Classes")
-	TSubclassOf<class AThirdPersonCharacter> GameplayPawnClass_RedTeam;
-	UPROPERTY(EditDefaultsOnly, Category = "Gameplay Classes")
-	TSubclassOf<class AThirdPersonCharacter> GameplayPawnClass_BlueTeam;
-
 	UPROPERTY(EditDefaultsOnly, Category = "Time Periods And Score Setup")
 	FMatchParameters MatchParameters;
 
-	void SetupSpawnLocations(); // Getting all PlayerStarts from level to have locations for players to spawn
-	void SetupPlayableCharacters(); // Happend once on BeginPlay() - occupies all available spawn points with AI controlled characters so new players can possess them or just watch
 	void InitialMatchStateSetup();
-
 	void ProceedToNextMatchState();
 
 	UFUNCTION()
 	void OnMatchTimerEnded();
 	FTimerHandle MatchTimerHandle;
 
-	AActor* SpectatorSpawn;
-	TArray<AActor*> TeamSpawns_Red;
-	TArray<AActor*> TeamSpawns_Blue;
-
 	UPROPERTY(ReplicatedUsing = OnMatchStateChanged)
 	FMatchData CurrentMatchData;
 	UFUNCTION()
 	void OnMatchStateChanged();
 
+	// Public replicated properties that can be accessed from anywhere
+public:
 	UPROPERTY(Replicated)
 	uint8 CurrentPlayers_RedTeam;
 	UPROPERTY(Replicated)

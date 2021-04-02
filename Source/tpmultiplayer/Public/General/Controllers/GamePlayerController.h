@@ -16,7 +16,7 @@ class TPMULTIPLAYER_API AGamePlayerController : public APlayerController
 public:
 	void BeginPlay() override;
 	void EndPlay(EEndPlayReason::Type Type) override;
-
+	void OnRep_Pawn() override;
 public:
 	void JoinGameAsPlayer();
 	void JoinGameAsSpectator();

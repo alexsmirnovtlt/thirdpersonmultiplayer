@@ -6,7 +6,7 @@
 #include "GameFramework/Character.h"
 #include "ThirdPersonCharacter.generated.h"
 
-UCLASS()
+UCLASS(abstract)
 class TPMULTIPLAYER_API AThirdPersonCharacter : public ACharacter
 {
 	GENERATED_BODY()

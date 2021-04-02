@@ -8,6 +8,7 @@
 
 #include "General/States/GameplayGameState.h"
 #include "General/MultiplayerGameInstance.h"
+#include "General/GameModes/MainGameMode.h"
 #include "General/HUD/GameplayHUD.h"
 
 void AGamePlayerController::BeginPlay()
@@ -37,16 +38,20 @@ void AGamePlayerController::EndPlay(EEndPlayReason::Type Type)
 	
 }
 
-void AGamePlayerController::JoinGameAsPlayer()
+void AGamePlayerController::OnRep_Pawn()
 {
+	Super::OnRep_Pawn();
+
 	GameplayHUD->MainMenu_Hide();
+	GameplayHUD->GameplayMenu_Show();
+
 	ChangeInputMode(false);
 
-	// TODO Probably want to keep menu open until posession because we spawned at 0,0,0
+	//ChangeState(NAME_Playing); // TODO may be redundant. Needs check when it happens already
+}
 
-	// TEMP
-	if (IsLocalController()) HUDToggleActionInput();
-
+void AGamePlayerController::JoinGameAsPlayer()
+{
 	Server_PlayerWantsToPlay();
 }
 
@@ -123,23 +128,22 @@ void AGamePlayerController::ChangeInputMode(bool bMenuMode)
 void AGamePlayerController::Server_PlayerWantsToPlay_Implementation()
 {
 	// Player Trying to join a Match as a player
-
-	GameplayState->AddPlayerToAMatch(this);
+	if (auto AuthGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>())
+	{
+		AuthGameMode->AddPlayerToAMatch(this);
+		ChangeState(NAME_Playing);
+	}
 }
 
 void AGamePlayerController::Server_PlayerWantsToSpectate_Implementation()
 {
-	// Player Joined a Match as a spectator
+	if (IsInState(NAME_Playing))
+	{
+		if (auto AuthGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>())
+			AuthGameMode->RemovePlayerFromAMatch(this);
+	}
 
-	if (IsInState(NAME_Inactive))
-	{
-		StateName = NAME_Spectating;
-	}
-	else if (IsInState(NAME_Playing))
-	{
-		if (GameplayState) GameplayState->RemovePlayerFromAMatch(this);
-		ChangeState(NAME_Spectating);
-	}
+	ChangeState(NAME_Spectating);
 }
 
 // END Server logic
@@ -167,6 +171,5 @@ void AGamePlayerController::HUDToggleActionInput()
 {
 	if (IsValid(GameplayHUD)) GameplayHUD->GameplayMenu_Toggle();
 }
-
 
 // END Input Bindings
