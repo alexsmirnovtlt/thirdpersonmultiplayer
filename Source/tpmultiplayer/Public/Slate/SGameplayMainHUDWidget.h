@@ -20,7 +20,7 @@ public:
 	void Construct(const FArguments& InArgs);
 	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
 
-	void UpdateWidgetData(const struct FMatchData& MatchData, const struct FMatchParameters& MatchParams, float TimePassed);
+	void UpdateWidgetData(const struct FMatchData& MatchData, const struct FMatchParameters& MatchParams, float TimePassed, uint8 TeamType);
 	void UpdateCountdown();
 
 protected:

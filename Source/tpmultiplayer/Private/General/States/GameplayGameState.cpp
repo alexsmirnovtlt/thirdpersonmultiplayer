@@ -7,7 +7,6 @@
 #include "Engine/World.h"
 #include "TimerManager.h"
 
-
 #include "General/Controllers/GamePlayerController.h"
 
 AGameplayGameState::AGameplayGameState()
@@ -19,7 +18,7 @@ void AGameplayGameState::BeginPlay()
 {
 	Super::BeginPlay();
 
-	InitialMatchStateSetup();
+	if(HasAuthority()) InitialMatchStateSetup();
 }
 
 // BEGIN Match related logic

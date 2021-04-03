@@ -6,6 +6,7 @@
 #include "GameFramework/SpectatorPawn.h"
 #include "GameFramework/Pawn.h"
 
+#include "General/States/GameplayPlayerState.h"
 #include "General/States/GameplayGameState.h"
 #include "General/MultiplayerGameInstance.h"
 #include "General/GameModes/MainGameMode.h"
@@ -15,11 +16,18 @@ void AGamePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (HasAuthority())
+	{
+		GamePlayerState = GetPlayerState<AGameplayPlayerState>(); // For some reason it returns nullprt here for clients, so thay will get it in OnRep_PlayerState()
+		if (!GamePlayerState) { ensure(false); return; }
+	}
+
 	if (IsLocalController())
 	{
 		GameplayHUD = GetHUD<AGameplayHUD>();
 		GameplayState = GetWorld()->GetGameState<AGameplayGameState>();
-		if (!GameplayHUD || !GameplayState) { ensure(GameplayHUD && GameplayState); return; }
+
+		if (!GameplayHUD || !GameplayState) { ensure(false); return; }
 
 		if (IsValid(InputComponent))
 		{
@@ -28,14 +36,13 @@ void AGamePlayerController::BeginPlay()
 		}
 
 		ChangeInputMode(true); // Changing input to menu because HUD will spawn it
+		GameplayHUD->GameplayMenu_Show();
 	}
 }
 
 void AGamePlayerController::EndPlay(EEndPlayReason::Type Type)
 {
 	Super::EndPlay(Type);
-
-	
 }
 
 void AGamePlayerController::OnRep_Pawn()
@@ -43,11 +50,18 @@ void AGamePlayerController::OnRep_Pawn()
 	Super::OnRep_Pawn();
 
 	GameplayHUD->MainMenu_Hide();
-	GameplayHUD->GameplayMenu_Show();
-
 	ChangeInputMode(false);
 
-	//ChangeState(NAME_Playing); // TODO may be redundant. Needs check when it happens already
+	if (GetPawn()) ChangeState(NAME_Playing);
+	else ChangeState(NAME_Spectating);
+}
+
+void AGamePlayerController::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	GamePlayerState = GetPlayerState<AGameplayPlayerState>();
+	if (!GamePlayerState) ensure(false);
 }
 
 void AGamePlayerController::JoinGameAsPlayer()
@@ -57,6 +71,8 @@ void AGamePlayerController::JoinGameAsPlayer()
 
 void AGamePlayerController::JoinGameAsSpectator()
 {
+	if (IsInState(NAME_Spectating)) { UE_LOG(LogTemp, Warning, TEXT("AGamePlayerController::JoinGameAsSpectator() called while already a spectator!")); return; }
+
 	if (IsInState(NAME_Inactive))
 	{
 		// Its our first join as a spectator that has no pawn. Without this check spectator will probably spawn at FVector::ZeroVector with zero rotation. We have a special Player Start for that
@@ -64,17 +80,12 @@ void AGamePlayerController::JoinGameAsSpectator()
 		ControlRotation = GameState->GetSpectatorInitialSpawnRotation(); // Spectator pawn`s rotation is set from Control Rotation
 		ChangeState(NAME_Spectating); // Creating and posessing local Spectator Pawn
 		GetSpectatorPawn()->SetActorLocation(GameState->GetSpectatorInitialSpawnLocation()); // Manually setting spectator`s location
-	}
-	else if (IsInState(NAME_Playing))
-	{
-		
-	}
-	else return; // Somehow we are already spectating, do nothing
 
+		ChangeInputMode(false);
+		GameplayHUD->MainMenu_Hide();
+	}
+	
 	Server_PlayerWantsToSpectate(); // Server will update state to spectating
-
-	ChangeInputMode(false);
-	GameplayHUD->MainMenu_Hide();
 }
 
 void AGamePlayerController::ReturnToLobby()
@@ -129,10 +140,7 @@ void AGamePlayerController::Server_PlayerWantsToPlay_Implementation()
 {
 	// Player Trying to join a Match as a player
 	if (auto AuthGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>())
-	{
 		AuthGameMode->AddPlayerToAMatch(this);
-		ChangeState(NAME_Playing);
-	}
 }
 
 void AGamePlayerController::Server_PlayerWantsToSpectate_Implementation()

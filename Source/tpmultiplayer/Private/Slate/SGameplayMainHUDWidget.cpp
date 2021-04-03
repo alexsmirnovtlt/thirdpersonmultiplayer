@@ -182,8 +182,10 @@ void SGameplayMainHUDWidget::UpdateCountdown()
 	RoundTimer.Get()->SetText(FString::FromInt(RoundTimeRemaining));
 }
 
-void SGameplayMainHUDWidget::UpdateWidgetData(const FMatchData& MatchData, const struct FMatchParameters& MatchParams, float TimePassed)
+void SGameplayMainHUDWidget::UpdateWidgetData(const FMatchData& MatchData, const struct FMatchParameters& MatchParams, float TimePassed, uint8 TeamType)
 {
+	ETeamType TeamTypeEnum = (ETeamType)TeamType;
+
 	// Setting up countdown
 	uint16 StartCounterValue = (uint8)TimePassed;
 	TimeElapsedSinceCountdownUpdate = TimePassed - (float)StartCounterValue;

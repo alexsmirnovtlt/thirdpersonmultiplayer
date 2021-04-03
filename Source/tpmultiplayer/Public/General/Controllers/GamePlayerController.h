@@ -17,13 +17,17 @@ public:
 	void BeginPlay() override;
 	void EndPlay(EEndPlayReason::Type Type) override;
 	void OnRep_Pawn() override;
+	void OnRep_PlayerState() override;
+	void PawnLeavingGame() override {}; // Pawn will not be destroyed
+
 public:
 	void JoinGameAsPlayer();
 	void JoinGameAsSpectator();
 	void ReturnToLobby();
 
-	class AGameplayHUD* GetGameplayHUD() { return GameplayHUD; };
-	class AGameplayGameState* GetGameplayState() { return GameplayState; };
+	class AGameplayHUD* GetGameplayHUD() const { return GameplayHUD; };
+	class AGameplayGameState* GetGameplayState() const { return GameplayState; };
+	class AGameplayPlayerState* GetGamePlayerState() const { return GamePlayerState; };
 
 	void ChangeInputMode(bool bMenuMode);
 
@@ -41,7 +45,8 @@ protected:
 
 	class AGameplayHUD* GameplayHUD;
 	class AGameplayGameState* GameplayState;
-
+	class AGameplayPlayerState* GamePlayerState;
+	
 	// BEGIN Input 
 
 public:

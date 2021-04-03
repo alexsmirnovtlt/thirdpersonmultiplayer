@@ -20,8 +20,8 @@ public:
 	virtual void Logout(AController* Exiting) override;
 
 public:
-	void AddPlayerToAMatch(class APlayerController* PlayerController);
-	void RemovePlayerFromAMatch(class APlayerController* PlayerController);
+	void AddPlayerToAMatch(class AGamePlayerController* PlayerController);
+	void RemovePlayerFromAMatch(class AGamePlayerController* PlayerController);
 
 protected:
 
@@ -36,6 +36,9 @@ protected:
 
 	TArray<class AThirdPersonCharacter*> TeamPawns_Red;
 	TArray<class AThirdPersonCharacter*> TeamPawns_Blue;
+
+	int32 HumanPlayersCount_RedTeam = 0;
+	int32 HumanPlayersCount_BlueTeam = 0;
 
 	void SetupSpawnLocations(); // Getting all PlayerStarts from level to have locations for players to spawn
 	void SetupPlayableCharacters(); // Happend once on BeginPlay() - occupies all available spawn points with AI controlled characters so new players can possess them or just watch

@@ -6,6 +6,7 @@
 #include "Widgets/SWeakWidget.h"
 
 #include "General/Controllers/GamePlayerController.h"
+#include "General/States/GameplayPlayerState.h"
 #include "Slate/GameplayMainMenuWidgetStyle.h"
 #include "Slate/GameplayMainHUDWidgetStyle.h"
 #include "General/States/GameplayGameState.h"
@@ -116,6 +117,7 @@ void AGameplayHUD::OnMatchDataUpdated()
 	auto& MatchData = GameState->GetCurrentMatchData();
 	auto& MatchParameters = GameState->GetMatchParameters();
 	float TimePassed = GameState->GetServerWorldTimeSeconds() - MatchData.MatchStartServerTime;
+	uint8 TeamType = (uint8)GameplayPlayerController->GetGamePlayerState()->TeamType;
 
-	GameplayWidget.Get()->UpdateWidgetData(MatchData, MatchParameters, TimePassed);
+	GameplayWidget.Get()->UpdateWidgetData(MatchData, MatchParameters, TimePassed, TeamType);
 }
