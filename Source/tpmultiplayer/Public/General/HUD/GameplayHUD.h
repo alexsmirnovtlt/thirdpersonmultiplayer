@@ -35,7 +35,8 @@ protected:
 
 	TSharedPtr<class SGameplayMainMenuWidget> MainMenuWidget;
 	TSharedPtr<class SGameplayMainHUDWidget> GameplayWidget;
-	TSharedPtr<class SWeakWidget> WidgetContainer;
+	TSharedPtr<class SWeakWidget> MainMenuWidgetContainer;
+	TSharedPtr<class SWeakWidget> GemaplayHUDWidgetContainer;
 
 	class AGamePlayerController* GameplayPlayerController;
 

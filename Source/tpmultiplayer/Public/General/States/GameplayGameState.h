@@ -42,25 +42,41 @@ struct FMatchData
 		SpecialMessage = EInGameSpecialMessage::Nothing;
 		FirstTeam_MatchesWon = 0;
 		SecondTeam_MatchesWon = 0;
+		CurrentRound = 0;
+		RedTeamHasFlag = true;
 	}
 
 public:
+	UPROPERTY()
 	EMatchState MatchState;
+	UPROPERTY()
 	EInGameSpecialMessage SpecialMessage;
-
+	
+	UPROPERTY()
 	uint8 FirstTeam_PlayersAlive;
+	UPROPERTY()
 	uint8 FirstTeam_MatchesWon;
 
+	UPROPERTY()
 	uint8 SecondTeam_PlayersAlive;
+	UPROPERTY()
 	uint8 SecondTeam_MatchesWon;
 
+	UPROPERTY()
 	float MatchStartServerTime;
 
+	UPROPERTY()
 	uint8 MaxRounds;
+
+	UPROPERTY()
+	uint8 CurrentRound;
+
+	UPROPERTY()
+	bool RedTeamHasFlag;
 
 	const FString GetRoundProgressString() const
 	{
-		return FString::Printf(TEXT("%d/%d"), FirstTeam_MatchesWon + SecondTeam_MatchesWon + 1, MaxRounds);
+		return FString::Printf(TEXT("%d/%d"), CurrentRound, MaxRounds);
 	}
 
 	const FString DebugToString() const
@@ -78,11 +94,11 @@ struct FMatchParameters
 	// EndgamePeriodSec is time after one of the teams won the round, before respawn and Warmup again
 	FMatchParameters()
 	{
-		WarmupPeriodSec = 3; // TODO Change to 5
+		WarmupPeriodSec = 4; // TODO Change to 8
 		MatchPeriodSec = 4; // TODO Change to 150
-		EndRoundPeriodSec = 2; // TODO Change to 5
-		MaxGameRounds = 3; // TODO Change to 5
-		MaxGameRoundsToWin = 2; // TODO Change to 3
+		EndRoundPeriodSec = 4; // TODO Change to 8
+		MaxGameRounds = 3; // TODO Change to 5 (15)
+		MaxGameRoundsToWin = 2; // TODO Change to 3 (8)
 	}
 
 public:
@@ -113,8 +129,9 @@ public:
 	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-public:
+	friend class AMainGameMode; // only AuthGameMode is able to change CurrentMatchData that gets replicated to everyone
 
+public:
 	const FMatchData& GetCurrentMatchData() { return CurrentMatchData; };
 	const FMatchParameters& GetMatchParameters() { return MatchParameters; };
 
@@ -128,23 +145,15 @@ public:
 
 protected:
 
+	UPROPERTY(ReplicatedUsing = OnRep_MatchStateChanged)
+	FMatchData CurrentMatchData;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Time Periods And Score Setup")
 	FMatchParameters MatchParameters;
 
-	void InitialMatchStateSetup();
-	void ProceedToNextMatchState();
-
 	UFUNCTION()
-	void OnMatchTimerEnded();
-	FTimerHandle MatchTimerHandle;
+	void OnRep_MatchStateChanged();
 
-	UPROPERTY(ReplicatedUsing = OnMatchStateChanged)
-	FMatchData CurrentMatchData;
-	UFUNCTION()
-	void OnMatchStateChanged();
-
-	// Public replicated properties that can be accessed from anywhere
-public:
 	UPROPERTY(Replicated)
 	uint8 CurrentPlayers_RedTeam;
 	UPROPERTY(Replicated)

@@ -16,12 +16,13 @@
 void AGameplayHUD::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	GameplayPlayerController = Cast<AGamePlayerController>(GetOwningPlayerController());
 	if (!GameplayPlayerController) UE_LOG(LogTemp, Error, TEXT("AGameplayHUD::BeginPlay() was not able to cast GameplayPlayerController!"));
 	
 	// Event that will fire every time MatchData was received from the server so we need to update out HUD info about current match state (time, score, etc)
-	GameplayPlayerController->GetGameplayState()->OnMatchDataChangedEvent.AddDynamic(this, &AGameplayHUD::OnMatchDataUpdated);
+	if (auto GameState = GameplayPlayerController->GetGameplayState())
+		GameState->OnMatchDataChangedEvent.AddDynamic(this, &AGameplayHUD::OnMatchDataUpdated);
 
 	MainMenu_Show(); // Creating and showing main menu widget so player can join a game or return to lobby
 }
@@ -45,8 +46,8 @@ void AGameplayHUD::MainMenu_Show()
 		MainMenuWidget = SNew(SGameplayMainMenuWidget).PlayerController(GameplayPlayerController).MainMenuStyle(MainMenuStyleClass.GetDefaultObject());
 
 	GEngine->GameViewport->AddViewportWidgetContent(
-		SAssignNew(WidgetContainer, SWeakWidget)
-		.PossiblyNullContent(MainMenuWidget)
+		SAssignNew(MainMenuWidgetContainer, SWeakWidget)
+		.PossiblyNullContent(MainMenuWidget), 1
 	);
 
 	GameplayPlayerController->ChangeInputMode(true);
@@ -58,9 +59,7 @@ void AGameplayHUD::MainMenu_Hide()
 
 	if (GEngine && GEngine->GameViewport)
 	{
-		GEngine->GameViewport->RemoveViewportWidgetContent(WidgetContainer.ToSharedRef());
-
-		//WidgetContainer.Reset();
+		GEngine->GameViewport->RemoveViewportWidgetContent(MainMenuWidgetContainer.ToSharedRef());
 		MainMenuWidget.Reset();
 	}
 
@@ -81,16 +80,16 @@ void AGameplayHUD::GameplayMenu_Toggle()
 
 void AGameplayHUD::GameplayMenu_Show()
 {
+	if (GameplayWidget.IsValid()) return;
 	if (!GEngine || (GEngine && !GEngine->GameViewport)) return;
 	if (!GameplayHUDStyleClass) { UE_LOG(LogTemp, Error, TEXT("AGameplayHUD: Defaults must be assigned!")); return; };
 
-	if (!GameplayWidget.IsValid())
-		GameplayWidget = SNew(SGameplayMainHUDWidget).MainStyle(GameplayHUDStyleClass.GetDefaultObject());
+	GameplayWidget = SNew(SGameplayMainHUDWidget).MainStyle(GameplayHUDStyleClass.GetDefaultObject());
 
 	OnMatchDataUpdated(); // updating widget data manually on widget creation
 
 	GEngine->GameViewport->AddViewportWidgetContent(
-		SAssignNew(WidgetContainer, SWeakWidget)
+		SAssignNew(GemaplayHUDWidgetContainer, SWeakWidget)
 		.PossiblyNullContent(GameplayWidget)
 	);
 }
@@ -101,8 +100,7 @@ void AGameplayHUD::GameplayMenu_Hide()
 
 	if (GEngine && GEngine->GameViewport)
 	{
-		GEngine->GameViewport->RemoveViewportWidgetContent(WidgetContainer.ToSharedRef());
-
+		GEngine->GameViewport->RemoveViewportWidgetContent(GemaplayHUDWidgetContainer.ToSharedRef());
 		GameplayWidget.Reset();
 	}
 }
@@ -114,8 +112,8 @@ void AGameplayHUD::OnMatchDataUpdated()
 	auto GameState = GameplayPlayerController->GetGameplayState();
 	if (!GameState) return;
 
-	auto& MatchData = GameState->GetCurrentMatchData();
-	auto& MatchParameters = GameState->GetMatchParameters();
+	const auto& MatchData = GameState->GetCurrentMatchData();
+	const auto& MatchParameters = GameState->GetMatchParameters();
 	float TimePassed = GameState->GetServerWorldTimeSeconds() - MatchData.MatchStartServerTime;
 	uint8 TeamType = (uint8)GameplayPlayerController->GetGamePlayerState()->TeamType;
 

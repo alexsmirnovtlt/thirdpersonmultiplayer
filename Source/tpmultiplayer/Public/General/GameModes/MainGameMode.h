@@ -40,10 +40,21 @@ protected:
 	int32 HumanPlayersCount_RedTeam = 0;
 	int32 HumanPlayersCount_BlueTeam = 0;
 
-	void SetupSpawnLocations(); // Getting all PlayerStarts from level to have locations for players to spawn
-	void SetupPlayableCharacters(); // Happend once on BeginPlay() - occupies all available spawn points with AI controlled characters so new players can possess them or just watch
+	// Inital setup logic
+	void SetupSpawnLocations();
+	void SetupPlayableCharacters();
+	//
 
 	class AGameplayGameState* GameplayState;
+
+	// BEGIN Match logic
+	void InitialMatchStateSetup();
+	void ProceedToNextMatchState();
+
+	UFUNCTION()
+	void OnMatchTimerEnded();
+	FTimerHandle MatchTimerHandle;
+	// END Match logic
 
 	static const FString NewPlayerOptionsNameKey; // When new PlayerController gets created, set its name from option parameter with that key name on AMainGameMode::Login() 
 };

@@ -4,84 +4,30 @@
 #include "General/States/GameplayGameState.h"
 
 #include "Net/UnrealNetwork.h"
-#include "Engine/World.h"
-#include "TimerManager.h"
 
-#include "General/Controllers/GamePlayerController.h"
 
 AGameplayGameState::AGameplayGameState()
 {
+	NetUpdateFrequency = 0;
 	MatchParameters = FMatchParameters();
 }
 
 void AGameplayGameState::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if(HasAuthority()) InitialMatchStateSetup();
 }
 
-// BEGIN Match related logic
-
-void AGameplayGameState::InitialMatchStateSetup()
+void AGameplayGameState::OnRep_MatchStateChanged()
 {
-	CurrentMatchData = FMatchData(CurrentPlayers_RedTeam, CurrentPlayers_BlueTeam, MatchParameters.MaxGameRounds, GetServerWorldTimeSeconds());
+	// Gets called on server and clients every time MatchData was updated so event subscribers can get updated data
 
-	// DEBUG
-	if (HasAuthority())OnMatchStateChanged();
-	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AGameplayGameState::OnMatchTimerEnded, MatchParameters.WarmupPeriodSec, false);
-	//
-}
-
-void AGameplayGameState::OnMatchStateChanged()
-{
 	// TODO Remove debug info
-	if (HasAuthority()) { UE_LOG(LogTemp, Warning, TEXT("SERVER AGameplayGameState::OnMatchStateChanged: %s"), *CurrentMatchData.DebugToString()); }
-	else { UE_LOG(LogTemp, Warning, TEXT("CLIENT AGameplayGameState::OnMatchStateChanged: %s"), *CurrentMatchData.DebugToString()); }
+	//if (HasAuthority()) { UE_LOG(LogTemp, Warning, TEXT("SERVER AGameplayGameState::OnMatchStateChanged: %s"), *CurrentMatchData.DebugToString()); }
+	//else { UE_LOG(LogTemp, Warning, TEXT("CLIENT AGameplayGameState::OnMatchStateChanged: %s"), *CurrentMatchData.DebugToString()); }
 	//
 
 	OnMatchDataChangedEvent.Broadcast();
 }
-
-void AGameplayGameState::ProceedToNextMatchState()
-{
-
-}
-
-void AGameplayGameState::OnMatchTimerEnded()
-{
-	// START DEBUG
-	int32 NextMatchState = (int32)CurrentMatchData.MatchState + 1;
-	if (NextMatchState > 2) NextMatchState = 0;
-
-	CurrentMatchData.MatchState = (EMatchState) NextMatchState;
-	
-	float TimerTime;
-
-	if (CurrentMatchData.MatchState == EMatchState::Warmup)
-	{
-		TimerTime = MatchParameters.WarmupPeriodSec;
-	}
-	else if (CurrentMatchData.MatchState == EMatchState::Gameplay)
-	{
-		TimerTime = MatchParameters.MatchPeriodSec;
-	}
-	else if (CurrentMatchData.MatchState == EMatchState::RoundEnd)
-	{
-		TimerTime = MatchParameters.EndRoundPeriodSec;
-	}
-
-	CurrentMatchData.MatchStartServerTime = GetServerWorldTimeSeconds();
-
-	//
-	if(HasAuthority()) OnMatchStateChanged();
-
-	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AGameplayGameState::OnMatchTimerEnded, TimerTime, false);
-
-	// END DEBUG
-}
-
-// END Match related logic
 
 void AGameplayGameState::GetLifetimeReplicatedProps(TArray <FLifetimeProperty>& OutLifetimeProps) const
 {

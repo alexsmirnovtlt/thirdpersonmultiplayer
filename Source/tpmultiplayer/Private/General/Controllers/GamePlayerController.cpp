@@ -34,9 +34,6 @@ void AGamePlayerController::BeginPlay()
 			InputComponent->BindAction(MenuActionBindingName, EInputEvent::IE_Pressed, this, &AGamePlayerController::MenuActionInput);
 			InputComponent->BindAction(GamePlayHUDBindingName, EInputEvent::IE_Pressed, this, &AGamePlayerController::HUDToggleActionInput);
 		}
-
-		ChangeInputMode(true); // Changing input to menu because HUD will spawn it
-		GameplayHUD->GameplayMenu_Show();
 	}
 }
 
@@ -52,7 +49,7 @@ void AGamePlayerController::OnRep_Pawn()
 	GameplayHUD->MainMenu_Hide();
 	ChangeInputMode(false);
 
-	if (GetPawn()) ChangeState(NAME_Playing);
+	if (GetPawn()) ChangeState(NAME_Playing); // TODO probably redundant state set
 	else ChangeState(NAME_Spectating);
 }
 
@@ -66,11 +63,14 @@ void AGamePlayerController::OnRep_PlayerState()
 
 void AGamePlayerController::JoinGameAsPlayer()
 {
+	GameplayHUD->GameplayMenu_Show();
 	Server_PlayerWantsToPlay();
 }
 
 void AGamePlayerController::JoinGameAsSpectator()
 {
+	GameplayHUD->GameplayMenu_Show();
+
 	if (IsInState(NAME_Spectating)) { UE_LOG(LogTemp, Warning, TEXT("AGamePlayerController::JoinGameAsSpectator() called while already a spectator!")); return; }
 
 	if (IsInState(NAME_Inactive))
