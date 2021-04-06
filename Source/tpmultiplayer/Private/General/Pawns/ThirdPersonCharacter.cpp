@@ -3,12 +3,13 @@
 
 #include "General/Pawns/ThirdPersonCharacter.h"
 
-#include "Camera/CameraComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
-#include "GameFramework/CharacterMovementComponent.h"
+#include "Camera/CameraComponent.h"
 #include "GameFramework/Controller.h"
-#include "GameFramework/SpringArmComponent.h"
+#include "Net/UnrealNetwork.h"
 
 #include "General/Controllers/GamePlayerController.h"
 
@@ -44,12 +45,15 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
+
+	StartingHealth = 100;
 }
 
 void AThirdPersonCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	if (HasAuthority()) CurrentHealth = StartingHealth; // TODO MOVE?
 }
 
 void AThirdPersonCharacter::Tick(float DeltaTime)
@@ -122,3 +126,15 @@ void AThirdPersonCharacter::LookUpAtRate(float Rate)
 }
 
 // END Input related logic
+
+bool AThirdPersonCharacter::IsAlive()
+{
+	return CurrentHealth > 0;
+}
+
+void AThirdPersonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AThirdPersonCharacter, CurrentHealth);
+}

@@ -12,6 +12,8 @@
 #include "General/GameModes/MainGameMode.h"
 #include "General/HUD/GameplayHUD.h"
 
+const float AGamePlayerController::NewControlRotationPitchOnPawnPossess = -30.f;
+
 void AGamePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -49,7 +51,16 @@ void AGamePlayerController::OnRep_Pawn()
 	GameplayHUD->MainMenu_Hide();
 	ChangeInputMode(false);
 
-	if (GetPawn()) ChangeState(NAME_Playing); // TODO probably redundant state set
+	if (GetPawn())
+	{
+		ChangeState(NAME_Playing); // TODO probably redundant state set
+
+		// Setting control rotation so camera will be set behind the character
+		FRotator NewControlRotation = GetPawn()->GetActorRotation();
+		NewControlRotation.Roll = 0.f;
+		NewControlRotation.Add(NewControlRotationPitchOnPawnPossess, 0, 0);
+		ControlRotation = NewControlRotation;
+	}
 	else ChangeState(NAME_Spectating);
 }
 
@@ -170,6 +181,7 @@ const FName AGamePlayerController::SecondaryActionAxisBindingName("AxisSecondary
 const FName AGamePlayerController::MenuActionBindingName("Menu");
 const FName AGamePlayerController::GamePlayHUDBindingName("HUDToggle");
 const FName AGamePlayerController::AdditionalActionBindingName("AdditionalAction");
+const FName AGamePlayerController::DebugKillBindingName("DebugKill");
 
 void AGamePlayerController::MenuActionInput()
 {

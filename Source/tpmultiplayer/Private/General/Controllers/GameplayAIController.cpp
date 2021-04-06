@@ -8,7 +8,7 @@
 
 AGameplayAIController::AGameplayAIController()
 {
-	//bWantsPlayerState = true;
+
 }
 
 void AGameplayAIController::BeginPlay()
@@ -18,6 +18,7 @@ void AGameplayAIController::BeginPlay()
 	DEBUG_ClockwiseRotation = FMath::SRand() > 0.5f;
 	DEBUG_JumpPeriod = FMath::RandRange(0.2f, 0.8f);
 	DEBUG_MovementsSpeed = FMath::RandRange(0.3f, 1.f);
+	DEBUG_RotationSpeed = FMath::RandRange(0.2f, 1.3f);
 }
 
 void AGameplayAIController::Tick(float DeltaTime)
@@ -30,9 +31,9 @@ void AGameplayAIController::Tick(float DeltaTime)
 	if (CurrentMatchState == EMatchState::Warmup)
 	{
 		if(DEBUG_ClockwiseRotation)
-			PossessedCharacter->AddActorLocalRotation(FRotator(0.f, 0.7f, 0.f));
+			PossessedCharacter->AddActorLocalRotation(FRotator(0.f, DEBUG_RotationSpeed, 0.f));
 		else 
-			PossessedCharacter->AddActorLocalRotation(FRotator(0.f, -0.7f, 0.f));
+			PossessedCharacter->AddActorLocalRotation(FRotator(0.f, -1 * DEBUG_RotationSpeed, 0.f));
 	}
 	else if (CurrentMatchState == EMatchState::Gameplay)
 	{
@@ -54,6 +55,7 @@ void AGameplayAIController::OnPossess(class APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 	
+	if (InPawn == nullptr) return;
 	PossessedCharacter = Cast<AThirdPersonCharacter>(InPawn);
 	if (!PossessedCharacter) UE_LOG(LogTemp, Warning, TEXT("AGameplayAIController::OnPossess Possessed pawn in not a AThirdPersonCharacter!"));
 	if (!PossessedCharacter || !GameState) return;

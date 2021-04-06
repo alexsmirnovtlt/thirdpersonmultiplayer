@@ -60,9 +60,13 @@ public:
 	static const FName MenuActionBindingName;
 	static const FName GamePlayHUDBindingName;
 	static const FName AdditionalActionBindingName;
+	static const FName DebugKillBindingName;
 
 	void MenuActionInput();
 	void HUDToggleActionInput();
 
 	// END Input
+
+private:
+	static const float NewControlRotationPitchOnPawnPossess;
 };

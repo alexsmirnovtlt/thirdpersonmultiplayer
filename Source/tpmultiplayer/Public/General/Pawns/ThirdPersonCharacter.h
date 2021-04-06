@@ -6,6 +6,8 @@
 #include "GameFramework/Character.h"
 #include "ThirdPersonCharacter.generated.h"
 
+enum class ETeamType : uint8;
+
 UCLASS(abstract)
 class TPMULTIPLAYER_API AThirdPersonCharacter : public ACharacter
 {
@@ -20,14 +22,24 @@ protected:
 public:	
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:
+	bool IsAlive();
 	void TurnAtRate(float Rate);
 	void LookUpAtRate(float Rate);
 	void MoveForward(float Value);
 	void MoveRight(float Value);
 
+	ETeamType TeamType;
+
 protected:
+
+	UPROPERTY(EditDefaultsOnly, Category = "Player Stats")
+	float StartingHealth = 100;
+
+	UPROPERTY(Replicated)
+	float CurrentHealth;
 
 	// ! TMP CHECK
 

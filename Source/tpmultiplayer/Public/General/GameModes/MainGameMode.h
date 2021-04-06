@@ -6,6 +6,8 @@
 #include "GameFramework/GameModeBase.h"
 #include "MainGameMode.generated.h"
 
+enum class ETeamType : uint8;
+
 /**
  * Handles login and logout of PlayerControllersMain and main server game logic
  */
@@ -33,12 +35,10 @@ protected:
 	TSubclassOf<class AGameplayAIController> AIControllerClass;
 
 	AActor* SpectatorSpawn;
-	TArray<AActor*> TeamSpawns_Red;
-	TArray<AActor*> TeamSpawns_Blue;
+	TArray<class AGameplayPlayerStart*> TeamSpawnLocations;
 	TArray<AActor*> FlagPlacements; // TODO change actor to new class
 
-	TArray<class AThirdPersonCharacter*> TeamPawns_Red;
-	TArray<class AThirdPersonCharacter*> TeamPawns_Blue;
+	TArray<class AThirdPersonCharacter*> TeamPawns;
 
 	int32 HumanPlayersCount_RedTeam = 0;
 	int32 HumanPlayersCount_BlueTeam = 0;
@@ -55,18 +55,22 @@ protected:
 
 	// BEGIN Match logic
 	void InitialMatchStateSetup();
-	void ProceedToNextMatchState();
+	void ResetPawnsForNewRound();
 
 	void MatchPhaseStart_Warmup();
 	void MatchPhaseStart_Gameplay();
 	void MatchPhaseStart_RoundEnd();
-	void MatchPhaseEnd_Warmup();
-	void MatchPhaseEnd_Gameplay();
-	void MatchPhaseEnd_RoundEnd();
+	void MatchPhaseEnd_Warmup(const struct FMatchParameters& MatchParameters, const struct FMatchData& CurrentMatchData);
+	void MatchPhaseEnd_Gameplay(const struct FMatchParameters& MatchParameters, const struct FMatchData& CurrentMatchData);
+	void MatchPhaseEnd_RoundEnd(const struct FMatchParameters& MatchParameters, const struct FMatchData& CurrentMatchData);
 
 	void StopCurrentMatchTimer();
 	FTimerHandle MatchTimerHandle;
 	// END Match logic
 
 	static const FString NewPlayerOptionsNameKey; // When new PlayerController gets created, set its name from option parameter with that key name on AMainGameMode::Login() 
+
+private:
+	int32 GetNextSpawnLocationIndex(int32 StartingIndex, ETeamType TeamType);
+	int32 GetNextPlayerControllerIndex(int32 StartingIndex, ETeamType TeamType);
 };

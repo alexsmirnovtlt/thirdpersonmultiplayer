@@ -21,12 +21,5 @@ public:
 
 public:
 	UPROPERTY(Replicated)
-	ETeamType TeamType;
-
-protected:
-	UPROPERTY(EditDefaultsOnly, Category = "Player Stats")
-	float StartingHealth = 100;
-
-	UPROPERTY(Replicated)
-	float CurrentHealth;
+	ETeamType TeamType; // TODO it rarely changes, change replication update time
 };

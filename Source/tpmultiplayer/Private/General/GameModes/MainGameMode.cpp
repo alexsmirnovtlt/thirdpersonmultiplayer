@@ -64,62 +64,46 @@ void AMainGameMode::SetupSpawnLocations()
 	{
 		AGameplayPlayerStart* FoundActor = *It;
 
-		if (FoundActor->TeamType == ETeamType::BlueTeam) TeamSpawns_Blue.Add(FoundActor);
-		else if (FoundActor->TeamType == ETeamType::RedTeam) TeamSpawns_Red.Add(FoundActor);
-		else SpectatorSpawn = FoundActor;
+		if(FoundActor->TeamType == ETeamType::Spectator) SpectatorSpawn = FoundActor;
+		else
+		{
+			if (FoundActor->TeamType == ETeamType::RedTeam) GameplayState->CurrentPlayers_RedTeam++;
+			else GameplayState->CurrentPlayers_BlueTeam++;
+			TeamSpawnLocations.Add(FoundActor);
+		}
 	}
 
-	if (!SpectatorSpawn || TeamSpawns_Blue.Num() == 0 || TeamSpawns_Red.Num() == 0)
+	if (!SpectatorSpawn || GameplayState->CurrentPlayers_RedTeam == 0 || GameplayState->CurrentPlayers_BlueTeam == 0)
 	{
-		int32 SpectatorSpawns = SpectatorSpawn ? 1 : 0;
-		int32 BlueTeamSpawns = TeamSpawns_Blue.Num();
-		int32 RedTeamSpawns = TeamSpawns_Red.Num();
+		UE_LOG(LogTemp, Error, TEXT("AMainGameMode::SetupSpawnLocations Not enough Player Starts were found!"));
 
-		UE_LOG(LogTemp, Error, TEXT("AMainGameMode::SetupSpawnLocations Not enough Player Starts were found! Spectators: %d, BlueTeam Spawns: %d, RedTeam Spawns: %d"), SpectatorSpawns, BlueTeamSpawns, RedTeamSpawns);
-
-		if (SpectatorSpawns == 0) SpectatorSpawn = GetWorld()->SpawnActor<AActor>();
-		if (BlueTeamSpawns == 0) TeamSpawns_Blue.Add(GetWorld()->SpawnActor<AActor>());
-		if (RedTeamSpawns == 0) TeamSpawns_Red.Add(GetWorld()->SpawnActor<AActor>());
+		if (!SpectatorSpawn) SpectatorSpawn = GetWorld()->SpawnActor<AActor>();
+		if (GameplayState->CurrentPlayers_BlueTeam == 0) { auto NewActor = GetWorld()->SpawnActor<AGameplayPlayerStart>(); NewActor->TeamType = ETeamType::BlueTeam; TeamSpawnLocations.Add(NewActor);  GameplayState->CurrentPlayers_BlueTeam++; }
+		if (GameplayState->CurrentPlayers_RedTeam == 0) { auto NewActor = GetWorld()->SpawnActor<AGameplayPlayerStart>(); NewActor->TeamType = ETeamType::RedTeam; TeamSpawnLocations.Add(NewActor);  GameplayState->CurrentPlayers_RedTeam++; }
 	}
 
 	// Setting up initial spectator location
 	GameplayState->SpectatorInitialSpawnLocation = SpectatorSpawn->GetActorLocation();
 	GameplayState->SpectatorInitialSpawnRotation = SpectatorSpawn->GetActorRotation();
-
-	GameplayState->CurrentPlayers_RedTeam = TeamSpawns_Red.Num();
-	GameplayState->CurrentPlayers_BlueTeam = TeamSpawns_Blue.Num();
 }
 
 void AMainGameMode::SetupPlayableCharacters()
 {
 	auto World = GetWorld();
-	//for(int32 i = 0; i < TeamSpawns_Red.Num(); ++i)
-	//InGameControllers_AI
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-	for (auto& item : TeamSpawns_Red)
+	for (auto& SpawnLocation : TeamSpawnLocations)
 	{
-		auto Character = World->SpawnActor<AThirdPersonCharacter>(GameplayPawnClass_RedTeam, item->GetTransform(), SpawnParams);
+		auto Character = World->SpawnActor<AThirdPersonCharacter>(GameplayPawnClass_RedTeam, SpawnLocation->GetTransform(), SpawnParams);
+		Character->TeamType = SpawnLocation->TeamType;
+
 		auto AIController = World->SpawnActor<AGameplayAIController>(AIControllerClass);
 		AIController->GameState = GameplayState;
 		AIController->Possess(Character);
-		// ADD AI to a team
 
-		TeamPawns_Red.Add(Character);
-		InGameControllers_AI.Add(AIController);
-	}
-		
-	for (auto& item : TeamSpawns_Blue)
-	{
-		auto Character = World->SpawnActor<AThirdPersonCharacter>(GameplayPawnClass_BlueTeam, item->GetTransform(), SpawnParams);
-		auto AIController = World->SpawnActor<AGameplayAIController>(AIControllerClass);
-		AIController->GameState = GameplayState;
-		AIController->Possess(Character);
-		// ADD AI to a team
-
-		TeamPawns_Blue.Add(Character);
+		TeamPawns.Add(Character);
 		InGameControllers_AI.Add(AIController);
 	}
 }
@@ -129,37 +113,44 @@ void AMainGameMode::AddPlayerToAMatch(AGamePlayerController* PlayerController)
 	auto PlayerState = PlayerController->GetGamePlayerState();
 	if (!PlayerState) { ensure(false); return; };
 
-	// TODO REWORK LOGIC
-
-	if (HumanPlayersCount_RedTeam <= HumanPlayersCount_BlueTeam)
+	ETeamType TeamToJoin = ETeamType::RedTeam;
+	if (HumanPlayersCount_BlueTeam < HumanPlayersCount_RedTeam)
 	{
-		auto PossessedAI = Cast<AGameplayAIController>(TeamPawns_Red[HumanPlayersCount_RedTeam]->GetController());
-		if (PossessedAI)
-		{
-			PossessedAI->UnPossess();
-			InGameControllers_AI.Remove((PossessedAI));
-			PossessedAI->Destroy();
-		}
-
-		PlayerController->Possess(TeamPawns_Red[HumanPlayersCount_RedTeam]);
-		HumanPlayersCount_RedTeam++;
-		PlayerState->TeamType = ETeamType::RedTeam;
-	}
-	else
-	{
-		auto PossessedAI = Cast<AGameplayAIController>(TeamPawns_Blue[HumanPlayersCount_BlueTeam]->GetController());
-		if (PossessedAI)
-		{
-			PossessedAI->UnPossess();
-			InGameControllers_AI.Remove(PossessedAI);
-			PossessedAI->Destroy();
-		}
-
-		PlayerController->Possess(TeamPawns_Blue[HumanPlayersCount_BlueTeam]);
+		TeamToJoin = ETeamType::BlueTeam;
 		HumanPlayersCount_BlueTeam++;
-		PlayerState->TeamType = ETeamType::BlueTeam;
+	}
+	else HumanPlayersCount_RedTeam++;
+
+	// Finding non player pawn to posess
+	AThirdPersonCharacter* LastAvailablePawn = nullptr; // We are trying to possess a pawn that is still alive but in some cases there will be none so we will possess a pawn that died
+	AThirdPersonCharacter* ChosenPawn = nullptr;
+
+	for (auto AvailablePawn : TeamPawns)
+	{
+		if (AvailablePawn->TeamType == TeamToJoin && !AvailablePawn->IsPlayerControlled())
+		{
+			LastAvailablePawn = AvailablePawn;
+			if (AvailablePawn->IsAlive())
+			{
+				ChosenPawn = AvailablePawn;
+				break;
+			}
+		}
 	}
 
+	if (ChosenPawn == nullptr) // everyone from this team is dead, possessing died pawn
+		ChosenPawn = LastAvailablePawn;
+
+	if (auto PossessedAI = Cast<AGameplayAIController>(ChosenPawn->GetController()))
+	{
+		PossessedAI->UnPossess();
+		InGameControllers_AI.Remove(PossessedAI);
+		PossessedAI->Destroy();
+	}
+
+	PlayerController->Possess(ChosenPawn);
+	PlayerController->GetGamePlayerState()->TeamType = TeamToJoin;
+	
 	if (PlayerController->IsLocalController()) PlayerController->OnRep_Pawn();
 }
 
@@ -167,6 +158,8 @@ void AMainGameMode::RemovePlayerFromAMatch(AGamePlayerController* PlayerControll
 {
 	auto PlayerState = PlayerController->GetGamePlayerState();
 	if (!PlayerState) { ensure(false); return; };
+
+	if (PlayerState->TeamType == ETeamType::Spectator) { InGameControllers_Human.Remove(PlayerController); return; } // TODO may be redundant
 
 	auto PlayerPawn = PlayerController->GetPawn();
 
@@ -178,7 +171,12 @@ void AMainGameMode::RemovePlayerFromAMatch(AGamePlayerController* PlayerControll
 
 	if (PlayerController->IsLocalController()) PlayerController->OnRep_Pawn();
 
-	// TODO Assign AI to a freed pawn
+	// Newly created AI controller gets assigned to a pawn
+	auto AIController = GetWorld()->SpawnActor<AGameplayAIController>(AIControllerClass);
+	AIController->GameState = GameplayState;
+	AIController->Possess(PlayerPawn);
+
+	InGameControllers_AI.Add(AIController);
 }
 
 // END Match initialization logic
@@ -188,119 +186,122 @@ void AMainGameMode::RemovePlayerFromAMatch(AGamePlayerController* PlayerControll
 void AMainGameMode::InitialMatchStateSetup()
 {
 	GameplayState->CurrentMatchData = FMatchData(
-		TeamSpawns_Red.Num(),
-		TeamSpawns_Blue.Num(),
+		GameplayState->CurrentPlayers_RedTeam,
+		GameplayState->CurrentPlayers_BlueTeam,
 		GameplayState->GetMatchParameters().MaxGameRounds,
 		GameplayState->GetServerWorldTimeSeconds()
 	);
-	GameplayState->CurrentMatchData.MatchState = EMatchState::RoundEnd; // will be moving to next stage (first) right after that
 
-	ProceedToNextMatchState();
-}
-
-void AMainGameMode::ProceedToNextMatchState()
-{
-	auto& MatchParameters = GameplayState->GetMatchParameters();
-	auto& CurrentMatchData = GameplayState->CurrentMatchData;
-
-	int32 NextMatchState = (int32)CurrentMatchData.MatchState + 1;
-	if (NextMatchState > 2) NextMatchState = 0; // hardcode, we have 3 EMatchState values
-
-	CurrentMatchData.MatchState = (EMatchState)NextMatchState;
-
-	// Deciding on timer time
-	float TimerTime;
-	if (CurrentMatchData.MatchState == EMatchState::Warmup)
-	{
-		TimerTime = MatchParameters.WarmupPeriodSec;
-	}
-	else if (CurrentMatchData.MatchState == EMatchState::Gameplay)
-	{
-		TimerTime = MatchParameters.MatchPeriodSec;
-	}
-	else if (CurrentMatchData.MatchState == EMatchState::RoundEnd)
-	{
-		TimerTime = MatchParameters.EndRoundPeriodSec;
-	}
-
-	// Main state change logic
-	if (CurrentMatchData.MatchState == EMatchState::Warmup)
-	{
-		if (CurrentMatchData.FirstTeam_MatchesWon >= MatchParameters.MaxGameRoundsToWin)
-		{
-			CurrentMatchData.FirstTeam_MatchesWon = 0;
-			CurrentMatchData.SecondTeam_MatchesWon = 0;
-			CurrentMatchData.SpecialMessage = EInGameSpecialMessage::RedTeamWonLastGame;
-			CurrentMatchData.CurrentRound = 1;
-		}
-		else if (CurrentMatchData.SecondTeam_MatchesWon >= MatchParameters.MaxGameRoundsToWin)
-		{
-			CurrentMatchData.FirstTeam_MatchesWon = 0;
-			CurrentMatchData.SecondTeam_MatchesWon = 0;
-			CurrentMatchData.SpecialMessage = EInGameSpecialMessage::BlueTeamWonLastGame;
-			CurrentMatchData.CurrentRound = 1;
-		}
-		else
-		{
-			CurrentMatchData.SpecialMessage = EInGameSpecialMessage::Nothing;
-			CurrentMatchData.CurrentRound += 1;
-		}
-	}
-	else if (CurrentMatchData.MatchState == EMatchState::Gameplay)
-	{
-		CurrentMatchData.SpecialMessage = EInGameSpecialMessage::Nothing;
-	}
-	else if (CurrentMatchData.MatchState == EMatchState::RoundEnd)
-	{
-		if (CurrentMatchData.RedTeamHasFlag)
-		{
-			CurrentMatchData.SpecialMessage = EInGameSpecialMessage::BlueTeamWonLastRound;
-			CurrentMatchData.SecondTeam_MatchesWon++;
-		}
-		else
-		{
-			CurrentMatchData.SpecialMessage = EInGameSpecialMessage::RedTeamWonLastRound;
-			CurrentMatchData.FirstTeam_MatchesWon++;
-		}
-	}
-
-	CurrentMatchData.RedTeamHasFlag = !CurrentMatchData.RedTeamHasFlag;
-	CurrentMatchData.MatchStartServerTime = GameplayState->GetServerWorldTimeSeconds();
-
-	// Finalize
-	GameplayState->ForceNetUpdate(); // TODO make it so GameplayState will not check for replication updates automatically and we update it manually like that. NetUpdateFrequency 0 in GameplayState may not be it
 	GameplayState->OnRep_MatchStateChanged();
-	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AMainGameMode::ProceedToNextMatchState, TimerTime, false);
+
+	GameplayState->ForceNetUpdate();
+	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AMainGameMode::MatchPhaseStart_Gameplay, GameplayState->GetMatchParameters().WarmupPeriodSec, false);
 }
 
 void AMainGameMode::MatchPhaseStart_Warmup()
 {
+	auto& MatchParameters = GameplayState->GetMatchParameters();
+	auto& CurrentMatchData = GameplayState->CurrentMatchData;
 
-}
+	MatchPhaseEnd_RoundEnd(MatchParameters, CurrentMatchData);
 
-void AMainGameMode::MatchPhaseEnd_Warmup()
-{
+	if (CurrentMatchData.FirstTeam_MatchesWon >= MatchParameters.MaxGameRoundsToWin)
+	{
+		CurrentMatchData.FirstTeam_MatchesWon = 0;
+		CurrentMatchData.SecondTeam_MatchesWon = 0;
+		CurrentMatchData.SpecialMessage = EInGameSpecialMessage::RedTeamWonLastGame;
+		CurrentMatchData.CurrentRound = 1;
+	}
+	else if (CurrentMatchData.SecondTeam_MatchesWon >= MatchParameters.MaxGameRoundsToWin)
+	{
+		CurrentMatchData.FirstTeam_MatchesWon = 0;
+		CurrentMatchData.SecondTeam_MatchesWon = 0;
+		CurrentMatchData.SpecialMessage = EInGameSpecialMessage::BlueTeamWonLastGame;
+		CurrentMatchData.CurrentRound = 1;
+	}
+	else
+	{
+		CurrentMatchData.SpecialMessage = EInGameSpecialMessage::Nothing;
+		CurrentMatchData.CurrentRound += 1;
+	}
 
+	CurrentMatchData.MatchState = EMatchState::Warmup;
+	CurrentMatchData.RedTeamHasFlag = !CurrentMatchData.RedTeamHasFlag;
+	CurrentMatchData.MatchStartServerTime = GameplayState->GetServerWorldTimeSeconds();
+
+	ResetPawnsForNewRound();
+
+	// Finalize
+	GameplayState->ForceNetUpdate(); // TODO make it so GameplayState will not check for replication updates automatically and we update it manually like that. NetUpdateFrequency 0 in GameplayState may not be it
+	GameplayState->OnRep_MatchStateChanged();
+	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AMainGameMode::MatchPhaseStart_Gameplay, MatchParameters.WarmupPeriodSec, false);
 }
 
 void AMainGameMode::MatchPhaseStart_Gameplay()
 {
+	auto& MatchParameters = GameplayState->GetMatchParameters();
+	auto& CurrentMatchData = GameplayState->CurrentMatchData;
 
-}
+	MatchPhaseEnd_Warmup(MatchParameters, CurrentMatchData);
 
-void AMainGameMode::MatchPhaseEnd_Gameplay()
-{
-
+	CurrentMatchData.MatchState = EMatchState::Gameplay;
+	CurrentMatchData.SpecialMessage = EInGameSpecialMessage::Nothing;
+	CurrentMatchData.MatchStartServerTime = GameplayState->GetServerWorldTimeSeconds();
+	
+	// Finalize
+	GameplayState->ForceNetUpdate();
+	GameplayState->OnRep_MatchStateChanged();
+	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AMainGameMode::MatchPhaseStart_RoundEnd, MatchParameters.MatchPeriodSec, false);
 }
 
 void AMainGameMode::MatchPhaseStart_RoundEnd()
 {
+	auto& MatchParameters = GameplayState->GetMatchParameters();
+	auto& CurrentMatchData = GameplayState->CurrentMatchData;
 
+	MatchPhaseEnd_Gameplay(MatchParameters, CurrentMatchData);
+
+	if (CurrentMatchData.RedTeamHasFlag)
+	{
+		CurrentMatchData.SpecialMessage = EInGameSpecialMessage::BlueTeamWonLastRound;
+		CurrentMatchData.SecondTeam_MatchesWon++;
+	}
+	else
+	{
+		CurrentMatchData.SpecialMessage = EInGameSpecialMessage::RedTeamWonLastRound;
+		CurrentMatchData.FirstTeam_MatchesWon++;
+	}
+
+	CurrentMatchData.MatchState = EMatchState::RoundEnd;
+	CurrentMatchData.MatchStartServerTime = GameplayState->GetServerWorldTimeSeconds();
+
+	// Finalize
+	GameplayState->ForceNetUpdate();
+	GameplayState->OnRep_MatchStateChanged();
+	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AMainGameMode::MatchPhaseStart_Warmup, MatchParameters.EndRoundPeriodSec, false);
 }
 
-void AMainGameMode::MatchPhaseEnd_RoundEnd()
+void AMainGameMode::MatchPhaseEnd_Warmup(const FMatchParameters& MatchParameters, const FMatchData& CurrentMatchData)
 {
+	// Granting moving, aiming, shooting abilities to everyone
 
+	// TODO actually do that
+}
+
+void AMainGameMode::MatchPhaseEnd_Gameplay(const FMatchParameters& MatchParameters, const FMatchData& CurrentMatchData)
+{
+	// Revoke aiming and shooting abilities from everyone
+
+	// TODO actually do that
+}
+
+void AMainGameMode::MatchPhaseEnd_RoundEnd(const FMatchParameters& MatchParameters, const FMatchData& CurrentMatchData)
+{
+	// Removing ability to move from everyone
+	// Granting one pawn an ability to place a flag, revoking that ability from others
+	// Removing ability to pick up a flag from one team, grantimg it to another team
+
+	// TODO actually do that
 }
 
 void AMainGameMode::StopCurrentMatchTimer()
@@ -308,6 +309,64 @@ void AMainGameMode::StopCurrentMatchTimer()
 	auto& TimerManager = GetWorld()->GetTimerManager();
 	if (TimerManager.IsTimerActive(MatchTimerHandle))
 		TimerManager.ClearTimer(MatchTimerHandle);
+}
+
+void AMainGameMode::ResetPawnsForNewRound()
+{
+	// Happens when new game round begins. All pawns restart and teleport to starting locations. All connected players and AI controllers possess a pawn if wasnt possessing one before.
+
+	for (auto Character : TeamPawns)
+	{
+		int32 RedTeamSpawnIndex = 0;
+		int32 BlueTeamSpawnIndex = 0;
+
+		int32 ChosenIndex = -1;
+
+		if (Character->TeamType == ETeamType::RedTeam)
+		{
+			RedTeamSpawnIndex = GetNextSpawnLocationIndex(RedTeamSpawnIndex, ETeamType::RedTeam);
+			ChosenIndex = RedTeamSpawnIndex;
+		}
+		else
+		{
+			BlueTeamSpawnIndex = GetNextSpawnLocationIndex(BlueTeamSpawnIndex, ETeamType::BlueTeam);
+			ChosenIndex = BlueTeamSpawnIndex;
+		}
+
+		Character->SetActorLocationAndRotation(TeamSpawnLocations[ChosenIndex]->GetActorLocation(), TeamSpawnLocations[ChosenIndex]->GetActorRotation());
+	}
+
+	for (auto HumanController : InGameControllers_Human)
+	{
+		// TODO possess if not already
+	}
+
+	for (auto AIController : InGameControllers_Human)
+	{
+		// TODO possess if not already
+	}
+}
+
+int32 AMainGameMode::GetNextSpawnLocationIndex(int32 StartingIndex, ETeamType TeamType)
+{
+	int32 ValueToReturn = -1;
+	for (int32 i = StartingIndex; i < TeamSpawnLocations.Num(); ++i)
+	{
+		if (TeamSpawnLocations[i]->TeamType == TeamType) return i;
+	}
+
+	return ValueToReturn;
+}
+
+int32 AMainGameMode::GetNextPlayerControllerIndex(int32 StartingIndex, ETeamType TeamType)
+{
+	int32 ValueToReturn = -1;
+	for (int32 i = StartingIndex; i < InGameControllers_Human.Num(); ++i)
+	{
+		if (InGameControllers_Human[i]->GetGamePlayerState()->TeamType == TeamType) return i;
+	}
+
+	return ValueToReturn;
 }
 
 // END Match related logic

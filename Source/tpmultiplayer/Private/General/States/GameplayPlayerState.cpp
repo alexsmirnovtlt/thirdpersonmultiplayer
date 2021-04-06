@@ -9,7 +9,7 @@ void AGameplayPlayerState::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if(HasAuthority()) CurrentHealth = StartingHealth;
+	
 }
 
 void AGameplayPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -17,5 +17,4 @@ void AGameplayPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AGameplayPlayerState, TeamType);
-	DOREPLIFETIME(AGameplayPlayerState, CurrentHealth);
 }

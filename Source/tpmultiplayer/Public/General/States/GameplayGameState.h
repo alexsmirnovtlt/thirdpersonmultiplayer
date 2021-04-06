@@ -42,7 +42,7 @@ struct FMatchData
 		SpecialMessage = EInGameSpecialMessage::Nothing;
 		FirstTeam_MatchesWon = 0;
 		SecondTeam_MatchesWon = 0;
-		CurrentRound = 0;
+		CurrentRound = 1;
 		RedTeamHasFlag = true;
 	}
 
