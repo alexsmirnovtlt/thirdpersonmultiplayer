@@ -8,6 +8,7 @@
 #include "Engine/World.h"
 #include "TimerManager.h"
 
+#include "General/Controllers/GameplayAIController.h"
 #include "General/Controllers/GamePlayerController.h"
 #include "General/Actors/GameplayPlayerStart.h"
 #include "General/Pawns/ThirdPersonCharacter.h"
@@ -19,7 +20,7 @@ void AMainGameMode::StartPlay()
 {
 	Super::StartPlay();
 
-	if (!GetWorld() || !GameplayPawnClass_RedTeam || !GameplayPawnClass_BlueTeam) { ensure(false); return; }
+	if (!GetWorld() || !GameplayPawnClass_RedTeam || !GameplayPawnClass_BlueTeam || !AIControllerClass) { ensure(false); return; }
 
 	GameplayState = GetGameState<AGameplayGameState>();
 	if (!GameplayState) { ensure(false); return; }
@@ -91,15 +92,36 @@ void AMainGameMode::SetupSpawnLocations()
 
 void AMainGameMode::SetupPlayableCharacters()
 {
-FActorSpawnParameters SpawnParams;
-SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	auto World = GetWorld();
+	//for(int32 i = 0; i < TeamSpawns_Red.Num(); ++i)
+	//InGameControllers_AI
 
-for (auto& item : TeamSpawns_Red)
-TeamPawns_Red.Add(GetWorld()->SpawnActor<AThirdPersonCharacter>(GameplayPawnClass_RedTeam, item->GetTransform(), SpawnParams));
-for (auto& item : TeamSpawns_Blue)
-TeamPawns_Blue.Add(GetWorld()->SpawnActor<AThirdPersonCharacter>(GameplayPawnClass_RedTeam, item->GetTransform(), SpawnParams));
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-// TODO Assign AI to all pawns
+	for (auto& item : TeamSpawns_Red)
+	{
+		auto Character = World->SpawnActor<AThirdPersonCharacter>(GameplayPawnClass_RedTeam, item->GetTransform(), SpawnParams);
+		auto AIController = World->SpawnActor<AGameplayAIController>(AIControllerClass);
+		AIController->GameState = GameplayState;
+		AIController->Possess(Character);
+		// ADD AI to a team
+
+		TeamPawns_Red.Add(Character);
+		InGameControllers_AI.Add(AIController);
+	}
+		
+	for (auto& item : TeamSpawns_Blue)
+	{
+		auto Character = World->SpawnActor<AThirdPersonCharacter>(GameplayPawnClass_BlueTeam, item->GetTransform(), SpawnParams);
+		auto AIController = World->SpawnActor<AGameplayAIController>(AIControllerClass);
+		AIController->GameState = GameplayState;
+		AIController->Possess(Character);
+		// ADD AI to a team
+
+		TeamPawns_Blue.Add(Character);
+		InGameControllers_AI.Add(AIController);
+	}
 }
 
 void AMainGameMode::AddPlayerToAMatch(AGamePlayerController* PlayerController)
@@ -107,14 +129,32 @@ void AMainGameMode::AddPlayerToAMatch(AGamePlayerController* PlayerController)
 	auto PlayerState = PlayerController->GetGamePlayerState();
 	if (!PlayerState) { ensure(false); return; };
 
+	// TODO REWORK LOGIC
+
 	if (HumanPlayersCount_RedTeam <= HumanPlayersCount_BlueTeam)
 	{
+		auto PossessedAI = Cast<AGameplayAIController>(TeamPawns_Red[HumanPlayersCount_RedTeam]->GetController());
+		if (PossessedAI)
+		{
+			PossessedAI->UnPossess();
+			InGameControllers_AI.Remove((PossessedAI));
+			PossessedAI->Destroy();
+		}
+
 		PlayerController->Possess(TeamPawns_Red[HumanPlayersCount_RedTeam]);
 		HumanPlayersCount_RedTeam++;
 		PlayerState->TeamType = ETeamType::RedTeam;
 	}
 	else
 	{
+		auto PossessedAI = Cast<AGameplayAIController>(TeamPawns_Blue[HumanPlayersCount_BlueTeam]->GetController());
+		if (PossessedAI)
+		{
+			PossessedAI->UnPossess();
+			InGameControllers_AI.Remove(PossessedAI);
+			PossessedAI->Destroy();
+		}
+
 		PlayerController->Possess(TeamPawns_Blue[HumanPlayersCount_BlueTeam]);
 		HumanPlayersCount_BlueTeam++;
 		PlayerState->TeamType = ETeamType::BlueTeam;
@@ -233,40 +273,41 @@ void AMainGameMode::ProceedToNextMatchState()
 	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AMainGameMode::ProceedToNextMatchState, TimerTime, false);
 }
 
-void AMainGameMode::OnMatchTimerEnded()
+void AMainGameMode::MatchPhaseStart_Warmup()
 {
-	/*auto& MatchParameters = GameplayState->GetMatchParameters();
-	auto& CurrentMatchData = GameplayState->CurrentMatchData;
 
-	// START DEBUG
-	int32 NextMatchState = (int32)CurrentMatchData.MatchState + 1;
-	if (NextMatchState > 2) NextMatchState = 0;
+}
 
-	CurrentMatchData.MatchState = (EMatchState)NextMatchState;
+void AMainGameMode::MatchPhaseEnd_Warmup()
+{
 
-	float TimerTime;
+}
 
-	if (CurrentMatchData.MatchState == EMatchState::Warmup)
-	{
-		TimerTime = MatchParameters.WarmupPeriodSec;
-	}
-	else if (CurrentMatchData.MatchState == EMatchState::Gameplay)
-	{
-		TimerTime = MatchParameters.MatchPeriodSec;
-	}
-	else if (CurrentMatchData.MatchState == EMatchState::RoundEnd)
-	{
-		TimerTime = MatchParameters.EndRoundPeriodSec;
-	}
+void AMainGameMode::MatchPhaseStart_Gameplay()
+{
 
-	CurrentMatchData.MatchStartServerTime = GameplayState->GetServerWorldTimeSeconds();
+}
 
-	//
-	GameplayState->OnMatchStateChanged();
+void AMainGameMode::MatchPhaseEnd_Gameplay()
+{
 
-	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AMainGameMode::OnMatchTimerEnded, TimerTime, false);
-	*/
-	// END DEBUG
+}
+
+void AMainGameMode::MatchPhaseStart_RoundEnd()
+{
+
+}
+
+void AMainGameMode::MatchPhaseEnd_RoundEnd()
+{
+
+}
+
+void AMainGameMode::StopCurrentMatchTimer()
+{
+	auto& TimerManager = GetWorld()->GetTimerManager();
+	if (TimerManager.IsTimerActive(MatchTimerHandle))
+		TimerManager.ClearTimer(MatchTimerHandle);
 }
 
 // END Match related logic

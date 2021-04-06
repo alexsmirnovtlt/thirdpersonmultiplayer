@@ -59,6 +59,7 @@ public:
 	static const FName SecondaryActionAxisBindingName;
 	static const FName MenuActionBindingName;
 	static const FName GamePlayHUDBindingName;
+	static const FName AdditionalActionBindingName;
 
 	void MenuActionInput();
 	void HUDToggleActionInput();

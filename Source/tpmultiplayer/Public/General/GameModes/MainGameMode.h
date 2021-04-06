@@ -29,16 +29,22 @@ protected:
 	TSubclassOf<class AThirdPersonCharacter> GameplayPawnClass_RedTeam;
 	UPROPERTY(EditDefaultsOnly, Category = "Gameplay Classes")
 	TSubclassOf<class AThirdPersonCharacter> GameplayPawnClass_BlueTeam;
+	UPROPERTY(EditDefaultsOnly, Category = "Gameplay Classes")
+	TSubclassOf<class AGameplayAIController> AIControllerClass;
 
 	AActor* SpectatorSpawn;
 	TArray<AActor*> TeamSpawns_Red;
 	TArray<AActor*> TeamSpawns_Blue;
+	TArray<AActor*> FlagPlacements; // TODO change actor to new class
 
 	TArray<class AThirdPersonCharacter*> TeamPawns_Red;
 	TArray<class AThirdPersonCharacter*> TeamPawns_Blue;
 
 	int32 HumanPlayersCount_RedTeam = 0;
 	int32 HumanPlayersCount_BlueTeam = 0;
+
+	TArray<class AGameplayAIController*> InGameControllers_AI;
+	TArray<class AGamePlayerController*> InGameControllers_Human;
 
 	// Inital setup logic
 	void SetupSpawnLocations();
@@ -51,8 +57,14 @@ protected:
 	void InitialMatchStateSetup();
 	void ProceedToNextMatchState();
 
-	UFUNCTION()
-	void OnMatchTimerEnded();
+	void MatchPhaseStart_Warmup();
+	void MatchPhaseStart_Gameplay();
+	void MatchPhaseStart_RoundEnd();
+	void MatchPhaseEnd_Warmup();
+	void MatchPhaseEnd_Gameplay();
+	void MatchPhaseEnd_RoundEnd();
+
+	void StopCurrentMatchTimer();
 	FTimerHandle MatchTimerHandle;
 	// END Match logic
 
