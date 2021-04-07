@@ -51,6 +51,7 @@ struct FMatchData
 		SecondTeam_MatchesWon = 0;
 		CurrentRound = 1;
 		RedTeamHasFlag = true;
+		FlagState = EInGameFlagState::HaventBeenPlaced;
 	}
 
 public:

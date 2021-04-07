@@ -17,7 +17,7 @@ class TPMULTIPLAYER_API AThirdPersonCharacter : public ACharacter
 
 public:
 	AThirdPersonCharacter();
-
+	friend class AMainGameMode;
 protected:
 	virtual void BeginPlay() override;
 
@@ -29,7 +29,6 @@ public:
 
 public:
 	bool IsAlive();
-	void PrepareForNewGameRound();
 
 	void TurnAtRate(float Rate);
 	void LookUpAtRate(float Rate);
@@ -43,18 +42,20 @@ public:
 protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Player Stats")
-	float StartingHealth = 100;
+	float StartingHealth;
 
-	UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing=OnHealthChanged)
 	float CurrentHealth;
+	UFUNCTION()
+	void OnHealthChanged();
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
 	void OnKilled();
 	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
 	void OnPreparedForNewRound();
 
-	UFUNCTION(Client, Reliable, Category = "Pawn Events")
-	void OnRep_Killed();
+	void AuthPrepareForNewGameRound();
+
 	// ! TMP CHECK
 
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */

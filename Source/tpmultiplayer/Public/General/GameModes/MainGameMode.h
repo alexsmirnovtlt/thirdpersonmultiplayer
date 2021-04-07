@@ -38,7 +38,7 @@ protected:
 
 	AActor* SpectatorSpawn;
 	TArray<class AGameplayPlayerStart*> TeamSpawnLocations;
-	TArray<AActor*> FlagPlacements; // TODO change actor to new class
+	TArray<class AGameplayFlagArea*> FlagPlacements;
 
 	TArray<class AThirdPersonCharacter*> TeamPawns;
 

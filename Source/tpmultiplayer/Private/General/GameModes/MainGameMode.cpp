@@ -13,6 +13,7 @@
 #include "General/Actors/GameplayPlayerStart.h"
 #include "General/Pawns/ThirdPersonCharacter.h"
 #include "General/States/GameplayPlayerState.h"
+#include "General/Actors/GameplayFlagArea.h"
 
 const FString AMainGameMode::NewPlayerOptionsNameKey(TEXT("CustomName"));
 
@@ -60,6 +61,12 @@ void AMainGameMode::Logout(AController* Exiting)
 
 void AMainGameMode::SetupSpawnLocations()
 {
+	for (TActorIterator<AGameplayFlagArea> It(GetWorld()); It; ++It)
+	{
+		FlagPlacements.Add(*It); // Finding all flag locations if exist
+		// TODO probably subscribe to some events here?
+	}
+
 	for (TActorIterator<AGameplayPlayerStart> It(GetWorld()); It; ++It)
 	{
 		AGameplayPlayerStart* FoundActor = *It;
@@ -162,13 +169,14 @@ void AMainGameMode::RemovePlayerFromAMatch(AGamePlayerController* PlayerControll
 	auto PlayerState = PlayerController->GetGamePlayerState();
 	if (!PlayerState) { ensure(false); return; };
 
-	if (PlayerState->TeamType == ETeamType::Spectator) { InGameControllers_Human.Remove(PlayerController); return; } // TODO may be redundant
-
-	auto PlayerPawn = PlayerController->GetPawn();
+	InGameControllers_Human.Remove(PlayerController);
 
 	if (PlayerState->TeamType == ETeamType::RedTeam) HumanPlayersCount_RedTeam--;
 	else HumanPlayersCount_BlueTeam--;
 
+	auto PlayerPawn = PlayerController->GetPawn<AThirdPersonCharacter>();
+	if (!PlayerPawn) { return; }
+	
 	PlayerState->TeamType = ETeamType::Spectator;
 	PlayerController->UnPossess();
 
@@ -177,7 +185,8 @@ void AMainGameMode::RemovePlayerFromAMatch(AGamePlayerController* PlayerControll
 	// Newly created AI controller gets assigned to a pawn
 	auto AIController = GetWorld()->SpawnActor<AGameplayAIController>(AIControllerClass);
 	AIController->GameState = GameplayState;
-	AIController->Possess(PlayerPawn);
+	
+	if(PlayerPawn->IsAlive()) AIController->Possess(PlayerPawn);
 
 	InGameControllers_AI.Add(AIController);
 }
@@ -362,7 +371,8 @@ void AMainGameMode::ResetPawnsForNewRound()
 		}
 	}
 
-	for(auto TPCPawn : TeamPawns) TPCPawn->PrepareForNewGameRound(); /// setting back health and other optional stuff
+	// TODO Maybe do one call to GameState or something instead
+	for(auto TPCPawn : TeamPawns) TPCPawn->AuthPrepareForNewGameRound(); /// setting back health, idle animation and other optional stuff
 }
 
 int32 AMainGameMode::GetNextSpawnLocationIndex(int32 StartingIndex, ETeamType TeamType)
@@ -411,19 +421,17 @@ void AMainGameMode::OnPawnKilled(AThirdPersonCharacter* DiedPawn)
 	else
 	{
 		if (auto AIController = DiedPawn->GetController<AGameplayAIController>())
-		{
 			AIController->UnPossess();
-		}
 	}
 
 	auto& CurrentMatchData = GameplayState->CurrentMatchData;
 
 	if (DiedPawn->TeamType == ETeamType::RedTeam)
-		GameplayState->CurrentPlayers_RedTeam--;
+		CurrentMatchData.FirstTeam_PlayersAlive--;
 	else if (DiedPawn->TeamType == ETeamType::BlueTeam)
-		GameplayState->CurrentPlayers_BlueTeam--;
+		CurrentMatchData.SecondTeam_PlayersAlive--;
 
-	if (GameplayState->CurrentPlayers_RedTeam <= 0 || GameplayState->CurrentPlayers_BlueTeam <= 0)
+	if (GameplayState->CurrentMatchData.FirstTeam_PlayersAlive <= 0 || CurrentMatchData.SecondTeam_PlayersAlive <= 0)
 	{
 		StopCurrentMatchTimer();
 		MatchPhaseStart_RoundEnd();
@@ -482,15 +490,16 @@ void AMainGameMode::Debug_KillRandomPawn()
 	auto& CurrentMatchData = GameplayState->CurrentMatchData;
 	if (CurrentMatchData.MatchState != EMatchState::Gameplay) return;
 
+	TArray<AThirdPersonCharacter*> CharsArray;
+
 	for (auto Pawn : TeamPawns)
-	{
-		FDamageEvent DEvent;
 		if (Pawn->IsAlive())
-		{
-			Pawn->TakeDamage(100.f, DEvent, nullptr, nullptr);
-			return;
-		}
-	}
+			CharsArray.Add(Pawn);
+
+	int32 ChosenIndex = FMath::RandRange(0, CharsArray.Num() - 1);
+	
+	FDamageEvent DEvent;
+	CharsArray[ChosenIndex]->TakeDamage(100.f, DEvent, nullptr, nullptr);
 }
 
 // DEBUG

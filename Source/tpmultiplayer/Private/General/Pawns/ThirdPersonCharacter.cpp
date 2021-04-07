@@ -12,6 +12,7 @@
 #include "Net/UnrealNetwork.h"
 
 #include "General/Controllers/GamePlayerController.h"
+#include "General/States/GameplayGameState.h"
 
 AThirdPersonCharacter::AThirdPersonCharacter()
 {
@@ -46,20 +47,20 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
+	AutoPossessAI = EAutoPossessAI::Disabled;
 	StartingHealth = 100;
 }
 
 void AThirdPersonCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	PrepareForNewGameRound();
+
+	if (HasAuthority()) CurrentHealth = StartingHealth;
 }
 
 void AThirdPersonCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 void AThirdPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -87,21 +88,30 @@ float AThirdPersonCharacter::TakeDamage(float Damage, FDamageEvent const& Damage
 	float DamageTaken = Super::TakeDamage(Damage, DamageEvent, EventInstigator, DamageCauser);
 
 	if (DamageTaken > 0) CurrentHealth -= DamageTaken;
-	if (!IsAlive()) OnRep_Killed();
+	OnHealthChanged();
 
 	return DamageTaken;
 }
 
-void AThirdPersonCharacter::PrepareForNewGameRound()
+void AThirdPersonCharacter::OnHealthChanged()
 {
-	if (HasAuthority()) CurrentHealth = StartingHealth;
-	if (IsLocallyControlled()) OnPreparedForNewRound();
+	if (!IsAlive())
+	{
+		OnPawnKilledEvent.Broadcast(this);
+		OnKilled(); // call to BP
+	}
+
+	auto GameState = GetWorld()->GetGameState<AGameplayGameState>();
+	if (GameState && GameState->GetCurrentMatchData().MatchState == EMatchState::Warmup && CurrentHealth == StartingHealth)
+		OnPreparedForNewRound(); // Just started new round, set animations to idle and other custom stuff in BP
 }
 
-void AThirdPersonCharacter::OnRep_Killed_Implementation()
+void AThirdPersonCharacter::AuthPrepareForNewGameRound()
 {
-	OnPawnKilledEvent.Broadcast(this);
-	OnKilled(); // call to BP
+	if (!HasAuthority()) return;
+	
+	CurrentHealth = StartingHealth;
+	OnPreparedForNewRound(); // call to BP
 }
 
 // BEGIN Input related logic
