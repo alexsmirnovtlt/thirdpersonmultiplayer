@@ -64,6 +64,7 @@ public:
 
 	void MenuActionInput();
 	void HUDToggleActionInput();
+	void Debug_KillRandomPawn();
 
 	// END Input
 

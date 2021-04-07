@@ -105,6 +105,8 @@ void AMainGameMode::SetupPlayableCharacters()
 
 		TeamPawns.Add(Character);
 		InGameControllers_AI.Add(AIController);
+
+		Character->OnPawnKilledEvent.AddDynamic(this, &AMainGameMode::OnPawnKilled);
 	}
 }
 
@@ -150,7 +152,8 @@ void AMainGameMode::AddPlayerToAMatch(AGamePlayerController* PlayerController)
 
 	PlayerController->Possess(ChosenPawn);
 	PlayerController->GetGamePlayerState()->TeamType = TeamToJoin;
-	
+	InGameControllers_Human.Add(PlayerController);
+
 	if (PlayerController->IsLocalController()) PlayerController->OnRep_Pawn();
 }
 
@@ -228,8 +231,11 @@ void AMainGameMode::MatchPhaseStart_Warmup()
 	CurrentMatchData.MatchState = EMatchState::Warmup;
 	CurrentMatchData.RedTeamHasFlag = !CurrentMatchData.RedTeamHasFlag;
 	CurrentMatchData.MatchStartServerTime = GameplayState->GetServerWorldTimeSeconds();
+	CurrentMatchData.FlagState = EInGameFlagState::HaventBeenPlaced;
+	CurrentMatchData.FirstTeam_PlayersAlive = GameplayState->CurrentPlayers_RedTeam;
+	CurrentMatchData.SecondTeam_PlayersAlive = GameplayState->CurrentPlayers_BlueTeam;
 
-	ResetPawnsForNewRound();
+	ResetPawnsForNewRound(); // teleports pawns back and possesses died ones 
 
 	// Finalize
 	GameplayState->ForceNetUpdate(); // TODO make it so GameplayState will not check for replication updates automatically and we update it manually like that. NetUpdateFrequency 0 in GameplayState may not be it
@@ -261,16 +267,7 @@ void AMainGameMode::MatchPhaseStart_RoundEnd()
 
 	MatchPhaseEnd_Gameplay(MatchParameters, CurrentMatchData);
 
-	if (CurrentMatchData.RedTeamHasFlag)
-	{
-		CurrentMatchData.SpecialMessage = EInGameSpecialMessage::BlueTeamWonLastRound;
-		CurrentMatchData.SecondTeam_MatchesWon++;
-	}
-	else
-	{
-		CurrentMatchData.SpecialMessage = EInGameSpecialMessage::RedTeamWonLastRound;
-		CurrentMatchData.FirstTeam_MatchesWon++;
-	}
+	DetermineTeamThatWonThatRound(CurrentMatchData); // updating CurrentMatchData based on a few winning conditions
 
 	CurrentMatchData.MatchState = EMatchState::RoundEnd;
 	CurrentMatchData.MatchStartServerTime = GameplayState->GetServerWorldTimeSeconds();
@@ -336,15 +333,36 @@ void AMainGameMode::ResetPawnsForNewRound()
 		Character->SetActorLocationAndRotation(TeamSpawnLocations[ChosenIndex]->GetActorLocation(), TeamSpawnLocations[ChosenIndex]->GetActorRotation());
 	}
 
+	int32 ArrayIndex = 0;
+
 	for (auto HumanController : InGameControllers_Human)
 	{
-		// TODO possess if not already
+		if (!HumanController->GetPawn()) // Possessing a pawn from the same team that is currently unpossessed
+		{
+			ArrayIndex = GetNextUnpossessedPawnIndex(ArrayIndex, HumanController->GetGamePlayerState()->TeamType);
+			if (ArrayIndex > -1) HumanController->Possess(TeamPawns[ArrayIndex]);
+		}
 	}
 
-	for (auto AIController : InGameControllers_Human)
+	ArrayIndex = 0;
+
+	for (auto AIController : InGameControllers_AI)
 	{
-		// TODO possess if not already
+		if (!AIController->GetPawn())
+		{
+			for (int i = ArrayIndex; i < TeamPawns.Num(); ++i)
+			{
+				if (!TeamPawns[i]->Controller)
+				{
+					ArrayIndex = i;
+					AIController->Possess(TeamPawns[i]);
+					break; // Team doesnt matter because AIs will get their team from a pawn
+				}
+			}
+		}
 	}
+
+	for(auto TPCPawn : TeamPawns) TPCPawn->PrepareForNewGameRound(); /// setting back health and other optional stuff
 }
 
 int32 AMainGameMode::GetNextSpawnLocationIndex(int32 StartingIndex, ETeamType TeamType)
@@ -369,4 +387,110 @@ int32 AMainGameMode::GetNextPlayerControllerIndex(int32 StartingIndex, ETeamType
 	return ValueToReturn;
 }
 
+int32 AMainGameMode::GetNextUnpossessedPawnIndex(int32 StartingIndex, ETeamType TeamType)
+{
+	int32 ValueToReturn = -1;
+	for (int32 i = StartingIndex; i < TeamPawns.Num(); ++i)
+	{
+		if (!TeamPawns[i]->Controller && TeamPawns[i]->TeamType == TeamType) return i;
+	}
+
+	return ValueToReturn;
+}
+
+void AMainGameMode::OnPawnKilled(AThirdPersonCharacter* DiedPawn)
+{
+	if (DiedPawn->IsPlayerControlled())
+	{
+		if (auto PlayerController = DiedPawn->GetController<AGamePlayerController>())
+		{
+			PlayerController->UnPossess();
+			PlayerController->ChangeState(NAME_Spectating);
+		}
+	}
+	else
+	{
+		if (auto AIController = DiedPawn->GetController<AGameplayAIController>())
+		{
+			AIController->UnPossess();
+		}
+	}
+
+	auto& CurrentMatchData = GameplayState->CurrentMatchData;
+
+	if (DiedPawn->TeamType == ETeamType::RedTeam)
+		GameplayState->CurrentPlayers_RedTeam--;
+	else if (DiedPawn->TeamType == ETeamType::BlueTeam)
+		GameplayState->CurrentPlayers_BlueTeam--;
+
+	if (GameplayState->CurrentPlayers_RedTeam <= 0 || GameplayState->CurrentPlayers_BlueTeam <= 0)
+	{
+		StopCurrentMatchTimer();
+		MatchPhaseStart_RoundEnd();
+	}
+}
+
+void AMainGameMode::DetermineTeamThatWonThatRound(FMatchData& CurrentMatchData)
+{
+	// Team won if no other players in other team left
+	// TODO Red team is considered FirstTeam, its weird naming and it should be changed
+
+	bool RedTeamWon = true;
+
+	if (CurrentMatchData.FirstTeam_PlayersAlive <= 0 || CurrentMatchData.SecondTeam_PlayersAlive <= 0)
+		RedTeamWon = CurrentMatchData.FirstTeam_PlayersAlive > 0; // Team with alive palyers is won
+	else
+	{
+		// So players from both teams are still present in the game.
+		// Team that have the flag but could not have placed it or protected already placed flag is lost this round.
+
+		auto FlagStateEnum = CurrentMatchData.FlagState;
+		if (FlagStateEnum == EInGameFlagState::HaventBeenPlaced || FlagStateEnum == EInGameFlagState::PlacedAndRemoved)
+			RedTeamWon = !CurrentMatchData.RedTeamHasFlag; // team with a flag is lost
+		else if (CurrentMatchData.FlagState == EInGameFlagState::PlacedAndDefended)
+			RedTeamWon = CurrentMatchData.RedTeamHasFlag; // team with a flag is won
+	}
+
+	if (RedTeamWon)
+	{
+		CurrentMatchData.SpecialMessage = EInGameSpecialMessage::RedTeamWonLastRound;
+		CurrentMatchData.FirstTeam_MatchesWon++;
+	}
+	else
+	{
+		CurrentMatchData.SpecialMessage = EInGameSpecialMessage::BlueTeamWonLastRound;
+		CurrentMatchData.SecondTeam_MatchesWon++;
+	}
+}
+
+void AMainGameMode::ChangeFlagState(EInGameFlagState NewFlagState)
+{
+	auto& MatchParameters = GameplayState->GetMatchParameters();
+	auto& CurrentMatchData = GameplayState->CurrentMatchData;
+
+	CurrentMatchData.FlagState = NewFlagState;
+
+	// TODO Handle flag state change
+}
+
 // END Match related logic
+
+// DEBUG
+
+void AMainGameMode::Debug_KillRandomPawn()
+{
+	auto& CurrentMatchData = GameplayState->CurrentMatchData;
+	if (CurrentMatchData.MatchState != EMatchState::Gameplay) return;
+
+	for (auto Pawn : TeamPawns)
+	{
+		FDamageEvent DEvent;
+		if (Pawn->IsAlive())
+		{
+			Pawn->TakeDamage(100.f, DEvent, nullptr, nullptr);
+			return;
+		}
+	}
+}
+
+// DEBUG

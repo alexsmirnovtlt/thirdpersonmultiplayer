@@ -53,7 +53,7 @@ void AThirdPersonCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (HasAuthority()) CurrentHealth = StartingHealth; // TODO MOVE?
+	PrepareForNewGameRound();
 }
 
 void AThirdPersonCharacter::Tick(float DeltaTime)
@@ -80,6 +80,28 @@ void AThirdPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 	//PlayerInputComponent->BindAxis("TurnRate", this, &AThirdPersonCharacter::TurnAtRate);
 	PlayerInputComponent->BindAxis(AGamePlayerController::VerticalAxisBindingName, this, &APawn::AddControllerPitchInput);
 	//PlayerInputComponent->BindAxis("LookUpRate", this, &AThirdPersonCharacter::LookUpAtRate);
+}
+
+float AThirdPersonCharacter::TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	float DamageTaken = Super::TakeDamage(Damage, DamageEvent, EventInstigator, DamageCauser);
+
+	if (DamageTaken > 0) CurrentHealth -= DamageTaken;
+	if (!IsAlive()) OnRep_Killed();
+
+	return DamageTaken;
+}
+
+void AThirdPersonCharacter::PrepareForNewGameRound()
+{
+	if (HasAuthority()) CurrentHealth = StartingHealth;
+	if (IsLocallyControlled()) OnPreparedForNewRound();
+}
+
+void AThirdPersonCharacter::OnRep_Killed_Implementation()
+{
+	OnPawnKilledEvent.Broadcast(this);
+	OnKilled(); // call to BP
 }
 
 // BEGIN Input related logic

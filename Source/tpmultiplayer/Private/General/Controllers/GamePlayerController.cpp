@@ -35,6 +35,8 @@ void AGamePlayerController::BeginPlay()
 		{
 			InputComponent->BindAction(MenuActionBindingName, EInputEvent::IE_Pressed, this, &AGamePlayerController::MenuActionInput);
 			InputComponent->BindAction(GamePlayHUDBindingName, EInputEvent::IE_Pressed, this, &AGamePlayerController::HUDToggleActionInput);
+
+			if(HasAuthority()) InputComponent->BindAction(DebugKillBindingName, EInputEvent::IE_Pressed, this, &AGamePlayerController::Debug_KillRandomPawn);
 		}
 	}
 }
@@ -191,6 +193,12 @@ void AGamePlayerController::MenuActionInput()
 void AGamePlayerController::HUDToggleActionInput()
 {
 	if (IsValid(GameplayHUD)) GameplayHUD->GameplayMenu_Toggle();
+}
+
+void AGamePlayerController::Debug_KillRandomPawn()
+{
+	if (auto AuthGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>())
+		AuthGameMode->Debug_KillRandomPawn();
 }
 
 // END Input Bindings

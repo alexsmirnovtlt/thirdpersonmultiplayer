@@ -7,6 +7,7 @@
 #include "MainGameMode.generated.h"
 
 enum class ETeamType : uint8;
+enum class EInGameFlagState : uint8;
 
 /**
  * Handles login and logout of PlayerControllersMain and main server game logic
@@ -24,6 +25,7 @@ public:
 public:
 	void AddPlayerToAMatch(class AGamePlayerController* PlayerController);
 	void RemovePlayerFromAMatch(class AGamePlayerController* PlayerController);
+	void ChangeFlagState(EInGameFlagState NewFlagState);
 
 protected:
 
@@ -56,6 +58,7 @@ protected:
 	// BEGIN Match logic
 	void InitialMatchStateSetup();
 	void ResetPawnsForNewRound();
+	void DetermineTeamThatWonThatRound(struct FMatchData& CurrentMatchData);
 
 	void MatchPhaseStart_Warmup();
 	void MatchPhaseStart_Gameplay();
@@ -66,11 +69,21 @@ protected:
 
 	void StopCurrentMatchTimer();
 	FTimerHandle MatchTimerHandle;
+
+	UFUNCTION()
+	void OnPawnKilled(AThirdPersonCharacter* DiedPawn);
+
 	// END Match logic
 
 	static const FString NewPlayerOptionsNameKey; // When new PlayerController gets created, set its name from option parameter with that key name on AMainGameMode::Login() 
 
+public:
+	// DEBUG
+	void Debug_KillRandomPawn();
+	//
+
 private:
 	int32 GetNextSpawnLocationIndex(int32 StartingIndex, ETeamType TeamType);
 	int32 GetNextPlayerControllerIndex(int32 StartingIndex, ETeamType TeamType);
+	int32 GetNextUnpossessedPawnIndex(int32 StartingIndex, ETeamType TeamType);
 };

@@ -8,6 +8,8 @@
 
 enum class ETeamType : uint8;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPawnKilledDelegate, AThirdPersonCharacter*, DiedPawn);
+
 UCLASS(abstract)
 class TPMULTIPLAYER_API AThirdPersonCharacter : public ACharacter
 {
@@ -22,16 +24,21 @@ protected:
 public:	
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+	float TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:
 	bool IsAlive();
+	void PrepareForNewGameRound();
+
 	void TurnAtRate(float Rate);
 	void LookUpAtRate(float Rate);
 	void MoveForward(float Value);
 	void MoveRight(float Value);
 
 	ETeamType TeamType;
+
+	FOnPawnKilledDelegate OnPawnKilledEvent;
 
 protected:
 
@@ -41,6 +48,13 @@ protected:
 	UPROPERTY(Replicated)
 	float CurrentHealth;
 
+	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
+	void OnKilled();
+	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
+	void OnPreparedForNewRound();
+
+	UFUNCTION(Client, Reliable, Category = "Pawn Events")
+	void OnRep_Killed();
 	// ! TMP CHECK
 
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */

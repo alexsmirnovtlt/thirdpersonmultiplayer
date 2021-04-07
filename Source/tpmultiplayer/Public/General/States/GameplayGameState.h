@@ -29,6 +29,13 @@ enum class EInGameSpecialMessage : uint8 {
 	BlueTeamWonLastGame = 4
 };
 
+UENUM()
+enum class EInGameFlagState : uint8 {
+	HaventBeenPlaced = 0,
+	PlacedAndDefended = 1,
+	PlacedAndRemoved = 2
+};
+
 USTRUCT()
 struct FMatchData
 {
@@ -74,6 +81,9 @@ public:
 	UPROPERTY()
 	bool RedTeamHasFlag;
 
+	UPROPERTY()
+	EInGameFlagState FlagState;
+
 	const FString GetRoundProgressString() const
 	{
 		return FString::Printf(TEXT("%d/%d"), CurrentRound, MaxRounds);
@@ -95,10 +105,11 @@ struct FMatchParameters
 	FMatchParameters()
 	{
 		WarmupPeriodSec = 4; // TODO Change to 8
-		MatchPeriodSec = 4; // TODO Change to 150
+		MatchPeriodSec = 60; // TODO Change to 150
 		EndRoundPeriodSec = 4; // TODO Change to 8
 		MaxGameRounds = 3; // TODO Change to 5 (15)
 		MaxGameRoundsToWin = 2; // TODO Change to 3 (8)
+		FlagDefenseTime = 5; // TODO Change to 20?
 	}
 
 public:
@@ -112,6 +123,8 @@ public:
 	int32 MaxGameRounds;
 	UPROPERTY(EditAnywhere)
 	int32 MaxGameRoundsToWin;
+	UPROPERTY(EditAnywhere)
+	int32 FlagDefenseTime;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMatchDataChangedDelegate);
