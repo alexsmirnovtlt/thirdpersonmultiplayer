@@ -8,9 +8,9 @@
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Images/SImage.h"
 
+#include "Slate/Styles/LobbyMenuSlateWidgetStyle.h"
 #include "General/Gamemodes/LobbyGameMode.h"
 #include "Slate/SLobbyFoundGameInfoWidget.h"
-#include "Slate/LobbyMenuSlateWidgetStyle.h"
 
 #define LOCTEXT_NAMESPACE "LobbyWidget"
 

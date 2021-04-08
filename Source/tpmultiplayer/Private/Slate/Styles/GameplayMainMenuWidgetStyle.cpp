@@ -1,7 +1,7 @@
 // Aleksandr Smirnov 2021
 
 
-#include "Slate/GameplayMainMenuWidgetStyle.h"
+#include "Slate/Styles/GameplayMainMenuWidgetStyle.h"
 
 FGameplayMainMenuStyle::FGameplayMainMenuStyle()
 {

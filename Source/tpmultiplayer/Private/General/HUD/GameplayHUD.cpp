@@ -6,12 +6,11 @@
 #include "Widgets/SWeakWidget.h"
 
 #include "General/Controllers/GamePlayerController.h"
-#include "General/States/GameplayPlayerState.h"
-#include "Slate/GameplayMainMenuWidgetStyle.h"
-#include "Slate/GameplayMainHUDWidgetStyle.h"
+#include "Slate/Styles/GameplayMainMenuWidgetStyle.h"
+#include "Slate/Styles/GameplayMainHUDWidgetStyle.h"
 #include "General/States/GameplayGameState.h"
 #include "Slate/SGameplayMainHUDWidget.h"
-#include "Slate/GameplayMainMenu.h"
+#include "Slate/SGameplayMainMenu.h"
 
 void AGameplayHUD::BeginPlay()
 {
@@ -56,7 +55,6 @@ void AGameplayHUD::MainMenu_Show()
 void AGameplayHUD::MainMenu_Hide()
 {
 	if (!MainMenuWidget.IsValid()) return;
-
 	if (GEngine && GEngine->GameViewport)
 	{
 		GEngine->GameViewport->RemoveViewportWidgetContent(MainMenuWidgetContainer.ToSharedRef());
@@ -115,7 +113,7 @@ void AGameplayHUD::OnMatchDataUpdated()
 	const auto& MatchData = GameState->GetCurrentMatchData();
 	const auto& MatchParameters = GameState->GetMatchParameters();
 	float TimePassed = GameState->GetServerWorldTimeSeconds() - MatchData.MatchStartServerTime;
-	uint8 TeamType = (uint8)GameplayPlayerController->GetGamePlayerState()->TeamType;
+	uint8 TeamType = (uint8)GameplayPlayerController->GetTeamType();
 
 	GameplayWidget.Get()->UpdateWidgetData(MatchData, MatchParameters, TimePassed, TeamType);
 }

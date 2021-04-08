@@ -21,11 +21,16 @@ void AGameplayAIController::BeginPlay()
 	DEBUG_RotationSpeed = FMath::RandRange(0.2f, 1.3f);
 }
 
+void AGameplayAIController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (GameState) GameState->OnMatchDataChangedEvent.RemoveDynamic(this, &AGameplayAIController::OnMatchStateChanged);
+}
+
 void AGameplayAIController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (!PossessedCharacter) return;
+	if (!GetPawn() || !PossessedCharacter) return;
 
 	// TMP DEBUG
 	if (CurrentMatchState == EMatchState::Warmup)
@@ -54,10 +59,8 @@ void AGameplayAIController::Tick(float DeltaTime)
 void AGameplayAIController::OnPossess(class APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
-	
-	if (InPawn == nullptr) return;
+
 	PossessedCharacter = Cast<AThirdPersonCharacter>(InPawn);
-	if (!PossessedCharacter) UE_LOG(LogTemp, Warning, TEXT("AGameplayAIController::OnPossess Possessed pawn in not a AThirdPersonCharacter!"));
 	if (!PossessedCharacter || !GameState) return;
 
 	GameState->OnMatchDataChangedEvent.AddDynamic(this, &AGameplayAIController::OnMatchStateChanged);

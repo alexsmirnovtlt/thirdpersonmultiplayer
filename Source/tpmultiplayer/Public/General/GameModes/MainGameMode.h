@@ -17,6 +17,7 @@ class TPMULTIPLAYER_API AMainGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 public:
+	AMainGameMode();
 	virtual void StartPlay() override;
 	virtual APlayerController* Login(UPlayer* NewPlayer, ENetRole InRemoteRole, const FString& Portal, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 	AActor* FindPlayerStart_Implementation(AController* Player, const FString& IncomingName) override { return Player; }; // We managing spawns differently, when player wants to posess a pawn, it is already somewhere in a game

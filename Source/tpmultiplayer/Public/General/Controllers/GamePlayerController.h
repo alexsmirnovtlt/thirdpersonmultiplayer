@@ -6,6 +6,8 @@
 #include "GameFramework/PlayerController.h"
 #include "GamePlayerController.generated.h"
 
+enum class ETeamType : uint8;
+
 /**
  * Main Player Controller
  */
@@ -13,21 +15,25 @@ UCLASS()
 class TPMULTIPLAYER_API AGamePlayerController : public APlayerController
 {
 	GENERATED_BODY()
+
+	friend class AMainGameMode;
+
 public:
+	AGamePlayerController();
+
 	void BeginPlay() override;
-	void EndPlay(EEndPlayReason::Type Type) override;
 	void OnRep_Pawn() override;
-	void OnRep_PlayerState() override;
 	void PawnLeavingGame() override {}; // Pawn will not be destroyed
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:
 	void JoinGameAsPlayer();
 	void JoinGameAsSpectator();
 	void ReturnToLobby();
 
+	ETeamType GetTeamType() const { return TeamType; };
 	class AGameplayHUD* GetGameplayHUD() const { return GameplayHUD; };
 	class AGameplayGameState* GetGameplayState() const { return GameplayState; };
-	class AGameplayPlayerState* GetGamePlayerState() const { return GamePlayerState; };
 
 	void ChangeInputMode(bool bMenuMode);
 
@@ -45,8 +51,10 @@ protected:
 
 	class AGameplayHUD* GameplayHUD;
 	class AGameplayGameState* GameplayState;
-	class AGameplayPlayerState* GamePlayerState;
 	
+	UPROPERTY(Replicated)
+	ETeamType TeamType;
+
 	// BEGIN Input 
 
 public:

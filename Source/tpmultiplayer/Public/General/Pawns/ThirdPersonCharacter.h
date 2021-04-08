@@ -44,10 +44,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Player Stats")
 	float StartingHealth;
 
-	UPROPERTY(ReplicatedUsing=OnHealthChanged)
+	UPROPERTY(ReplicatedUsing=OnRep_HealthChanged)
 	float CurrentHealth;
 	UFUNCTION()
-	void OnHealthChanged();
+	void OnRep_HealthChanged();
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
 	void OnKilled();

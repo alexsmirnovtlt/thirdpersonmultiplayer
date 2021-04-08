@@ -1,7 +1,7 @@
 // Aleksandr Smirnov 2021
 
 
-#include "Slate/GameplayMainHUDWidgetStyle.h"
+#include "Slate/Styles/GameplayMainHUDWidgetStyle.h"
 
 FGameplayMainHUDStyle::FGameplayMainHUDStyle()
 {

@@ -71,10 +71,10 @@ public:
 	uint8 SecondTeam_MatchesWon;
 
 	UPROPERTY()
-	float MatchStartServerTime;
+	uint8 MaxRounds;
 
 	UPROPERTY()
-	uint8 MaxRounds;
+	float MatchStartServerTime;
 
 	UPROPERTY()
 	uint8 CurrentRound;
@@ -138,12 +138,12 @@ class TPMULTIPLAYER_API AGameplayGameState : public AGameStateBase
 {
 	GENERATED_BODY()
 
+	friend class AMainGameMode; // only AuthGameMode is able to change CurrentMatchData that gets replicated to everyone
+
 public:
 	AGameplayGameState();
 	virtual void BeginPlay() override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-	friend class AMainGameMode; // only AuthGameMode is able to change CurrentMatchData that gets replicated to everyone
 
 public:
 	const FMatchData& GetCurrentMatchData() { return CurrentMatchData; };

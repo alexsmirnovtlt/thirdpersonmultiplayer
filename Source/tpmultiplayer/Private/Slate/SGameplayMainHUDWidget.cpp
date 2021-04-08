@@ -5,7 +5,7 @@
 
 #include "SlateOptMacros.h"
 
-#include "Slate/GameplayMainHUDWidgetStyle.h"
+#include "Slate/Styles/GameplayMainHUDWidgetStyle.h"
 #include "General/States/GameplayGameState.h"
 
 #define LOCTEXT_NAMESPACE "GameplayHUD"
@@ -179,7 +179,8 @@ void SGameplayMainHUDWidget::Tick(const FGeometry& AllottedGeometry, const doubl
 
 void SGameplayMainHUDWidget::UpdateCountdown()
 {
-	RoundTimer.Get()->SetText(FString::FromInt(RoundTimeRemaining));
+	FString NumberAsStr = FString::FromInt(RoundTimeRemaining);
+	RoundTimer.Get()->SetText(FText::FromString(NumberAsStr));
 }
 
 void SGameplayMainHUDWidget::UpdateWidgetData(const FMatchData& MatchData, const struct FMatchParameters& MatchParams, float TimePassed, uint8 TeamType)
@@ -206,7 +207,7 @@ void SGameplayMainHUDWidget::UpdateWidgetData(const FMatchData& MatchData, const
 	UpdateCountdown();
 	//
 
-	RoundInfo.Get()->SetText(MatchData.GetRoundProgressString());
+	RoundInfo.Get()->SetText(FText::FromString(MatchData.GetRoundProgressString()));
 
 	// Hiding or showing text blocks related to current match state
 	WarmupHint.Get()->SetVisibility(MatchData.MatchState == EMatchState::Warmup ? EVisibility::Visible : EVisibility::Collapsed);

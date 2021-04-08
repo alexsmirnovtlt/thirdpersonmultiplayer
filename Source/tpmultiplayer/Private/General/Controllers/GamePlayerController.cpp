@@ -5,8 +5,8 @@
 
 #include "GameFramework/SpectatorPawn.h"
 #include "GameFramework/Pawn.h"
+#include "Net/UnrealNetwork.h"
 
-#include "General/States/GameplayPlayerState.h"
 #include "General/States/GameplayGameState.h"
 #include "General/MultiplayerGameInstance.h"
 #include "General/GameModes/MainGameMode.h"
@@ -14,17 +14,17 @@
 
 const float AGamePlayerController::NewControlRotationPitchOnPawnPossess = -30.f;
 
+AGamePlayerController::AGamePlayerController()
+{
+	TeamType = ETeamType::Spectator;
+	NetUpdateFrequency = 0;
+}
+
 void AGamePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (HasAuthority())
-	{
-		GamePlayerState = GetPlayerState<AGameplayPlayerState>(); // For some reason it returns nullprt here for clients, so thay will get it in OnRep_PlayerState()
-		if (!GamePlayerState) { ensure(false); return; }
-	}
-
-	if (IsLocalController())
+	if (IsLocalPlayerController())
 	{
 		GameplayHUD = GetHUD<AGameplayHUD>();
 		GameplayState = GetWorld()->GetGameState<AGameplayGameState>();
@@ -41,37 +41,21 @@ void AGamePlayerController::BeginPlay()
 	}
 }
 
-void AGamePlayerController::EndPlay(EEndPlayReason::Type Type)
-{
-	Super::EndPlay(Type);
-}
-
 void AGamePlayerController::OnRep_Pawn()
 {
 	Super::OnRep_Pawn();
 
-	GameplayHUD->MainMenu_Hide();
-	ChangeInputMode(false);
+	if(IsValid(GameplayHUD)) GameplayHUD->MainMenu_Hide();
 
 	if (GetPawn())
 	{
-		ChangeState(NAME_Playing); // TODO probably redundant state set
-
 		// Setting control rotation so camera will be set behind the character
 		FRotator NewControlRotation = GetPawn()->GetActorRotation();
 		NewControlRotation.Roll = 0.f;
 		NewControlRotation.Add(NewControlRotationPitchOnPawnPossess, 0, 0);
 		ControlRotation = NewControlRotation;
 	}
-	else ChangeState(NAME_Spectating);
-}
-
-void AGamePlayerController::OnRep_PlayerState()
-{
-	Super::OnRep_PlayerState();
-
-	GamePlayerState = GetPlayerState<AGameplayPlayerState>();
-	if (!GamePlayerState) ensure(false);
+	else if(!IsInState(NAME_Spectating)) ChangeState(NAME_Spectating);
 }
 
 void AGamePlayerController::JoinGameAsPlayer()
@@ -84,8 +68,6 @@ void AGamePlayerController::JoinGameAsSpectator()
 {
 	GameplayHUD->GameplayMenu_Show();
 
-	if (IsInState(NAME_Spectating)) { UE_LOG(LogTemp, Warning, TEXT("AGamePlayerController::JoinGameAsSpectator() called while already a spectator!")); return; }
-
 	if (IsInState(NAME_Inactive))
 	{
 		// Its our first join as a spectator that has no pawn. Without this check spectator will probably spawn at FVector::ZeroVector with zero rotation. We have a special Player Start for that
@@ -94,7 +76,6 @@ void AGamePlayerController::JoinGameAsSpectator()
 		ChangeState(NAME_Spectating); // Creating and posessing local Spectator Pawn
 		GetSpectatorPawn()->SetActorLocation(GameState->GetSpectatorInitialSpawnLocation()); // Manually setting spectator`s location
 
-		ChangeInputMode(false);
 		GameplayHUD->MainMenu_Hide();
 	}
 	
@@ -158,16 +139,18 @@ void AGamePlayerController::Server_PlayerWantsToPlay_Implementation()
 
 void AGamePlayerController::Server_PlayerWantsToSpectate_Implementation()
 {
-	if (IsInState(NAME_Playing))
-	{
-		if (auto AuthGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>())
-			AuthGameMode->RemovePlayerFromAMatch(this);
-	}
-
-	ChangeState(NAME_Spectating);
+	if (auto AuthGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>())
+		AuthGameMode->RemovePlayerFromAMatch(this);
 }
 
 // END Server logic
+
+void AGamePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AGamePlayerController, TeamType);
+}
 
 // BEGIN Input Bindings
 
@@ -187,6 +170,7 @@ const FName AGamePlayerController::DebugKillBindingName("DebugKill");
 
 void AGamePlayerController::MenuActionInput()
 {
+	if (IsInState(NAME_Inactive)) return;
 	if (IsValid(GameplayHUD)) GameplayHUD->MainMenu_Toggle();
 }
 

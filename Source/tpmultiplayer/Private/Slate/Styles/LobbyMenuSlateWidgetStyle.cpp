@@ -1,7 +1,7 @@
 // Aleksandr Smirnov 2021
 
 
-#include "Slate/LobbyMenuSlateWidgetStyle.h"
+#include "Slate/Styles/LobbyMenuSlateWidgetStyle.h"
 
 FLobbyMenuSlateStyle::FLobbyMenuSlateStyle()
 {

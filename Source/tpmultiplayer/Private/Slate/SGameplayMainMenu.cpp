@@ -1,13 +1,14 @@
 // Aleksandr Smirnov 2021
 
 
-#include "Slate/GameplayMainMenu.h"
+#include "Slate/SGameplayMainMenu.h"
 
 #include "SlateOptMacros.h"
 #include "Widgets/Images/SImage.h"
 
 #include "General/Controllers/GamePlayerController.h"
-#include "Slate/GameplayMainMenuWidgetStyle.h"
+#include "Slate/Styles/GameplayMainMenuWidgetStyle.h"
+#include "General/States/GameplayGameState.h"
 
 #define LOCTEXT_NAMESPACE "MainMenu"
 
@@ -126,9 +127,12 @@ void SGameplayMainMenuWidget::EnableButtons()
 {
 	if (!PlayerController.IsValid()) return;
 
-	FName CurrentState = PlayerController.Get()->StateName;
-	PlayButton.Get()->SetEnabled(!CurrentState.IsEqual(NAME_Playing));
-	SpectateButton.Get()->SetEnabled(!CurrentState.IsEqual(NAME_Spectating));
+	bool IsSpectator = true;
+
+	IsSpectator = PlayerController.Get()->GetTeamType() == ETeamType::Spectator;
+
+	PlayButton.Get()->SetEnabled(IsSpectator);
+	SpectateButton.Get()->SetEnabled(!IsSpectator);
 	ToLobbyButton.Get()->SetEnabled(true);
 }
 

@@ -88,12 +88,12 @@ float AThirdPersonCharacter::TakeDamage(float Damage, FDamageEvent const& Damage
 	float DamageTaken = Super::TakeDamage(Damage, DamageEvent, EventInstigator, DamageCauser);
 
 	if (DamageTaken > 0) CurrentHealth -= DamageTaken;
-	OnHealthChanged();
+	OnRep_HealthChanged();
 
 	return DamageTaken;
 }
 
-void AThirdPersonCharacter::OnHealthChanged()
+void AThirdPersonCharacter::OnRep_HealthChanged()
 {
 	if (!IsAlive())
 	{

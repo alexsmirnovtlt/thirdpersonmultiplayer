@@ -18,6 +18,7 @@ class TPMULTIPLAYER_API AGameplayAIController : public AAIController
 public:
 	AGameplayAIController();
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaTime) override;
 protected:
 	virtual void OnPossess(class APawn* InPawn) override;

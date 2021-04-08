@@ -10,12 +10,22 @@
 
 #include "General/Controllers/GameplayAIController.h"
 #include "General/Controllers/GamePlayerController.h"
+#include "General/Pawns/GameplaySpectatorPawn.h"
 #include "General/Actors/GameplayPlayerStart.h"
 #include "General/Pawns/ThirdPersonCharacter.h"
-#include "General/States/GameplayPlayerState.h"
 #include "General/Actors/GameplayFlagArea.h"
+#include "General/HUD/GameplayHUD.h"
 
 const FString AMainGameMode::NewPlayerOptionsNameKey(TEXT("CustomName"));
+
+AMainGameMode::AMainGameMode()
+{
+	GameStateClass = AGameplayGameState::StaticClass();
+	PlayerControllerClass = AGamePlayerController::StaticClass();
+	HUDClass = AGameplayHUD::StaticClass();
+	//DefaultPawnClass == // Must be nullptr
+	SpectatorClass = AGameplaySpectatorPawn::StaticClass();
+}
 
 void AMainGameMode::StartPlay()
 {
@@ -49,12 +59,13 @@ APlayerController* AMainGameMode::Login(UPlayer* NewPlayer, ENetRole InRemoteRol
 
 void AMainGameMode::Logout(AController* Exiting)
 {
-	if (auto ExitingPC = Cast<AGamePlayerController>(Exiting))
-	{
-		if(ExitingPC->IsInState(NAME_Playing)) RemovePlayerFromAMatch(ExitingPC);
-	}
-
 	Super::Logout(Exiting);
+
+	if (!Exiting->IsLocalPlayerController())
+	{
+		if (auto ExitingPC = Cast<AGamePlayerController>(Exiting))
+			if (ExitingPC->GetTeamType() != ETeamType::Spectator) RemovePlayerFromAMatch(ExitingPC);
+	}
 }
 
 // BEGIN Match initialization logic
@@ -119,16 +130,16 @@ void AMainGameMode::SetupPlayableCharacters()
 
 void AMainGameMode::AddPlayerToAMatch(AGamePlayerController* PlayerController)
 {
-	auto PlayerState = PlayerController->GetGamePlayerState();
-	if (!PlayerState) { ensure(false); return; };
-
-	ETeamType TeamToJoin = ETeamType::RedTeam;
 	if (HumanPlayersCount_BlueTeam < HumanPlayersCount_RedTeam)
 	{
-		TeamToJoin = ETeamType::BlueTeam;
+		PlayerController->TeamType = ETeamType::BlueTeam;
 		HumanPlayersCount_BlueTeam++;
 	}
-	else HumanPlayersCount_RedTeam++;
+	else
+	{
+		PlayerController->TeamType = ETeamType::RedTeam;
+		HumanPlayersCount_RedTeam++;
+	}
 
 	// Finding non player pawn to posess
 	AThirdPersonCharacter* LastAvailablePawn = nullptr; // We are trying to possess a pawn that is still alive but in some cases there will be none so we will possess a pawn that died
@@ -136,14 +147,13 @@ void AMainGameMode::AddPlayerToAMatch(AGamePlayerController* PlayerController)
 
 	for (auto AvailablePawn : TeamPawns)
 	{
-		if (AvailablePawn->TeamType == TeamToJoin && !AvailablePawn->IsPlayerControlled())
+		if (AvailablePawn->TeamType == PlayerController->GetTeamType() && !AvailablePawn->IsPlayerControlled())
 		{
-			LastAvailablePawn = AvailablePawn;
 			if (AvailablePawn->IsAlive())
 			{
 				ChosenPawn = AvailablePawn;
 				break;
-			}
+			} else if(!LastAvailablePawn) LastAvailablePawn = AvailablePawn;
 		}
 	}
 
@@ -158,37 +168,36 @@ void AMainGameMode::AddPlayerToAMatch(AGamePlayerController* PlayerController)
 	}
 
 	PlayerController->Possess(ChosenPawn);
-	PlayerController->GetGamePlayerState()->TeamType = TeamToJoin;
 	InGameControllers_Human.Add(PlayerController);
 
-	if (PlayerController->IsLocalController()) PlayerController->OnRep_Pawn();
+	PlayerController->ForceNetUpdate();
+	if (PlayerController->IsLocalPlayerController()) PlayerController->OnRep_Pawn();
 }
 
 void AMainGameMode::RemovePlayerFromAMatch(AGamePlayerController* PlayerController)
 {
-	auto PlayerState = PlayerController->GetGamePlayerState();
-	if (!PlayerState) { ensure(false); return; };
-
 	InGameControllers_Human.Remove(PlayerController);
 
-	if (PlayerState->TeamType == ETeamType::RedTeam) HumanPlayersCount_RedTeam--;
+	if (PlayerController->GetTeamType() == ETeamType::RedTeam) HumanPlayersCount_RedTeam--;
 	else HumanPlayersCount_BlueTeam--;
 
-	auto PlayerPawn = PlayerController->GetPawn<AThirdPersonCharacter>();
-	if (!PlayerPawn) { return; }
-	
-	PlayerState->TeamType = ETeamType::Spectator;
-	PlayerController->UnPossess();
+	PlayerController->TeamType = ETeamType::Spectator;
+	PlayerController->ForceNetUpdate();
 
-	if (PlayerController->IsLocalController()) PlayerController->OnRep_Pawn();
+	if (auto PlayerPawn = PlayerController->GetPawn<AThirdPersonCharacter>())
+	{
+		// Need to create new AI and assigned to a pawn (if its alive)	
+		PlayerController->UnPossess();
 
-	// Newly created AI controller gets assigned to a pawn
-	auto AIController = GetWorld()->SpawnActor<AGameplayAIController>(AIControllerClass);
-	AIController->GameState = GameplayState;
-	
-	if(PlayerPawn->IsAlive()) AIController->Possess(PlayerPawn);
+		auto AIController = GetWorld()->SpawnActor<AGameplayAIController>(AIControllerClass);
+		InGameControllers_AI.Add(AIController);
+		AIController->GameState = GameplayState;
 
-	InGameControllers_AI.Add(AIController);
+		if (PlayerPawn->IsAlive()) AIController->Possess(PlayerPawn);
+	}
+
+	// Need to specifically call this on a server controled pawn because we still need to hide UI and server itself will never call it on its own
+	if (PlayerController->IsLocalPlayerController()) PlayerController->OnRep_Pawn();
 }
 
 // END Match initialization logic
@@ -321,25 +330,23 @@ void AMainGameMode::ResetPawnsForNewRound()
 {
 	// Happens when new game round begins. All pawns restart and teleport to starting locations. All connected players and AI controllers possess a pawn if wasnt possessing one before.
 
+	int32 RedTeamSpawnIndex = 0;
+	int32 BlueTeamSpawnIndex = 0;
+
 	for (auto Character : TeamPawns)
 	{
-		int32 RedTeamSpawnIndex = 0;
-		int32 BlueTeamSpawnIndex = 0;
-
-		int32 ChosenIndex = -1;
+		int32 ChosenIndex;
 
 		if (Character->TeamType == ETeamType::RedTeam)
-		{
-			RedTeamSpawnIndex = GetNextSpawnLocationIndex(RedTeamSpawnIndex, ETeamType::RedTeam);
-			ChosenIndex = RedTeamSpawnIndex;
-		}
+			ChosenIndex = GetNextSpawnLocationIndex(RedTeamSpawnIndex, ETeamType::RedTeam);
 		else
-		{
-			BlueTeamSpawnIndex = GetNextSpawnLocationIndex(BlueTeamSpawnIndex, ETeamType::BlueTeam);
-			ChosenIndex = BlueTeamSpawnIndex;
-		}
+			ChosenIndex = GetNextSpawnLocationIndex(BlueTeamSpawnIndex, ETeamType::BlueTeam);
 
-		Character->SetActorLocationAndRotation(TeamSpawnLocations[ChosenIndex]->GetActorLocation(), TeamSpawnLocations[ChosenIndex]->GetActorRotation());
+		if (ChosenIndex > -1)
+			Character->SetActorLocationAndRotation(TeamSpawnLocations[ChosenIndex]->GetActorLocation(), TeamSpawnLocations[ChosenIndex]->GetActorRotation(), false, nullptr, ETeleportType::ResetPhysics);
+	
+		if (Character->TeamType == ETeamType::RedTeam) RedTeamSpawnIndex = ChosenIndex + 1;
+		else BlueTeamSpawnIndex = ChosenIndex + 1;
 	}
 
 	int32 ArrayIndex = 0;
@@ -348,7 +355,7 @@ void AMainGameMode::ResetPawnsForNewRound()
 	{
 		if (!HumanController->GetPawn()) // Possessing a pawn from the same team that is currently unpossessed
 		{
-			ArrayIndex = GetNextUnpossessedPawnIndex(ArrayIndex, HumanController->GetGamePlayerState()->TeamType);
+			ArrayIndex = GetNextUnpossessedPawnIndex(ArrayIndex, HumanController->GetTeamType());
 			if (ArrayIndex > -1) HumanController->Possess(TeamPawns[ArrayIndex]);
 		}
 	}
@@ -357,21 +364,19 @@ void AMainGameMode::ResetPawnsForNewRound()
 
 	for (auto AIController : InGameControllers_AI)
 	{
-		if (!AIController->GetPawn())
+		if (AIController->GetPawn()) continue;
+		
+		for (int i = ArrayIndex; i < TeamPawns.Num(); ++i)
 		{
-			for (int i = ArrayIndex; i < TeamPawns.Num(); ++i)
+			if (!TeamPawns[i]->Controller)
 			{
-				if (!TeamPawns[i]->Controller)
-				{
-					ArrayIndex = i;
-					AIController->Possess(TeamPawns[i]);
-					break; // Team doesnt matter because AIs will get their team from a pawn
-				}
+				AIController->Possess(TeamPawns[i]);
+				ArrayIndex = i + 1;
+				break; // Team doesnt matter because AIs will get their team from a pawn
 			}
 		}
 	}
 
-	// TODO Maybe do one call to GameState or something instead
 	for(auto TPCPawn : TeamPawns) TPCPawn->AuthPrepareForNewGameRound(); /// setting back health, idle animation and other optional stuff
 }
 
@@ -391,7 +396,7 @@ int32 AMainGameMode::GetNextPlayerControllerIndex(int32 StartingIndex, ETeamType
 	int32 ValueToReturn = -1;
 	for (int32 i = StartingIndex; i < InGameControllers_Human.Num(); ++i)
 	{
-		if (InGameControllers_Human[i]->GetGamePlayerState()->TeamType == TeamType) return i;
+		if (InGameControllers_Human[i]->GetTeamType() == TeamType) return i;
 	}
 
 	return ValueToReturn;
@@ -416,6 +421,7 @@ void AMainGameMode::OnPawnKilled(AThirdPersonCharacter* DiedPawn)
 		{
 			PlayerController->UnPossess();
 			PlayerController->ChangeState(NAME_Spectating);
+			if (PlayerController->IsLocalPlayerController()) PlayerController->OnRep_Pawn();
 		}
 	}
 	else
@@ -498,8 +504,8 @@ void AMainGameMode::Debug_KillRandomPawn()
 
 	int32 ChosenIndex = FMath::RandRange(0, CharsArray.Num() - 1);
 	
-	FDamageEvent DEvent;
-	CharsArray[ChosenIndex]->TakeDamage(100.f, DEvent, nullptr, nullptr);
+	FDamageEvent DamageEvent;
+	CharsArray[ChosenIndex]->TakeDamage(CharsArray[ChosenIndex]->StartingHealth, DamageEvent, nullptr, nullptr);
 }
 
 // DEBUG
