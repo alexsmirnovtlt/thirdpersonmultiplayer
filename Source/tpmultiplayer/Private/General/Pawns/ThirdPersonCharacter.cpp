@@ -49,6 +49,7 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 
 	AutoPossessAI = EAutoPossessAI::Disabled;
 	StartingHealth = 100;
+	bHasFlag = false;
 }
 
 void AThirdPersonCharacter::BeginPlay()
@@ -104,6 +105,11 @@ void AThirdPersonCharacter::OnRep_HealthChanged()
 	auto GameState = GetWorld()->GetGameState<AGameplayGameState>();
 	if (GameState && GameState->GetCurrentMatchData().MatchState == EMatchState::Warmup && CurrentHealth == StartingHealth)
 		OnPreparedForNewRound(); // Just started new round, set animations to idle and other custom stuff in BP
+}
+
+void AThirdPersonCharacter::OnRep_FlagOwnerChanged()
+{
+	OnFlagOwnershipChanged(bHasFlag);
 }
 
 void AThirdPersonCharacter::AuthPrepareForNewGameRound()
@@ -168,5 +174,6 @@ void AThirdPersonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	DOREPLIFETIME(AThirdPersonCharacter, bHasFlag);
 	DOREPLIFETIME(AThirdPersonCharacter, CurrentHealth);
 }

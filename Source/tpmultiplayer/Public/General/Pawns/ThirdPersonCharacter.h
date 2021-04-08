@@ -35,6 +35,7 @@ public:
 	void MoveForward(float Value);
 	void MoveRight(float Value);
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
 	ETeamType TeamType;
 
 	FOnPawnKilledDelegate OnPawnKilledEvent;
@@ -49,10 +50,17 @@ protected:
 	UFUNCTION()
 	void OnRep_HealthChanged();
 
+	UPROPERTY(ReplicatedUsing = OnRep_FlagOwnerChanged)
+	bool bHasFlag;
+	UFUNCTION()
+	void OnRep_FlagOwnerChanged();
+
 	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
 	void OnKilled();
 	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
 	void OnPreparedForNewRound();
+	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
+	void OnFlagOwnershipChanged(bool GotFlag);
 
 	void AuthPrepareForNewGameRound();
 

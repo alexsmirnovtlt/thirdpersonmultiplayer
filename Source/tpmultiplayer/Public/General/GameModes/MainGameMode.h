@@ -26,6 +26,7 @@ public:
 public:
 	void AddPlayerToAMatch(class AGamePlayerController* PlayerController);
 	void RemovePlayerFromAMatch(class AGamePlayerController* PlayerController);
+	UFUNCTION(BlueprintCallable)
 	void ChangeFlagState(EInGameFlagState NewFlagState);
 
 protected:
@@ -60,6 +61,7 @@ protected:
 	void InitialMatchStateSetup();
 	void ResetPawnsForNewRound();
 	void DetermineTeamThatWonThatRound(struct FMatchData& CurrentMatchData);
+	AThirdPersonCharacter* GiveFlagToARandomPawn(ETeamType TeamWithFlag);
 
 	void MatchPhaseStart_Warmup();
 	void MatchPhaseStart_Gameplay();

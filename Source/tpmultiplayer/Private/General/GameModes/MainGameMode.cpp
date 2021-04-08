@@ -74,8 +74,9 @@ void AMainGameMode::SetupSpawnLocations()
 {
 	for (TActorIterator<AGameplayFlagArea> It(GetWorld()); It; ++It)
 	{
-		FlagPlacements.Add(*It); // Finding all flag locations if exist
-		// TODO probably subscribe to some events here?
+		auto* FlagActor = *It;
+		FlagPlacements.Add(FlagActor); // Finding all flag locations if exist
+		FlagActor->InitialSetup(this, GameplayState);
 	}
 
 	for (TActorIterator<AGameplayPlayerStart> It(GetWorld()); It; ++It)
@@ -215,6 +216,9 @@ void AMainGameMode::InitialMatchStateSetup()
 
 	GameplayState->OnRep_MatchStateChanged();
 
+	auto Pawn = GiveFlagToARandomPawn(ETeamType::RedTeam);
+	Pawn->OnRep_FlagOwnerChanged();
+
 	GameplayState->ForceNetUpdate();
 	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AMainGameMode::MatchPhaseStart_Gameplay, GameplayState->GetMatchParameters().WarmupPeriodSec, false);
 }
@@ -253,7 +257,19 @@ void AMainGameMode::MatchPhaseStart_Warmup()
 	CurrentMatchData.FirstTeam_PlayersAlive = GameplayState->CurrentPlayers_RedTeam;
 	CurrentMatchData.SecondTeam_PlayersAlive = GameplayState->CurrentPlayers_BlueTeam;
 
-	ResetPawnsForNewRound(); // teleports pawns back and possesses died ones 
+	for (auto FlagActor : FlagPlacements) FlagActor->ResetFlagState();
+
+	// Giving random pawn a flag
+	ETeamType TeamWithAFlag = CurrentMatchData.RedTeamHasFlag ? ETeamType::RedTeam : ETeamType::BlueTeam;
+	GiveFlagToARandomPawn(TeamWithAFlag);
+	
+	ResetPawnsForNewRound(); // Teleports pawns back and possesses died ones
+
+	for (auto TPCPawn : TeamPawns)
+	{
+		TPCPawn->AuthPrepareForNewGameRound(); // setting back health, idle animation and other optional stuff
+		TPCPawn->OnRep_FlagOwnerChanged(); // Showing/hiding flag model on all pawns
+	}
 
 	// Finalize
 	GameplayState->ForceNetUpdate(); // TODO make it so GameplayState will not check for replication updates automatically and we update it manually like that. NetUpdateFrequency 0 in GameplayState may not be it
@@ -376,8 +392,20 @@ void AMainGameMode::ResetPawnsForNewRound()
 			}
 		}
 	}
+}
 
-	for(auto TPCPawn : TeamPawns) TPCPawn->AuthPrepareForNewGameRound(); /// setting back health, idle animation and other optional stuff
+AThirdPersonCharacter* AMainGameMode::GiveFlagToARandomPawn(ETeamType TeamWithFlag)
+{
+	TArray<AThirdPersonCharacter*> SelectedPawns;
+	for (auto TPCPawn : TeamPawns)
+	{
+		TPCPawn->bHasFlag = false;
+		if (TPCPawn->TeamType == TeamWithFlag)
+			SelectedPawns.Add(TPCPawn);
+	}
+	int32 ChosenIndex = FMath::RandRange(0, SelectedPawns.Num() - 1);
+	SelectedPawns[ChosenIndex]->bHasFlag = true;
+	return SelectedPawns[ChosenIndex];
 }
 
 int32 AMainGameMode::GetNextSpawnLocationIndex(int32 StartingIndex, ETeamType TeamType)
