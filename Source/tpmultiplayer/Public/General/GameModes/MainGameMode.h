@@ -8,6 +8,7 @@
 
 enum class ETeamType : uint8;
 enum class EInGameFlagState : uint8;
+enum class EAreaState : uint8;
 
 /**
  * Handles login and logout of PlayerControllersMain and main server game logic
@@ -26,8 +27,8 @@ public:
 public:
 	void AddPlayerToAMatch(class AGamePlayerController* PlayerController);
 	void RemovePlayerFromAMatch(class AGamePlayerController* PlayerController);
-	UFUNCTION(BlueprintCallable)
-	void ChangeFlagState(EInGameFlagState NewFlagState);
+
+	void OnAreaStateChanged(EAreaState AreaState);
 
 protected:
 

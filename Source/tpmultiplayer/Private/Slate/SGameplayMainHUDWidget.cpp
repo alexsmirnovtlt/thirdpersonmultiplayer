@@ -50,7 +50,7 @@ void SGameplayMainHUDWidget::Construct(const FArguments& InArgs)
 					.TextStyle(&Style.RegularTextStyle)
 					.Justification(ETextJustify::Left)
 					.Visibility(EVisibility::Hidden)
-					.Text(LOCTEXT("gameplayhud.flag_defend", "Defend the Flag"))
+					.Text(LOCTEXT("gameplayhud.flag_defend", "Protect VIP while he is capturing the area"))
 				]
 
 				+ SOverlay::Slot()
@@ -59,7 +59,7 @@ void SGameplayMainHUDWidget::Construct(const FArguments& InArgs)
 					.TextStyle(&Style.RegularTextStyle)
 					.Justification(ETextJustify::Left)
 					.Visibility(EVisibility::Hidden)
-					.Text(LOCTEXT("gameplayhud.flag_capture", "Capture the Flag"))
+					.Text(LOCTEXT("gameplayhud.flag_capture", "Other team started capturing the area."))
 				]
 			]
 		
@@ -212,9 +212,20 @@ void SGameplayMainHUDWidget::UpdateWidgetData(const FMatchData& MatchData, const
 	// Hiding or showing text blocks related to current match state
 	WarmupHint.Get()->SetVisibility(MatchData.MatchState == EMatchState::Warmup ? EVisibility::Visible : EVisibility::Collapsed);
 	
-	
-	//DefendFlagHint.Get()
-	//CaptureFlagHint.Get()
+	// Hiding or Showing other special messages
+	if (MatchData.SpecialMessage == EInGameSpecialMessage::AreaCaptureInProgress)
+	{
+		bool DisplayDefenseHint = (TeamTypeEnum == ETeamType::RedTeam && MatchData.RedTeamHasFlag) || (TeamTypeEnum == ETeamType::BlueTeam && !MatchData.RedTeamHasFlag);
+		bool DisplayOffenseHint = (TeamTypeEnum == ETeamType::RedTeam && !MatchData.RedTeamHasFlag) || (TeamTypeEnum == ETeamType::BlueTeam && MatchData.RedTeamHasFlag);
+
+		DefendFlagHint.Get()->SetVisibility(DisplayDefenseHint ? EVisibility::Visible : EVisibility::Collapsed);
+		CaptureFlagHint.Get()->SetVisibility(DisplayOffenseHint ? EVisibility::Visible : EVisibility::Collapsed);
+	}
+	else
+	{
+		DefendFlagHint.Get()->SetVisibility(EVisibility::Collapsed);
+		CaptureFlagHint.Get()->SetVisibility(EVisibility::Collapsed);
+	}
 	
 	RoundWonHint_Red.Get()->SetVisibility(MatchData.SpecialMessage == EInGameSpecialMessage::RedTeamWonLastRound ? EVisibility::Visible : EVisibility::Collapsed);
 	RoundWonHint_Blue.Get()->SetVisibility(MatchData.SpecialMessage == EInGameSpecialMessage::BlueTeamWonLastRound ? EVisibility::Visible : EVisibility::Collapsed);

@@ -26,14 +26,8 @@ enum class EInGameSpecialMessage : uint8 {
 	RedTeamWonLastRound = 1,
 	BlueTeamWonLastRound = 2,
 	RedTeamWonLastGame = 3,
-	BlueTeamWonLastGame = 4
-};
-
-UENUM()
-enum class EInGameFlagState : uint8 {
-	HaventBeenPlaced = 0,
-	PlacedAndDefended = 1,
-	PlacedAndRemoved = 2
+	BlueTeamWonLastGame = 4,
+	AreaCaptureInProgress = 5
 };
 
 USTRUCT()
@@ -51,7 +45,8 @@ struct FMatchData
 		SecondTeam_MatchesWon = 0;
 		CurrentRound = 1;
 		RedTeamHasFlag = true;
-		FlagState = EInGameFlagState::HaventBeenPlaced;
+		AreaWasCaptured = false;
+		VIPWasKilled = false;
 	}
 
 public:
@@ -83,7 +78,10 @@ public:
 	bool RedTeamHasFlag;
 
 	UPROPERTY()
-	EInGameFlagState FlagState;
+	bool AreaWasCaptured;
+
+	UPROPERTY()
+	bool VIPWasKilled;
 
 	const FString GetRoundProgressString() const
 	{

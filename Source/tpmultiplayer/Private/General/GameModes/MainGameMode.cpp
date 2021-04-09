@@ -73,11 +73,8 @@ void AMainGameMode::Logout(AController* Exiting)
 void AMainGameMode::SetupSpawnLocations()
 {
 	for (TActorIterator<AGameplayFlagArea> It(GetWorld()); It; ++It)
-	{
-		auto* FlagActor = *It;
-		FlagPlacements.Add(FlagActor); // Finding all flag locations if exist
-		FlagActor->InitialSetup(this, GameplayState);
-	}
+		FlagPlacements.Add(*It); // Finding all flag locations if exist
+
 
 	for (TActorIterator<AGameplayPlayerStart> It(GetWorld()); It; ++It)
 	{
@@ -115,7 +112,11 @@ void AMainGameMode::SetupPlayableCharacters()
 
 	for (auto& SpawnLocation : TeamSpawnLocations)
 	{
-		auto Character = World->SpawnActor<AThirdPersonCharacter>(GameplayPawnClass_RedTeam, SpawnLocation->GetTransform(), SpawnParams);
+		AThirdPersonCharacter* Character;
+		if(SpawnLocation->TeamType == ETeamType::RedTeam)
+			Character = World->SpawnActor<AThirdPersonCharacter>(GameplayPawnClass_RedTeam, SpawnLocation->GetTransform(), SpawnParams);
+		else 
+			Character = World->SpawnActor<AThirdPersonCharacter>(GameplayPawnClass_BlueTeam, SpawnLocation->GetTransform(), SpawnParams);
 		Character->TeamType = SpawnLocation->TeamType;
 
 		auto AIController = World->SpawnActor<AGameplayAIController>(AIControllerClass);
@@ -182,20 +183,17 @@ void AMainGameMode::RemovePlayerFromAMatch(AGamePlayerController* PlayerControll
 	if (PlayerController->GetTeamType() == ETeamType::RedTeam) HumanPlayersCount_RedTeam--;
 	else HumanPlayersCount_BlueTeam--;
 
-	PlayerController->TeamType = ETeamType::Spectator;
-	PlayerController->ForceNetUpdate();
-
-	if (auto PlayerPawn = PlayerController->GetPawn<AThirdPersonCharacter>())
+	if (auto PlayerPawn = PlayerController->GetPawn<AThirdPersonCharacter>()) // Need to create new AI and assign it to a pawn
 	{
-		// Need to create new AI and assigned to a pawn (if its alive)	
-		PlayerController->UnPossess();
-
 		auto AIController = GetWorld()->SpawnActor<AGameplayAIController>(AIControllerClass);
 		InGameControllers_AI.Add(AIController);
 		AIController->GameState = GameplayState;
 
-		if (PlayerPawn->IsAlive()) AIController->Possess(PlayerPawn);
+		if (PlayerPawn && PlayerPawn->IsAlive()) AIController->Possess(PlayerPawn);
 	}
+
+	PlayerController->TeamType = ETeamType::Spectator;
+	PlayerController->ForceNetUpdate();
 
 	// Need to specifically call this on a server controled pawn because we still need to hide UI and server itself will never call it on its own
 	if (PlayerController->IsLocalPlayerController()) PlayerController->OnRep_Pawn();
@@ -216,8 +214,13 @@ void AMainGameMode::InitialMatchStateSetup()
 
 	GameplayState->OnRep_MatchStateChanged();
 
+	// Giving a random pawn a flag
 	auto Pawn = GiveFlagToARandomPawn(ETeamType::RedTeam);
 	Pawn->OnRep_FlagOwnerChanged();
+
+	// Initializing all flag areas on a map
+	for(auto FlagArea : FlagPlacements)
+		FlagArea->InitialSetup(this, GameplayState);
 
 	GameplayState->ForceNetUpdate();
 	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AMainGameMode::MatchPhaseStart_Gameplay, GameplayState->GetMatchParameters().WarmupPeriodSec, false);
@@ -253,9 +256,10 @@ void AMainGameMode::MatchPhaseStart_Warmup()
 	CurrentMatchData.MatchState = EMatchState::Warmup;
 	CurrentMatchData.RedTeamHasFlag = !CurrentMatchData.RedTeamHasFlag;
 	CurrentMatchData.MatchStartServerTime = GameplayState->GetServerWorldTimeSeconds();
-	CurrentMatchData.FlagState = EInGameFlagState::HaventBeenPlaced;
 	CurrentMatchData.FirstTeam_PlayersAlive = GameplayState->CurrentPlayers_RedTeam;
 	CurrentMatchData.SecondTeam_PlayersAlive = GameplayState->CurrentPlayers_BlueTeam;
+	CurrentMatchData.AreaWasCaptured = false;
+	CurrentMatchData.VIPWasKilled = false;
 
 	for (auto FlagActor : FlagPlacements) FlagActor->ResetFlagState();
 
@@ -372,11 +376,46 @@ void AMainGameMode::ResetPawnsForNewRound()
 		if (!HumanController->GetPawn()) // Possessing a pawn from the same team that is currently unpossessed
 		{
 			ArrayIndex = GetNextUnpossessedPawnIndex(ArrayIndex, HumanController->GetTeamType());
-			if (ArrayIndex > -1) HumanController->Possess(TeamPawns[ArrayIndex]);
+			if (ArrayIndex > -1) { HumanController->Possess(TeamPawns[ArrayIndex]); ArrayIndex++; }
 		}
 	}
 
 	ArrayIndex = 0;
+
+	// In some cases when player continiosly clicking play and spectate buttons it may lead to situation when there more or less AIs than needed
+	// Easiest fix to that is check the number of AIs in game and spawn/remove them. There is a lot of edge cases (players possesses died pawns ony by one, starting spectating while dying, possessing/spectation same dead pawn) that are hard to track.
+	if (InGameControllers_AI.Num() != TeamPawns.Num() - InGameControllers_Human.Num())
+	{
+		int32 AIControllersNeeded = TeamPawns.Num() - InGameControllers_Human.Num() - InGameControllers_AI.Num();
+		if (AIControllersNeeded < 0) // need to remove extra
+		{
+			for (int32 i = 0; i > AIControllersNeeded; --i)
+			{
+				AGameplayAIController* FoundControllerWithNoPawn = nullptr;
+				for (auto AIController : InGameControllers_AI)
+				{
+					if (!AIController->GetPawn()) { FoundControllerWithNoPawn = AIController; break; }
+				}
+				if (FoundControllerWithNoPawn)
+				{
+					InGameControllers_AI.Remove(FoundControllerWithNoPawn);
+					FoundControllerWithNoPawn->Destroy();
+				}
+			}
+		}
+		else // need to spawn more
+		{
+			for (int32 i = 0; i < AIControllersNeeded; ++i)
+			{
+				auto AIController = GetWorld()->SpawnActor<AGameplayAIController>(AIControllerClass);
+				AIController->GameState = GameplayState;
+				InGameControllers_AI.Add(AIController);
+			}
+		}
+
+		if(InGameControllers_AI.Num() != TeamPawns.Num() - InGameControllers_Human.Num())
+			UE_LOG(LogTemp, Warning, TEXT("AMainGameMode::ResetPawnsForNewRound - Number of AI controllers is not right, Needed:%d, Got:%d"), TeamPawns.Num() - InGameControllers_Human.Num(), InGameControllers_AI.Num());
+	}
 
 	for (auto AIController : InGameControllers_AI)
 	{
@@ -421,7 +460,9 @@ int32 AMainGameMode::GetNextSpawnLocationIndex(int32 StartingIndex, ETeamType Te
 
 int32 AMainGameMode::GetNextPlayerControllerIndex(int32 StartingIndex, ETeamType TeamType)
 {
+	if (StartingIndex < 0) return -1;
 	int32 ValueToReturn = -1;
+
 	for (int32 i = StartingIndex; i < InGameControllers_Human.Num(); ++i)
 	{
 		if (InGameControllers_Human[i]->GetTeamType() == TeamType) return i;
@@ -432,7 +473,9 @@ int32 AMainGameMode::GetNextPlayerControllerIndex(int32 StartingIndex, ETeamType
 
 int32 AMainGameMode::GetNextUnpossessedPawnIndex(int32 StartingIndex, ETeamType TeamType)
 {
+	if (StartingIndex < 0) return -1;
 	int32 ValueToReturn = -1;
+
 	for (int32 i = StartingIndex; i < TeamPawns.Num(); ++i)
 	{
 		if (!TeamPawns[i]->Controller && TeamPawns[i]->TeamType == TeamType) return i;
@@ -465,8 +508,9 @@ void AMainGameMode::OnPawnKilled(AThirdPersonCharacter* DiedPawn)
 	else if (DiedPawn->TeamType == ETeamType::BlueTeam)
 		CurrentMatchData.SecondTeam_PlayersAlive--;
 
-	if (GameplayState->CurrentMatchData.FirstTeam_PlayersAlive <= 0 || CurrentMatchData.SecondTeam_PlayersAlive <= 0)
+	if (DiedPawn->HasFlag() || GameplayState->CurrentMatchData.FirstTeam_PlayersAlive <= 0 || CurrentMatchData.SecondTeam_PlayersAlive <= 0)
 	{
+		CurrentMatchData.VIPWasKilled = DiedPawn->HasFlag();
 		StopCurrentMatchTimer();
 		MatchPhaseStart_RoundEnd();
 	}
@@ -479,18 +523,16 @@ void AMainGameMode::DetermineTeamThatWonThatRound(FMatchData& CurrentMatchData)
 
 	bool RedTeamWon = true;
 
-	if (CurrentMatchData.FirstTeam_PlayersAlive <= 0 || CurrentMatchData.SecondTeam_PlayersAlive <= 0)
-		RedTeamWon = CurrentMatchData.FirstTeam_PlayersAlive > 0; // Team with alive palyers is won
+	if(CurrentMatchData.VIPWasKilled)
+		RedTeamWon = !CurrentMatchData.RedTeamHasFlag; // team that got their vip killed is lost
+	else if(CurrentMatchData.AreaWasCaptured)
+		RedTeamWon = CurrentMatchData.RedTeamHasFlag; // team that captured area with vip is won
+	else if (CurrentMatchData.FirstTeam_PlayersAlive <= 0 || CurrentMatchData.SecondTeam_PlayersAlive <= 0)
+		RedTeamWon = CurrentMatchData.FirstTeam_PlayersAlive > 0; // The only remaining team is won
 	else
-	{
-		// So players from both teams are still present in the game.
-		// Team that have the flag but could not have placed it or protected already placed flag is lost this round.
-
-		auto FlagStateEnum = CurrentMatchData.FlagState;
-		if (FlagStateEnum == EInGameFlagState::HaventBeenPlaced || FlagStateEnum == EInGameFlagState::PlacedAndRemoved)
-			RedTeamWon = !CurrentMatchData.RedTeamHasFlag; // team with a flag is lost
-		else if (CurrentMatchData.FlagState == EInGameFlagState::PlacedAndDefended)
-			RedTeamWon = CurrentMatchData.RedTeamHasFlag; // team with a flag is won
+	{ 
+		// Round time has ended and no winning conditions happened. Team without vip won 
+		RedTeamWon = !CurrentMatchData.RedTeamHasFlag;
 	}
 
 	if (RedTeamWon)
@@ -505,14 +547,30 @@ void AMainGameMode::DetermineTeamThatWonThatRound(FMatchData& CurrentMatchData)
 	}
 }
 
-void AMainGameMode::ChangeFlagState(EInGameFlagState NewFlagState)
+void AMainGameMode::OnAreaStateChanged(EAreaState AreaState)
 {
 	auto& MatchParameters = GameplayState->GetMatchParameters();
 	auto& CurrentMatchData = GameplayState->CurrentMatchData;
 
-	CurrentMatchData.FlagState = NewFlagState;
+	if (CurrentMatchData.MatchState != EMatchState::Gameplay) { UE_LOG(LogTemp, Warning, TEXT("AMainGameMode::OnAreaStateChanged was called when not in Gameplay state!")); return; }
 
-	// TODO Handle flag state change
+	if (AreaState == EAreaState::Default)
+	{
+		CurrentMatchData.SpecialMessage = EInGameSpecialMessage::Nothing;
+	}
+	else if (AreaState == EAreaState::BeingCaptured)
+	{
+		CurrentMatchData.SpecialMessage = EInGameSpecialMessage::AreaCaptureInProgress;
+	}
+	else if (AreaState == EAreaState::Captured)
+	{
+		CurrentMatchData.AreaWasCaptured = true;
+		StopCurrentMatchTimer();
+		MatchPhaseStart_RoundEnd();
+	}
+
+	GameplayState->ForceNetUpdate();
+	GameplayState->OnRep_MatchStateChanged();
 }
 
 // END Match related logic

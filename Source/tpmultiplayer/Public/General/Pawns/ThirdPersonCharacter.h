@@ -29,6 +29,7 @@ public:
 
 public:
 	bool IsAlive();
+	bool HasFlag() { return bHasFlag; };
 
 	void TurnAtRate(float Rate);
 	void LookUpAtRate(float Rate);
