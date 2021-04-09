@@ -1,7 +1,7 @@
 // Aleksandr Smirnov 2021
 
 
-#include "Slate/LobbyFoundGameInfoWidgetStyle.h"
+#include "Slate/Styles/LobbyFoundGameInfoWidgetStyle.h"
 
 FLobbyFoundGameInfoStyle::FLobbyFoundGameInfoStyle()
 {

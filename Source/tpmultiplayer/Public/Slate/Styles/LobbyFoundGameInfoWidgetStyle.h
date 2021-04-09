@@ -46,6 +46,7 @@ public:
 
 	virtual const struct FSlateWidgetStyle* const GetStyle() const override
 	{
+		UE_LOG(LogTemp, Warning, TEXT("FSlateWidgetStyle::GetStyle"));
 		return static_cast< const struct FSlateWidgetStyle* >( &WidgetStyle );
 	}
 };

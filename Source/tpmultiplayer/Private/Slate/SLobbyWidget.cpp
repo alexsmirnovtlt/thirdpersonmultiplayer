@@ -8,9 +8,9 @@
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Images/SImage.h"
 
+#include "Slate/Styles/LobbyMenuSlateWidgetStyle.h"
 #include "General/Gamemodes/LobbyGameMode.h"
 #include "Slate/SLobbyFoundGameInfoWidget.h"
-#include "Slate/LobbyMenuSlateWidgetStyle.h"
 
 #define LOCTEXT_NAMESPACE "LobbyWidget"
 
@@ -348,9 +348,11 @@ void SLobbyWidget::AddFoundSession(FString& SessionNameStr, int32 CurrentPlayers
 {
 	if (!SessionItemStyle.IsValid()) return;
 
+	auto ptr = SharedThis(this);
+
 	TSharedRef<SLobbyFoundGameInfoWidget> NewItem = SNew(SLobbyFoundGameInfoWidget)
 		.SlateStyle(SessionItemStyle.Get())
-		.ParentLobbyWidget(SharedThis(this))
+		.ParentLobbyWidget(ptr)
 		.SessionNameStr(SessionNameStr)
 		.CurrentPlayersCount(CurrentPlayersCount)
 		.MaxPlayersCount(MaxPlayersCount)

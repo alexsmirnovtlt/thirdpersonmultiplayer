@@ -21,12 +21,25 @@ public:
 public:
 	void MainMenu_Show();
 	void MainMenu_Hide();
+	void MainMenu_Toggle();
+
+	void GameplayMenu_Show();
+	void GameplayMenu_Hide();
+	void GameplayMenu_Toggle();
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Slate")
 	TSubclassOf <class UGameplayMainMenuWidgetStyle> MainMenuStyleClass;
+	UPROPERTY(EditDefaultsOnly, Category = "Slate")
+	TSubclassOf <class UGameplayMainHUDWidgetStyle> GameplayHUDStyleClass;
 
 	TSharedPtr<class SGameplayMainMenuWidget> MainMenuWidget;
+	TSharedPtr<class SGameplayMainHUDWidget> GameplayWidget;
 	TSharedPtr<class SWeakWidget> MainMenuWidgetContainer;
+	TSharedPtr<class SWeakWidget> GemaplayHUDWidgetContainer;
 
+	class AGamePlayerController* GameplayPlayerController;
+
+	UFUNCTION()
+	void OnMatchDataUpdated();
 };

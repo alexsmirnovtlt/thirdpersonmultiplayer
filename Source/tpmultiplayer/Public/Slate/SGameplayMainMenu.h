@@ -31,4 +31,5 @@ protected:
 	FReply OnBackToLobbyButtonPress();
 
 	void DisableButtons();
+	void EnableButtons();
 };

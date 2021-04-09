@@ -10,7 +10,7 @@
 #include "Widgets/Images/SImage.h"
 
 #include "Slate/SLobbyWidget.h"
-#include "Slate/LobbyFoundGameInfoWidgetStyle.h"
+#include "Slate/Styles/LobbyFoundGameInfoWidgetStyle.h"
 
 const FString SLobbyFoundGameInfoWidget::SeparatorStr("/");
 

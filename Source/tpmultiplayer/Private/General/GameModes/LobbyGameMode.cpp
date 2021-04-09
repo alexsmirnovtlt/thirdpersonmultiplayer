@@ -7,8 +7,8 @@
 #include "Widgets/SWeakWidget.h"
 #include "OnlineSubsystem.h"
 
-#include "Slate/LobbyFoundGameInfoWidgetStyle.h"
-#include "Slate/LobbyMenuSlateWidgetStyle.h"
+#include "Slate/Styles/LobbyFoundGameInfoWidgetStyle.h"
+#include "Slate/Styles/LobbyMenuSlateWidgetStyle.h"
 #include "General/MultiplayerGameInstance.h"
 #include "Slate/SLobbyWidget.h"
 

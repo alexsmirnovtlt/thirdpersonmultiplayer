@@ -1,13 +1,14 @@
 // Aleksandr Smirnov 2021
 
 
-#include "Slate/GameplayMainMenu.h"
+#include "Slate/SGameplayMainMenu.h"
 
 #include "SlateOptMacros.h"
 #include "Widgets/Images/SImage.h"
 
 #include "General/Controllers/GamePlayerController.h"
-#include "Slate/GameplayMainMenuWidgetStyle.h"
+#include "Slate/Styles/GameplayMainMenuWidgetStyle.h"
+#include "General/States/GameplayGameState.h"
 
 #define LOCTEXT_NAMESPACE "MainMenu"
 
@@ -88,6 +89,8 @@ void SGameplayMainMenuWidget::Construct(const FArguments& InArgs)
 			]
 		]
 	];
+
+	EnableButtons();
 }
 END_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
@@ -96,7 +99,8 @@ END_SLATE_FUNCTION_BUILD_OPTIMIZATION
 FReply SGameplayMainMenuWidget::OnPlayButtonPress()
 {
 	if (!PlayerController.IsValid()) return FReply::Handled();
-
+	
+	DisableButtons();
 	PlayerController.Get()->JoinGameAsPlayer();
 	return FReply::Handled();
 }
@@ -104,7 +108,8 @@ FReply SGameplayMainMenuWidget::OnPlayButtonPress()
 FReply SGameplayMainMenuWidget::OSpectateButtonPress()
 {
 	if (!PlayerController.IsValid()) return FReply::Handled();
-
+	
+	DisableButtons();
 	PlayerController.Get()->JoinGameAsSpectator();
 	return FReply::Handled();
 }
@@ -115,8 +120,20 @@ FReply SGameplayMainMenuWidget::OnBackToLobbyButtonPress()
 
 	DisableButtons();
 	PlayerController.Get()->ReturnToLobby();
-
 	return FReply::Handled();
+}
+
+void SGameplayMainMenuWidget::EnableButtons()
+{
+	if (!PlayerController.IsValid()) return;
+
+	bool IsSpectator = true;
+
+	IsSpectator = PlayerController.Get()->GetTeamType() == ETeamType::Spectator;
+
+	PlayButton.Get()->SetEnabled(IsSpectator);
+	SpectateButton.Get()->SetEnabled(!IsSpectator);
+	ToLobbyButton.Get()->SetEnabled(true);
 }
 
 void SGameplayMainMenuWidget::DisableButtons()
