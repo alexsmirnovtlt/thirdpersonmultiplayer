@@ -28,8 +28,12 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
 	bool IsAlive();
-	bool HasFlag() { return bHasFlag; };
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
+	bool IsAiming() { return bIsAiming; };
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
+	bool IsVIP() { return bIsVIP; };
 
 	void TurnAtRate(float Rate);
 	void LookUpAtRate(float Rate);
@@ -52,7 +56,7 @@ protected:
 	void OnRep_HealthChanged();
 
 	UPROPERTY(ReplicatedUsing = OnRep_FlagOwnerChanged)
-	bool bHasFlag;
+	bool bIsVIP;
 	UFUNCTION()
 	void OnRep_FlagOwnerChanged();
 
@@ -67,6 +71,13 @@ protected:
 
 	// ! TMP CHECK
 
+	
+	void SwitchShoulderCamera();
+
+	bool bIsAiming;
+
+	void AimingMode(float Value);
+
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
 	float BaseTurnRate;
@@ -74,6 +85,9 @@ protected:
 	/** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
 	float BaseLookUpRate;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	class USceneComponent* CameraGimbal;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* CameraBoom;

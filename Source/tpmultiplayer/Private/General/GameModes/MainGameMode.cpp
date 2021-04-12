@@ -438,12 +438,12 @@ AThirdPersonCharacter* AMainGameMode::GiveFlagToARandomPawn(ETeamType TeamWithFl
 	TArray<AThirdPersonCharacter*> SelectedPawns;
 	for (auto TPCPawn : TeamPawns)
 	{
-		TPCPawn->bHasFlag = false;
+		TPCPawn->bIsVIP = false;
 		if (TPCPawn->TeamType == TeamWithFlag)
 			SelectedPawns.Add(TPCPawn);
 	}
 	int32 ChosenIndex = FMath::RandRange(0, SelectedPawns.Num() - 1);
-	SelectedPawns[ChosenIndex]->bHasFlag = true;
+	SelectedPawns[ChosenIndex]->bIsVIP = true;
 	return SelectedPawns[ChosenIndex];
 }
 
@@ -508,9 +508,9 @@ void AMainGameMode::OnPawnKilled(AThirdPersonCharacter* DiedPawn)
 	else if (DiedPawn->TeamType == ETeamType::BlueTeam)
 		CurrentMatchData.SecondTeam_PlayersAlive--;
 
-	if (DiedPawn->HasFlag() || GameplayState->CurrentMatchData.FirstTeam_PlayersAlive <= 0 || CurrentMatchData.SecondTeam_PlayersAlive <= 0)
+	if (DiedPawn->IsVIP() || GameplayState->CurrentMatchData.FirstTeam_PlayersAlive <= 0 || CurrentMatchData.SecondTeam_PlayersAlive <= 0)
 	{
-		CurrentMatchData.VIPWasKilled = DiedPawn->HasFlag();
+		CurrentMatchData.VIPWasKilled = DiedPawn->IsVIP();
 		StopCurrentMatchTimer();
 		MatchPhaseStart_RoundEnd();
 	}

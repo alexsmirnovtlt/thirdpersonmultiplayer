@@ -166,6 +166,8 @@ const FName AGamePlayerController::SecondaryActionAxisBindingName("AxisSecondary
 const FName AGamePlayerController::MenuActionBindingName("Menu");
 const FName AGamePlayerController::GamePlayHUDBindingName("HUDToggle");
 const FName AGamePlayerController::AdditionalActionBindingName("AdditionalAction");
+const FName AGamePlayerController::SwitchShoulderBindingName("SwitchShoulder");
+// Debug
 const FName AGamePlayerController::DebugKillBindingName("DebugKill");
 
 void AGamePlayerController::MenuActionInput()
