@@ -179,6 +179,8 @@ void SGameplayMainHUDWidget::Tick(const FGeometry& AllottedGeometry, const doubl
 
 void SGameplayMainHUDWidget::UpdateCountdown()
 {
+	if (!RoundTimer.IsValid()) return;
+	
 	FString NumberAsStr = FString::FromInt(RoundTimeRemaining);
 	RoundTimer.Get()->SetText(FText::FromString(NumberAsStr));
 }

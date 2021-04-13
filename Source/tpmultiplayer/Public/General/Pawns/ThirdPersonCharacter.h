@@ -29,16 +29,11 @@ public:
 
 public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
-	bool IsAlive();
+	bool IsAlive() { return CurrentHealth > 0; };
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
 	bool IsAiming() { return bIsAiming; };
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
 	bool IsVIP() { return bIsVIP; };
-
-	void TurnAtRate(float Rate);
-	void LookUpAtRate(float Rate);
-	void MoveForward(float Value);
-	void MoveRight(float Value);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
 	ETeamType TeamType;
@@ -55,47 +50,51 @@ protected:
 	UFUNCTION()
 	void OnRep_HealthChanged();
 
-	UPROPERTY(ReplicatedUsing = OnRep_FlagOwnerChanged)
+	UPROPERTY(ReplicatedUsing = OnRep_VIPChanged)
 	bool bIsVIP;
 	UFUNCTION()
-	void OnRep_FlagOwnerChanged();
+	void OnRep_VIPChanged();
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
 	void OnKilled();
 	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
 	void OnPreparedForNewRound();
 	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
-	void OnFlagOwnershipChanged(bool GotFlag);
+	void OnVIPChanged(bool IsVIP);
 
 	void AuthPrepareForNewGameRound();
 
-	// ! TMP CHECK
-
-	
-	void SwitchShoulderCamera();
-
 	bool bIsAiming;
 
-	void AimingMode(float Value);
+	// BEGIN Input Related logic
 
-	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
+protected:
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
 	float BaseTurnRate;
-
-	/** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
 	float BaseLookUpRate;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	float MaxPitch_FreeCamera;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	float MaxPitch_Aiming;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USceneComponent* CameraGimbal;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* CameraBoom;
-
-	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FollowCamera;
-	//  ! TMP CHECK
 
+public:
+	void MoveForward(float Value);
+	void MoveRight(float Value);
+	void LookUpAtRate(float Value);
+	void TurnAtRate(float Value);
+	void ShootingMode(float Value);
+	void AimingMode(float Value);
 
+	void SwitchShoulderCamera();
+
+	// END Input Related logic
 };

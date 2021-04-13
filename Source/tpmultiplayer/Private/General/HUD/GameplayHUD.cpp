@@ -31,7 +31,8 @@ void AGameplayHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	MainMenu_Hide();
 	GameplayMenu_Hide();
 
-	GameplayPlayerController->GetGameplayState()->OnMatchDataChangedEvent.RemoveDynamic(this, &AGameplayHUD::OnMatchDataUpdated);
+	if(GameplayPlayerController && GameplayPlayerController->GetGameplayState())
+		GameplayPlayerController->GetGameplayState()->OnMatchDataChangedEvent.RemoveDynamic(this, &AGameplayHUD::OnMatchDataUpdated);
 
 	Super::EndPlay(EndPlayReason);
 }

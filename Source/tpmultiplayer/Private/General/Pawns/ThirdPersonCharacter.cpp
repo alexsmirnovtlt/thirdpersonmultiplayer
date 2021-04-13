@@ -19,19 +19,15 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 
-	// set our turn rates for input
-	BaseTurnRate = 60.f;
-	BaseLookUpRate = 45.f;
+	BaseTurnRate = 80.f;
+	BaseLookUpRate = 80.f;
 
-	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 
-	// Configure character movement
 	GetCharacterMovement()->bOrientRotationToMovement = false;
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 540.0f, 0.0f);
 	GetCharacterMovement()->JumpZVelocity = 600.f;
@@ -40,21 +36,21 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 	CameraGimbal = CreateDefaultSubobject<USceneComponent>(TEXT("CameraGimbal"));
 	CameraGimbal->SetupAttachment(RootComponent);
 
-	// Create a camera boom (pulls in towards the player if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(CameraGimbal);
-	CameraBoom->TargetArmLength = 150.0f; // The camera follows at this distance behind the character	
+	CameraBoom->TargetArmLength = 150.0f;
 	CameraBoom->bUsePawnControlRotation = false; // Enables only when aiming
 
-	// Create a follow camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
-	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
+	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
 	AutoPossessAI = EAutoPossessAI::Disabled;
+	MaxPitch_FreeCamera = 75;
+	MaxPitch_Aiming = 75;
 	StartingHealth = 100;
-	bIsVIP = false;
 	bIsAiming = false;
+	bIsVIP = false;
 }
 
 void AThirdPersonCharacter::BeginPlay()
@@ -69,32 +65,6 @@ void AThirdPersonCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void AThirdPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
-	//PlayerInputComponent->BindAxis(AGamePlayerController::HorizontalAxisBindingName, this, &AGameplaySpectatorPawn::AddControllerYawInput);
-	//PlayerInputComponent->BindAxis(AGamePlayerController::VerticalAxisBindingName, this, &AGameplaySpectatorPawn::AddControllerPitchInput);
-	PlayerInputComponent->BindAxis(AGamePlayerController::MoveForwardAxisBindingName, this, &AThirdPersonCharacter::MoveForward);
-	PlayerInputComponent->BindAxis(AGamePlayerController::MoveRightAxisBindingName, this, &AThirdPersonCharacter::MoveRight);
-	//PlayerInputComponent->BindAxis(AGamePlayerController::PrimaryActionAxisBindingName, this, &AThirdPersonCharacter::MoveUp_World);
-	//PlayerInputComponent->BindAxis(AGamePlayerController::SecondaryActionAxisBindingName, this, &AThirdPersonCharacter::MoveDown_World);
-	
-	PlayerInputComponent->BindAxis(AGamePlayerController::SecondaryActionAxisBindingName, this, &AThirdPersonCharacter::AimingMode);
-
-	PlayerInputComponent->BindAction(AGamePlayerController::AdditionalActionBindingName, IE_Pressed, this, &ACharacter::Jump);
-	PlayerInputComponent->BindAction(AGamePlayerController::AdditionalActionBindingName, IE_Released, this, &ACharacter::StopJumping);
-
-	PlayerInputComponent->BindAxis(AGamePlayerController::HorizontalAxisBindingName, this, &AThirdPersonCharacter::TurnAtRate);
-	//PlayerInputComponent->BindAxis(AGamePlayerController::HorizontalAxisBindingName, this, &APawn::AddControllerYawInput);
-	//PlayerInputComponent->BindAxis("TurnRate", this, &AThirdPersonCharacter::TurnAtRate);
-	PlayerInputComponent->BindAxis(AGamePlayerController::VerticalAxisBindingName, this, &AThirdPersonCharacter::LookUpAtRate);
-	//PlayerInputComponent->BindAxis(AGamePlayerController::VerticalAxisBindingName, this, &APawn::AddControllerPitchInput);
-	//PlayerInputComponent->BindAxis("LookUpRate", this, &AThirdPersonCharacter::LookUpAtRate);
-
-	PlayerInputComponent->BindAction(AGamePlayerController::SwitchShoulderBindingName, IE_Pressed, this, &AThirdPersonCharacter::SwitchShoulderCamera);
-}
-
 float AThirdPersonCharacter::TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	float DamageTaken = Super::TakeDamage(Damage, DamageEvent, EventInstigator, DamageCauser);
@@ -104,6 +74,138 @@ float AThirdPersonCharacter::TakeDamage(float Damage, FDamageEvent const& Damage
 
 	return DamageTaken;
 }
+
+void AThirdPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+	PlayerInputComponent->BindAxis(AGamePlayerController::MoveForwardAxisBindingName, this, &AThirdPersonCharacter::MoveForward);
+	PlayerInputComponent->BindAxis(AGamePlayerController::MoveRightAxisBindingName, this, &AThirdPersonCharacter::MoveRight);
+
+	PlayerInputComponent->BindAxis(AGamePlayerController::PrimaryActionAxisBindingName, this, &AThirdPersonCharacter::ShootingMode);
+	PlayerInputComponent->BindAxis(AGamePlayerController::SecondaryActionAxisBindingName, this, &AThirdPersonCharacter::AimingMode);
+
+	PlayerInputComponent->BindAxis(AGamePlayerController::HorizontalAxisBindingName, this, &AThirdPersonCharacter::TurnAtRate);
+	PlayerInputComponent->BindAxis(AGamePlayerController::VerticalAxisBindingName, this, &AThirdPersonCharacter::LookUpAtRate);
+
+	PlayerInputComponent->BindAction(AGamePlayerController::SwitchShoulderBindingName, IE_Pressed, this, &AThirdPersonCharacter::SwitchShoulderCamera);
+}
+
+// BEGIN Input related logic
+
+void AThirdPersonCharacter::MoveForward(float Value)
+{
+	if (!Controller || Value == 0.0) return;
+
+	FRotator CurrentRotation;
+
+	if (Controller->PlayerState && Controller->PlayerState->IsABot())
+		CurrentRotation = Controller->GetControlRotation(); // Forward for bots is always theirs ControlRotation
+	else
+		CurrentRotation = FollowCamera->GetComponentRotation(); // Forward for players is always where theirs camera is looking
+
+	const FRotator ForwardRotation = FRotator(0, CurrentRotation.Yaw, 0);
+	const FVector Direction = FRotationMatrix(ForwardRotation).GetUnitAxis(EAxis::X);
+
+	AddMovementInput(Direction, Value);
+}
+
+void AThirdPersonCharacter::MoveRight(float Value)
+{
+	if (!Controller || Value == 0.0) return;
+
+	FRotator CurrentRotation;
+
+	if (Controller->PlayerState && Controller->PlayerState->IsABot())
+		CurrentRotation = Controller->GetControlRotation();
+	else
+		CurrentRotation = FollowCamera->GetComponentRotation();
+
+	const FRotator ForwardRotation = FRotator(0, CurrentRotation.Yaw, 0);
+	const FVector Direction = FRotationMatrix(ForwardRotation).GetUnitAxis(EAxis::Y);
+
+	AddMovementInput(Direction, Value);
+}
+
+void AThirdPersonCharacter::TurnAtRate(float Value) // Should not be called for AIs 
+{
+	/*if (bIsAiming) AddControllerYawInput(Value * BaseTurnRate * GetWorld()->GetDeltaSeconds());
+	else
+		CameraGimbal->AddLocalRotation(FRotator(0, Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds(), 0));*/
+
+	float AddedYaw = Value * BaseLookUpRate * GetWorld()->GetDeltaSeconds();
+
+	if (bIsAiming)
+	{
+		AddControllerYawInput(AddedYaw);
+		AddActorLocalRotation(FRotator(0, AddedYaw, 0));
+	}
+	else
+	{
+		CameraGimbal->AddLocalRotation(FRotator(0, AddedYaw, 0));
+	}
+}
+
+void AThirdPersonCharacter::LookUpAtRate(float Value) // Should not be called for AIs 
+{
+	float AddedPitch = Value * BaseLookUpRate * GetWorld()->GetDeltaSeconds();;
+
+	if (bIsAiming)
+	{
+		FRotator AddedRotation = FRotator(AddedPitch, 0, 0);
+
+		AddControllerPitchInput(AddedPitch);
+
+		//AddControllerYawInput(Value.X * BaseTurnRate * GetWorld()->GetDeltaSeconds());
+		FRotator TargetCameraBoomRotation = CameraBoom->GetRelativeRotation() + AddedRotation;
+		// Restricting Camera Pitch
+		if (TargetCameraBoomRotation.Pitch > MaxPitch_Aiming) TargetCameraBoomRotation.Pitch = MaxPitch_FreeCamera;
+		if (TargetCameraBoomRotation.Pitch < -MaxPitch_Aiming) TargetCameraBoomRotation.Pitch = -MaxPitch_FreeCamera;
+
+		CameraBoom->SetRelativeRotation(TargetCameraBoomRotation);
+	}
+	else
+	{
+		FRotator AddedRotation = FRotator(AddedPitch, 0, 0);
+
+		AddControllerPitchInput(AddedPitch);
+
+		//AddControllerYawInput(Value.X * BaseTurnRate * GetWorld()->GetDeltaSeconds());
+		FRotator TargetCameraBoomRotation = CameraBoom->GetRelativeRotation() + AddedRotation;
+		// Restricting Camera Pitch
+		if (TargetCameraBoomRotation.Pitch > MaxPitch_FreeCamera) TargetCameraBoomRotation.Pitch = MaxPitch_FreeCamera;
+		if (TargetCameraBoomRotation.Pitch < -MaxPitch_FreeCamera) TargetCameraBoomRotation.Pitch = -MaxPitch_FreeCamera;
+
+		CameraBoom->SetRelativeRotation(TargetCameraBoomRotation);
+	}
+}
+
+void AThirdPersonCharacter::AimingMode(float Value)
+{
+	bIsAiming = Value > 0.1f;
+
+	// TODO CHANGE
+	if (bIsAiming && CameraBoom->TargetArmLength > 50.f)
+		CameraBoom->TargetArmLength = 50.f;
+	else if (!bIsAiming && CameraBoom->TargetArmLength < 150.f)
+		CameraBoom->TargetArmLength = 150.f;
+}
+
+void AThirdPersonCharacter::ShootingMode(float Value)
+{
+	if (!bIsAiming) return;
+}
+
+void AThirdPersonCharacter::SwitchShoulderCamera()
+{
+	auto CameraLocation = CameraBoom->GetRelativeLocation();
+	CameraLocation.Y *= -1;
+	CameraBoom->SetRelativeLocation(CameraLocation);
+}
+
+// END Input related logic
+
+// BEGIN General logic
 
 void AThirdPersonCharacter::OnRep_HealthChanged()
 {
@@ -118,117 +220,20 @@ void AThirdPersonCharacter::OnRep_HealthChanged()
 		OnPreparedForNewRound(); // Just started new round, set animations to idle and other custom stuff in BP
 }
 
-void AThirdPersonCharacter::OnRep_FlagOwnerChanged()
+void AThirdPersonCharacter::OnRep_VIPChanged()
 {
-	OnFlagOwnershipChanged(bIsVIP);
+	OnVIPChanged(bIsVIP); // Call to BP
 }
 
 void AThirdPersonCharacter::AuthPrepareForNewGameRound()
 {
 	if (!HasAuthority()) return;
-	
+
 	CurrentHealth = StartingHealth;
 	OnPreparedForNewRound(); // call to BP
 }
 
-// BEGIN Input related logic
-
-void AThirdPersonCharacter::MoveForward(float Value)
-{
-	if (!Controller || Value == 0.0) return;
-
-	FRotator YawRotation;
-
-	// find out which way is forward
-	if (Controller->PlayerState && Controller->PlayerState->IsABot())
-	{
-		const FRotator Rotation = Controller->GetControlRotation();
-		YawRotation = FRotator(0, Rotation.Yaw, 0);
-	}
-	else
-	{
-		const FRotator Rotation = FollowCamera->GetComponentRotation();
-		YawRotation = FRotator(0, Rotation.Yaw, 0);
-	}
-
-	// get forward vector
-	const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-	AddMovementInput(Direction, Value);
-}
-
-void AThirdPersonCharacter::MoveRight(float Value)
-{
-	if (!Controller || Value == 0.0) return;
-
-	FRotator YawRotation;
-
-	// find out which way is forward
-	if (Controller->PlayerState && Controller->PlayerState->IsABot())
-	{
-		const FRotator Rotation = Controller->GetControlRotation();
-		YawRotation = FRotator(0, Rotation.Yaw, 0);
-	}
-	else
-	{
-		const FRotator Rotation = FollowCamera->GetComponentRotation();
-		YawRotation = FRotator(0, Rotation.Yaw, 0);
-	}
-
-	// get right vector 
-	const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-	// add movement in that direction
-	AddMovementInput(Direction, Value);
-}
-
-void AThirdPersonCharacter::TurnAtRate(float Rate)
-{
-	// calculate delta for this frame from the rate information
-	AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
-
-	if (!bIsAiming)
-		CameraGimbal->AddLocalRotation(FRotator(0, Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds(), 0));
-}
-
-void AThirdPersonCharacter::LookUpAtRate(float Rate)
-{
-	// calculate delta for this frame from the rate information
-	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
-
-	if(!bIsAiming)
-		CameraBoom->AddLocalRotation(FRotator(-Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds(), 0, 0));
-}
-
-void AThirdPersonCharacter::AimingMode(float Value)
-{
-	bIsAiming = Value > 0.1f;
-
-	if (bIsAiming)
-	{
-		GetCharacterMovement()->bOrientRotationToMovement = true;
-		CameraBoom->TargetArmLength = 50.f;
-		CameraBoom->bUsePawnControlRotation = true;
-	}
-	else
-	{
-		GetCharacterMovement()->bOrientRotationToMovement = false;
-		CameraBoom->TargetArmLength = 150.f;
-		CameraBoom->bUsePawnControlRotation = false;
-	}
-}
-
-void AThirdPersonCharacter::SwitchShoulderCamera()
-{
-	auto CameraLocation = CameraBoom->GetRelativeLocation();
-	CameraLocation.Y *= -1;
-	CameraBoom->SetRelativeLocation(CameraLocation);
-}
-
-// END Input related logic
-
-bool AThirdPersonCharacter::IsAlive()
-{
-	return CurrentHealth > 0;
-}
+// END General logic
 
 void AThirdPersonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {

@@ -216,7 +216,7 @@ void AMainGameMode::InitialMatchStateSetup()
 
 	// Giving a random pawn a flag
 	auto Pawn = GiveFlagToARandomPawn(ETeamType::RedTeam);
-	Pawn->OnRep_FlagOwnerChanged();
+	Pawn->OnRep_VIPChanged();
 
 	// Initializing all flag areas on a map
 	for(auto FlagArea : FlagPlacements)
@@ -272,7 +272,7 @@ void AMainGameMode::MatchPhaseStart_Warmup()
 	for (auto TPCPawn : TeamPawns)
 	{
 		TPCPawn->AuthPrepareForNewGameRound(); // setting back health, idle animation and other optional stuff
-		TPCPawn->OnRep_FlagOwnerChanged(); // Showing/hiding flag model on all pawns
+		TPCPawn->OnRep_VIPChanged(); // Showing/hiding flag model on all pawns
 	}
 
 	// Finalize

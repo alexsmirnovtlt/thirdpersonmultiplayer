@@ -35,6 +35,8 @@ void AGameplayAIController::Tick(float DeltaTime)
 	// TMP DEBUG
 	if (CurrentMatchState == EMatchState::Warmup)
 	{
+		PossessedCharacter->StopJumping();
+
 		if(DEBUG_ClockwiseRotation)
 			PossessedCharacter->AddActorLocalRotation(FRotator(0.f, DEBUG_RotationSpeed, 0.f));
 		else 
