@@ -185,6 +185,8 @@ void AMainGameMode::RemovePlayerFromAMatch(AGamePlayerController* PlayerControll
 
 	if (auto PlayerPawn = PlayerController->GetPawn<AThirdPersonCharacter>()) // Need to create new AI and assign it to a pawn
 	{
+		PlayerController->UnPossess();
+
 		auto AIController = GetWorld()->SpawnActor<AGameplayAIController>(AIControllerClass);
 		InGameControllers_AI.Add(AIController);
 		AIController->GameState = GameplayState;
@@ -490,9 +492,11 @@ void AMainGameMode::OnPawnKilled(AThirdPersonCharacter* DiedPawn)
 	{
 		if (auto PlayerController = DiedPawn->GetController<AGamePlayerController>())
 		{
-			PlayerController->UnPossess();
-			PlayerController->ChangeState(NAME_Spectating);
-			if (PlayerController->IsLocalPlayerController()) PlayerController->OnRep_Pawn();
+			// TODO restrict control instead of unpossessing (movement and aiming)
+		
+			//PlayerController->UnPossess();
+			//PlayerController->ChangeState(NAME_Spectating);
+			//if (PlayerController->IsLocalPlayerController()) PlayerController->OnRep_Pawn();
 		}
 	}
 	else
@@ -514,6 +518,9 @@ void AMainGameMode::OnPawnKilled(AThirdPersonCharacter* DiedPawn)
 		StopCurrentMatchTimer();
 		MatchPhaseStart_RoundEnd();
 	}
+
+	DiedPawn->AnimState.bIsDead = true; // Play dying animation and replicate it to clients
+	DiedPawn->ReplicateAnimationStateChange();
 }
 
 void AMainGameMode::DetermineTeamThatWonThatRound(FMatchData& CurrentMatchData)

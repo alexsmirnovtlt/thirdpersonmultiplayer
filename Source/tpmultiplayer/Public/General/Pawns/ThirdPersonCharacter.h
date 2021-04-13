@@ -6,6 +6,27 @@
 #include "GameFramework/Character.h"
 #include "ThirdPersonCharacter.generated.h"
 
+USTRUCT(Blueprintable)
+struct FCharacterAnimState
+{
+	GENERATED_BODY()
+
+	FCharacterAnimState()
+	{
+		bIsDead = false;
+		bIsAiming = false;
+		bIsReloading = false;
+	}
+
+public:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool bIsDead;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool bIsAiming;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool bIsReloading;
+};
+
 enum class ETeamType : uint8;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPawnKilledDelegate, AThirdPersonCharacter*, DiedPawn);
@@ -23,6 +44,7 @@ protected:
 
 public:	
 	virtual void Tick(float DeltaTime) override;
+	virtual void Reset() override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	float TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -30,8 +52,8 @@ public:
 public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
 	bool IsAlive() { return CurrentHealth > 0; };
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
-	bool IsAiming() { return bIsAiming; };
+	//UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
+	//bool IsAiming() { return AnimState.bIsAiming; };
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
 	bool IsVIP() { return bIsVIP; };
 
@@ -61,10 +83,21 @@ protected:
 	void OnPreparedForNewRound();
 	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
 	void OnVIPChanged(bool IsVIP);
+	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
+	void OnAnimStateChanged();
 
 	void AuthPrepareForNewGameRound();
+	void ReplicateAnimationStateChange();
 
-	bool bIsAiming;
+	// Animation variables and their replication
+	UPROPERTY(ReplicatedUsing=OnAnimStateChanged)
+	FCharacterAnimState AnimState;
+	UFUNCTION(BlueprintCallable, Category = "Pawn Animation State")
+	FCharacterAnimState& GetAnimState() { return AnimState; };
+	UFUNCTION(Server, Unreliable)
+	void Server_UpdateAnimationState(FCharacterAnimState NewAnimState);
+	void Server_UpdateAnimationState_Implementation(FCharacterAnimState NewAnimState) { AnimState = NewAnimState; OnAnimStateChanged(); };
+	//
 
 	// BEGIN Input Related logic
 
@@ -78,6 +111,14 @@ protected:
 	float MaxPitch_FreeCamera;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
 	float MaxPitch_Aiming;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	FVector AimingCameraDistance;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	FVector IdleCameraDistance;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	float AimingCameraSpringDistance;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	float IdleCameraSpringDistance;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USceneComponent* CameraGimbal;

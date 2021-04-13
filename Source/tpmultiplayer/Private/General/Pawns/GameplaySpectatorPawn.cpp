@@ -9,7 +9,7 @@ void AGameplaySpectatorPawn::SetupPlayerInputComponent(UInputComponent* PlayerIn
 	 // Wont be calling Super because the only thing it does is setups default input keys
 
 	PlayerInputComponent->BindAxis(AGamePlayerController::HorizontalAxisBindingName, this, &AGameplaySpectatorPawn::AddControllerYawInput);
-	PlayerInputComponent->BindAxis(AGamePlayerController::VerticalAxisBindingName, this, &AGameplaySpectatorPawn::AddControllerPitchInput);
+	PlayerInputComponent->BindAxis(AGamePlayerController::VerticalAxisBindingName, this, &AGameplaySpectatorPawn::AddControllerPitchInput_Reversed);
 	PlayerInputComponent->BindAxis(AGamePlayerController::MoveForwardAxisBindingName, this, &AGameplaySpectatorPawn::MoveForward);
 	PlayerInputComponent->BindAxis(AGamePlayerController::MoveRightAxisBindingName, this, &AGameplaySpectatorPawn::MoveRight);
 	PlayerInputComponent->BindAxis(AGamePlayerController::PrimaryActionAxisBindingName, this, &AGameplaySpectatorPawn::MoveUp_World);

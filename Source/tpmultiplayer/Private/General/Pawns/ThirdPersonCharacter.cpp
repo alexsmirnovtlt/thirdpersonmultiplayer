@@ -19,6 +19,16 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
+	AimingCameraDistance = FVector(0, 40.f, 0);
+	IdleCameraDistance = FVector(0, 70.f, 0);
+	AnimState = FCharacterAnimState();
+	AimingCameraSpringDistance = 50.f;
+	IdleCameraSpringDistance = 150.f;
+	MaxPitch_FreeCamera = 75;
+	MaxPitch_Aiming = 60;
+	StartingHealth = 100;
+	bIsVIP = false;
+
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 
 	BaseTurnRate = 80.f;
@@ -28,6 +38,7 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 
+	GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	GetCharacterMovement()->bOrientRotationToMovement = false;
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 540.0f, 0.0f);
 	GetCharacterMovement()->JumpZVelocity = 600.f;
@@ -38,7 +49,7 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(CameraGimbal);
-	CameraBoom->TargetArmLength = 150.0f;
+	CameraBoom->TargetArmLength = IdleCameraSpringDistance;
 	CameraBoom->bUsePawnControlRotation = false; // Enables only when aiming
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -46,11 +57,6 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
 	AutoPossessAI = EAutoPossessAI::Disabled;
-	MaxPitch_FreeCamera = 75;
-	MaxPitch_Aiming = 75;
-	StartingHealth = 100;
-	bIsAiming = false;
-	bIsVIP = false;
 }
 
 void AThirdPersonCharacter::BeginPlay()
@@ -70,9 +76,15 @@ float AThirdPersonCharacter::TakeDamage(float Damage, FDamageEvent const& Damage
 	float DamageTaken = Super::TakeDamage(Damage, DamageEvent, EventInstigator, DamageCauser);
 
 	if (DamageTaken > 0) CurrentHealth -= DamageTaken;
+
 	OnRep_HealthChanged();
 
 	return DamageTaken;
+}
+
+void AThirdPersonCharacter::Reset()
+{
+	Super::Reset();
 }
 
 void AThirdPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -87,7 +99,7 @@ void AThirdPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 
 	PlayerInputComponent->BindAxis(AGamePlayerController::HorizontalAxisBindingName, this, &AThirdPersonCharacter::TurnAtRate);
 	PlayerInputComponent->BindAxis(AGamePlayerController::VerticalAxisBindingName, this, &AThirdPersonCharacter::LookUpAtRate);
-
+	
 	PlayerInputComponent->BindAction(AGamePlayerController::SwitchShoulderBindingName, IE_Pressed, this, &AThirdPersonCharacter::SwitchShoulderCamera);
 }
 
@@ -129,16 +141,11 @@ void AThirdPersonCharacter::MoveRight(float Value)
 
 void AThirdPersonCharacter::TurnAtRate(float Value) // Should not be called for AIs 
 {
-	/*if (bIsAiming) AddControllerYawInput(Value * BaseTurnRate * GetWorld()->GetDeltaSeconds());
-	else
-		CameraGimbal->AddLocalRotation(FRotator(0, Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds(), 0));*/
-
 	float AddedYaw = Value * BaseLookUpRate * GetWorld()->GetDeltaSeconds();
 
-	if (bIsAiming)
+	if (AnimState.bIsAiming)
 	{
 		AddControllerYawInput(AddedYaw);
-		AddActorLocalRotation(FRotator(0, AddedYaw, 0));
 	}
 	else
 	{
@@ -149,58 +156,61 @@ void AThirdPersonCharacter::TurnAtRate(float Value) // Should not be called for 
 void AThirdPersonCharacter::LookUpAtRate(float Value) // Should not be called for AIs 
 {
 	float AddedPitch = Value * BaseLookUpRate * GetWorld()->GetDeltaSeconds();;
+	FRotator AddedRotation = FRotator(AddedPitch, 0, 0);
+	FRotator TargetCameraBoomRotation = CameraBoom->GetRelativeRotation() + AddedRotation;
+	
+	// Restricting Camera Pitch
+	float MaxPitch = AnimState.bIsAiming ? MaxPitch_Aiming : MaxPitch_FreeCamera;
+	float MinPitch = AnimState.bIsAiming ? -MaxPitch_Aiming : -MaxPitch_FreeCamera;
+	TargetCameraBoomRotation.Pitch = FMath::Clamp(TargetCameraBoomRotation.Pitch, MinPitch, MaxPitch);
 
-	if (bIsAiming)
-	{
-		FRotator AddedRotation = FRotator(AddedPitch, 0, 0);
-
-		AddControllerPitchInput(AddedPitch);
-
-		//AddControllerYawInput(Value.X * BaseTurnRate * GetWorld()->GetDeltaSeconds());
-		FRotator TargetCameraBoomRotation = CameraBoom->GetRelativeRotation() + AddedRotation;
-		// Restricting Camera Pitch
-		if (TargetCameraBoomRotation.Pitch > MaxPitch_Aiming) TargetCameraBoomRotation.Pitch = MaxPitch_FreeCamera;
-		if (TargetCameraBoomRotation.Pitch < -MaxPitch_Aiming) TargetCameraBoomRotation.Pitch = -MaxPitch_FreeCamera;
-
-		CameraBoom->SetRelativeRotation(TargetCameraBoomRotation);
-	}
-	else
-	{
-		FRotator AddedRotation = FRotator(AddedPitch, 0, 0);
-
-		AddControllerPitchInput(AddedPitch);
-
-		//AddControllerYawInput(Value.X * BaseTurnRate * GetWorld()->GetDeltaSeconds());
-		FRotator TargetCameraBoomRotation = CameraBoom->GetRelativeRotation() + AddedRotation;
-		// Restricting Camera Pitch
-		if (TargetCameraBoomRotation.Pitch > MaxPitch_FreeCamera) TargetCameraBoomRotation.Pitch = MaxPitch_FreeCamera;
-		if (TargetCameraBoomRotation.Pitch < -MaxPitch_FreeCamera) TargetCameraBoomRotation.Pitch = -MaxPitch_FreeCamera;
-
-		CameraBoom->SetRelativeRotation(TargetCameraBoomRotation);
-	}
+	CameraBoom->SetRelativeRotation(TargetCameraBoomRotation);
 }
 
 void AThirdPersonCharacter::AimingMode(float Value)
 {
-	bIsAiming = Value > 0.1f;
+	bool IsAimingNow = Value > 0.7f; // could be anything > 0
+	bool StateChanged = false;
 
-	// TODO CHANGE
-	if (bIsAiming && CameraBoom->TargetArmLength > 50.f)
-		CameraBoom->TargetArmLength = 50.f;
-	else if (!bIsAiming && CameraBoom->TargetArmLength < 150.f)
-		CameraBoom->TargetArmLength = 150.f;
+	if (!AnimState.bIsAiming && IsAimingNow)
+	{
+		CameraBoom->TargetArmLength = AimingCameraSpringDistance;
+		CameraBoom->SetRelativeLocation(AimingCameraDistance);
+		StateChanged = true;
+	}
+	else if (AnimState.bIsAiming && !IsAimingNow)
+	{
+		CameraBoom->TargetArmLength = IdleCameraSpringDistance;
+		CameraBoom->SetRelativeLocation(IdleCameraDistance);
+		StateChanged = true;
+	}
+
+	if (StateChanged)
+	{
+		AnimState.bIsAiming = IsAimingNow;
+		ReplicateAnimationStateChange();
+	}
 }
 
 void AThirdPersonCharacter::ShootingMode(float Value)
 {
-	if (!bIsAiming) return;
+	if (!AnimState.bIsAiming || AnimState.bIsReloading) return;
+
+	// TODO Make a shot, preferably on a server
+	
+	// TODO Add shoot particles and damage particles
 }
 
 void AThirdPersonCharacter::SwitchShoulderCamera()
 {
-	auto CameraLocation = CameraBoom->GetRelativeLocation();
-	CameraLocation.Y *= -1;
-	CameraBoom->SetRelativeLocation(CameraLocation);
+	auto NewCameraBoomLocation = CameraBoom->GetRelativeLocation();
+	auto NewCameraBoomRotation = CameraBoom->GetRelativeRotation();
+
+	NewCameraBoomLocation.Y *= -1;
+	NewCameraBoomRotation.Yaw *= -1;
+
+	CameraBoom->SetRelativeLocation(NewCameraBoomLocation);
+	CameraBoom->SetRelativeRotation(NewCameraBoomRotation);
 }
 
 // END Input related logic
@@ -212,12 +222,31 @@ void AThirdPersonCharacter::OnRep_HealthChanged()
 	if (!IsAlive())
 	{
 		OnPawnKilledEvent.Broadcast(this);
-		OnKilled(); // call to BP
+		OnKilled(); // call to BP	
+
+		if (!HasAuthority() && IsLocallyControlled())
+		{
+			// Special case when pawn owner will not receive updated AnimState bacause of the replication condition so it need to change it for itself too
+			AnimState.bIsDead = true; 
+			OnAnimStateChanged();
+		}
+
+		return;
 	}
 
 	auto GameState = GetWorld()->GetGameState<AGameplayGameState>();
 	if (GameState && GameState->GetCurrentMatchData().MatchState == EMatchState::Warmup && CurrentHealth == StartingHealth)
-		OnPreparedForNewRound(); // Just started new round, set animations to idle and other custom stuff in BP
+	{
+		// Just started new round, set animations to idle and other custom stuff in BP
+		if (!HasAuthority() && IsLocallyControlled())
+		{
+			AnimState = FCharacterAnimState(); // Same logic as special case before, local authonomous proxy need to reset its state manually
+			OnAnimStateChanged();
+		}
+
+		OnPreparedForNewRound();
+	}
+		
 }
 
 void AThirdPersonCharacter::OnRep_VIPChanged()
@@ -229,8 +258,18 @@ void AThirdPersonCharacter::AuthPrepareForNewGameRound()
 {
 	if (!HasAuthority()) return;
 
-	CurrentHealth = StartingHealth;
+	AnimState = FCharacterAnimState(); // Resetting and replicating animation variables
+	ReplicateAnimationStateChange();
+
+	CurrentHealth = StartingHealth; // Resetting and replicating health
+	
 	OnPreparedForNewRound(); // call to BP
+}
+
+void AThirdPersonCharacter::ReplicateAnimationStateChange()
+{
+	OnAnimStateChanged(); // Auth will replicate FCharacterAnimState without any additional code, but need to call OnRep function on itself
+	if (!HasAuthority()) Server_UpdateAnimationState(AnimState);
 }
 
 // END General logic
@@ -241,4 +280,5 @@ void AThirdPersonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 
 	DOREPLIFETIME(AThirdPersonCharacter, bIsVIP);
 	DOREPLIFETIME(AThirdPersonCharacter, CurrentHealth);
+	DOREPLIFETIME_CONDITION(AThirdPersonCharacter, AnimState, COND_SkipOwner);
 }
