@@ -69,6 +69,17 @@ void AThirdPersonCharacter::BeginPlay()
 void AThirdPersonCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if (!AnimState.bIsDead)
+	{
+		// Calculate current velocity relative to pawn`s forward vector. Will be used at AnimBP`s blend space for movement
+		const FVector WorldVelocity = GetCharacterMovement()->Velocity;
+		const FVector RelativeVelocity = WorldVelocity.RotateAngleAxis(-RootComponent->GetComponentRotation().Yaw, FVector::UpVector);
+		CurrentRelativeToPawnVelocity(RelativeVelocity.Y, RelativeVelocity.X); // BP Event
+	}
+	else CurrentRelativeToPawnVelocity(0, 0);
+
+	if (Controller) CurrentControllerPitch(Controller->GetControlRotation().Pitch); // Used in AnimBP too
 }
 
 float AThirdPersonCharacter::TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
@@ -145,6 +156,12 @@ void AThirdPersonCharacter::TurnAtRate(float Value) // Should not be called for 
 
 	if (AnimState.bIsAiming)
 	{
+		//
+		/*auto TargetCntrRot = CameraBoom->GetComponentRotation();
+		TargetCntrRot.Pitch = 0;
+		TargetCntrRot.Roll = 0;
+		GetController<AGamePlayerController>()->SetControlRotation(TargetCntrRot);*/
+		
 		AddControllerYawInput(AddedYaw);
 	}
 	else
@@ -163,8 +180,11 @@ void AThirdPersonCharacter::LookUpAtRate(float Value) // Should not be called fo
 	float MaxPitch = AnimState.bIsAiming ? MaxPitch_Aiming : MaxPitch_FreeCamera;
 	float MinPitch = AnimState.bIsAiming ? -MaxPitch_Aiming : -MaxPitch_FreeCamera;
 	TargetCameraBoomRotation.Pitch = FMath::Clamp(TargetCameraBoomRotation.Pitch, MinPitch, MaxPitch);
-
+	
 	CameraBoom->SetRelativeRotation(TargetCameraBoomRotation);
+
+	// TODO update Controller Pitch so it can be used in AnimBP
+	//AddControllerPitchInput(AddedPitch);
 }
 
 void AThirdPersonCharacter::AimingMode(float Value)
@@ -176,6 +196,12 @@ void AThirdPersonCharacter::AimingMode(float Value)
 	{
 		CameraBoom->TargetArmLength = AimingCameraSpringDistance;
 		CameraBoom->SetRelativeLocation(AimingCameraDistance);
+		//
+		auto TargetCntrRot = CameraBoom->GetComponentRotation();
+		TargetCntrRot.Pitch = 0;
+		TargetCntrRot.Roll = 0;
+		GetController<AGamePlayerController>()->SetControlRotation(TargetCntrRot);
+		//
 		StateChanged = true;
 	}
 	else if (AnimState.bIsAiming && !IsAimingNow)

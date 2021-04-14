@@ -85,6 +85,10 @@ protected:
 	void OnVIPChanged(bool IsVIP);
 	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
 	void OnAnimStateChanged();
+	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
+	void CurrentRelativeToPawnVelocity(float Axis_X, float Axis_Y); // used in AnimBP to blend legs movement
+	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
+	void CurrentControllerPitch(float Pitch);
 
 	void AuthPrepareForNewGameRound();
 	void ReplicateAnimationStateChange();
