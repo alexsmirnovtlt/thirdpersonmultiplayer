@@ -71,6 +71,7 @@ public:
 	static const FName GamePlayHUDBindingName;
 	static const FName AdditionalActionBindingName;
 	static const FName SwitchShoulderBindingName;
+	static const FName ReloadBindingName;
 	static const FName DebugKillBindingName;
 
 	void MenuActionInput();

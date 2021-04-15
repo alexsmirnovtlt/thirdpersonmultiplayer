@@ -26,6 +26,8 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 	IdleCameraSpringDistance = 150.f;
 	MaxWalkSpeed = 200.f;
 	MaxSprintSpeed = 600.f;
+	LastReloadTime = 0.f;
+	ReloadTimeCooldownMS = 2.f;
 	MaxPitch_FreeCamera = 75;
 	MaxPitch_Aiming = 60;
 	StartingHealth = 100;
@@ -87,12 +89,8 @@ void AThirdPersonCharacter::Tick(float DeltaTime)
 	}
 	else CurrentRelativeToPawnVelocity(0, 0);
 
-	//GetCharacterMovement().rotation
-	if (Controller)
-	{
-		if (IsLocallyControlled()) CurrentControllerPitch(Controller->GetControlRotation().Pitch); // Used in AnimBP too
-		else CurrentControllerPitch(RemoteViewPitch); // TODO GET replicated Pitch from somewhere
-	}
+	if (IsLocallyControlled()) CurrentControllerPitch(Controller->GetControlRotation().Pitch); // Used in AnimBP too
+	else CurrentControllerPitch(GetRemotePitchAsFloat());
 }
 
 float AThirdPersonCharacter::TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
@@ -126,6 +124,7 @@ void AThirdPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 	
 	PlayerInputComponent->BindAxis(AGamePlayerController::SprintAxisBindingName, this, &AThirdPersonCharacter::Sprint);
 
+	PlayerInputComponent->BindAction(AGamePlayerController::ReloadBindingName, IE_Pressed, this, &AThirdPersonCharacter::ReloadWeapon);
 	PlayerInputComponent->BindAction(AGamePlayerController::SwitchShoulderBindingName, IE_Pressed, this, &AThirdPersonCharacter::SwitchShoulderCamera);
 }
 
@@ -199,6 +198,7 @@ void AThirdPersonCharacter::LookUpAtRate(float Value) // Should not be called fo
 		auto TargetCntrRot = CameraBoom->GetComponentRotation();
 		TargetCntrRot.Pitch += AddedPitch;
 		if (Controller) Controller->SetControlRotation(TargetCntrRot);
+		SetRemoteViewPitch(TargetCntrRot.Pitch); // TODO doesnt work
 	}
 }
 
@@ -237,6 +237,8 @@ void AThirdPersonCharacter::ShootingMode(float Value)
 {
 	if (!AnimState.bIsAiming || AnimState.bIsReloading) return;
 
+	// TODO meke unable to shoot if hands are in anim transition idle/aiming
+
 	// TODO Make a shot, preferably on a server
 	
 	// TODO Add shoot particles and damage particles
@@ -261,7 +263,35 @@ void AThirdPersonCharacter::Sprint(float Value)
 	//if (Value > 0.5f) GetCharacterMovement()->MaxWalkSpeed = 600.f;
 }
 
+void AThirdPersonCharacter::ReloadWeapon()
+{
+	if (AnimState.bIsReloading) return;
+
+	float CurrentTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
+	if (CurrentTime - LastReloadTime < ReloadTimeCooldownMS) return;
+
+	UE_LOG(LogTemp, Warning, TEXT("ReloadWeapon %f - %f"), CurrentTime - LastReloadTime, ReloadTimeCooldownMS);
+
+	LastReloadTime = CurrentTime;
+	AnimState.bIsReloading = true;
+	ReplicateAnimationStateChange();
+}
+
 // END Input related logic
+
+float AThirdPersonCharacter::GetRemotePitchAsFloat()
+{
+	float UnclampedValue = (float)RemoteViewPitch * 360.0f / 255.0f;
+	if (UnclampedValue > 180.f) return UnclampedValue - 360;
+	else return UnclampedValue;
+}
+
+void AThirdPersonCharacter::ReloadingAnimationEnded()
+{
+	// Gets called from AnimBP
+	AnimState.bIsReloading = false;
+	ReplicateAnimationStateChange();
+}
 
 // BEGIN General logic
 

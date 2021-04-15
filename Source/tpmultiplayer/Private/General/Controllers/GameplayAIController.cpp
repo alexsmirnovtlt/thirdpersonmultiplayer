@@ -37,10 +37,7 @@ void AGameplayAIController::Tick(float DeltaTime)
 	{
 		PossessedCharacter->StopJumping();
 
-		if(DEBUG_ClockwiseRotation)
-			PossessedCharacter->AddActorLocalRotation(FRotator(0.f, DEBUG_RotationSpeed, 0.f));
-		else 
-			PossessedCharacter->AddActorLocalRotation(FRotator(0.f, -1 * DEBUG_RotationSpeed, 0.f));
+		// TODO debug rotate
 	}
 	else if (CurrentMatchState == EMatchState::Gameplay)
 	{

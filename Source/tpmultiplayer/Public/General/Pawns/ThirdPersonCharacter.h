@@ -19,11 +19,11 @@ struct FCharacterAnimState
 	}
 
 public:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bIsDead;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bIsAiming;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bIsReloading;
 };
 
@@ -52,8 +52,6 @@ public:
 public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
 	bool IsAlive() { return CurrentHealth > 0; };
-	//UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
-	//bool IsAiming() { return AnimState.bIsAiming; };
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
 	bool IsVIP() { return bIsVIP; };
 
@@ -101,6 +99,10 @@ protected:
 	UFUNCTION(Server, Unreliable)
 	void Server_UpdateAnimationState(FCharacterAnimState NewAnimState);
 	void Server_UpdateAnimationState_Implementation(FCharacterAnimState NewAnimState) { AnimState = NewAnimState; OnAnimStateChanged(); };
+	
+	UFUNCTION(BlueprintCallable, Category = "Pawn Animation State")
+	void ReloadingAnimationEnded();
+	
 	//
 
 	// BEGIN Input Related logic
@@ -127,6 +129,8 @@ protected:
 	float MaxWalkSpeed;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters")
 	float MaxSprintSpeed;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters")
+	float ReloadTimeCooldownMS;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USceneComponent* CameraGimbal;
@@ -137,6 +141,10 @@ protected:
 
 	FRotator LastCameraGimbalRotation; // Used to keep player`s camera rotation the same. See Tick() for more details
 
+private:
+	float GetRemotePitchAsFloat();
+	float LastReloadTime;
+
 public:
 	void MoveForward(float Value);
 	void MoveRight(float Value);
@@ -145,6 +153,7 @@ public:
 	void ShootingMode(float Value);
 	void AimingMode(float Value);
 	void Sprint(float Value);
+	void ReloadWeapon();
 
 	void SwitchShoulderCamera();
 

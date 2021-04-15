@@ -168,6 +168,7 @@ const FName AGamePlayerController::MenuActionBindingName("Menu");
 const FName AGamePlayerController::GamePlayHUDBindingName("HUDToggle");
 const FName AGamePlayerController::AdditionalActionBindingName("AdditionalAction");
 const FName AGamePlayerController::SwitchShoulderBindingName("SwitchShoulder");
+const FName AGamePlayerController::ReloadBindingName("Reload");
 // Debug
 const FName AGamePlayerController::DebugKillBindingName("DebugKill");
 
