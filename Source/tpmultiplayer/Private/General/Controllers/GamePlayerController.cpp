@@ -161,6 +161,7 @@ const FName AGamePlayerController::MoveForwardAxisBindingName("MoveForward");
 const FName AGamePlayerController::MoveRightAxisBindingName("MoveRight");
 const FName AGamePlayerController::PrimaryActionAxisBindingName("AxisPrimaryAction");
 const FName AGamePlayerController::SecondaryActionAxisBindingName("AxisSecondaryAction");
+const FName AGamePlayerController::SprintAxisBindingName("AxisSprint");
 
 // Actions
 const FName AGamePlayerController::MenuActionBindingName("Menu");

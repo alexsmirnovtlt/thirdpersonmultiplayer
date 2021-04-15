@@ -24,6 +24,8 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 	AnimState = FCharacterAnimState();
 	AimingCameraSpringDistance = 50.f;
 	IdleCameraSpringDistance = 150.f;
+	MaxWalkSpeed = 200.f;
+	MaxSprintSpeed = 600.f;
 	MaxPitch_FreeCamera = 75;
 	MaxPitch_Aiming = 60;
 	StartingHealth = 100;
@@ -70,6 +72,12 @@ void AThirdPersonCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	// Player only check. Keeps Camera Rotation the same regardless of Pawn`s movement
+	// Our Camera can only be moved by Player`s Input. But its a part of an actor and will be moved and rotated with it.
+	if (Controller && Controller->PlayerState && !Controller->PlayerState->IsABot())
+		CameraGimbal->SetWorldRotation(LastCameraGimbalRotation);
+
+	// Parameters that will be used by Animation Blueprints
 	if (!AnimState.bIsDead)
 	{
 		// Calculate current velocity relative to pawn`s forward vector. Will be used at AnimBP`s blend space for movement
@@ -79,7 +87,12 @@ void AThirdPersonCharacter::Tick(float DeltaTime)
 	}
 	else CurrentRelativeToPawnVelocity(0, 0);
 
-	if (Controller) CurrentControllerPitch(Controller->GetControlRotation().Pitch); // Used in AnimBP too
+	//GetCharacterMovement().rotation
+	if (Controller)
+	{
+		if (IsLocallyControlled()) CurrentControllerPitch(Controller->GetControlRotation().Pitch); // Used in AnimBP too
+		else CurrentControllerPitch(RemoteViewPitch); // TODO GET replicated Pitch from somewhere
+	}
 }
 
 float AThirdPersonCharacter::TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
@@ -111,6 +124,8 @@ void AThirdPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 	PlayerInputComponent->BindAxis(AGamePlayerController::HorizontalAxisBindingName, this, &AThirdPersonCharacter::TurnAtRate);
 	PlayerInputComponent->BindAxis(AGamePlayerController::VerticalAxisBindingName, this, &AThirdPersonCharacter::LookUpAtRate);
 	
+	PlayerInputComponent->BindAxis(AGamePlayerController::SprintAxisBindingName, this, &AThirdPersonCharacter::Sprint);
+
 	PlayerInputComponent->BindAction(AGamePlayerController::SwitchShoulderBindingName, IE_Pressed, this, &AThirdPersonCharacter::SwitchShoulderCamera);
 }
 
@@ -131,6 +146,7 @@ void AThirdPersonCharacter::MoveForward(float Value)
 	const FVector Direction = FRotationMatrix(ForwardRotation).GetUnitAxis(EAxis::X);
 
 	AddMovementInput(Direction, Value);
+	if (Controller) Controller->SetControlRotation(CameraGimbal->GetComponentRotation());
 }
 
 void AThirdPersonCharacter::MoveRight(float Value)
@@ -148,6 +164,7 @@ void AThirdPersonCharacter::MoveRight(float Value)
 	const FVector Direction = FRotationMatrix(ForwardRotation).GetUnitAxis(EAxis::Y);
 
 	AddMovementInput(Direction, Value);
+	if (Controller) Controller->SetControlRotation(CameraGimbal->GetComponentRotation());
 }
 
 void AThirdPersonCharacter::TurnAtRate(float Value) // Should not be called for AIs 
@@ -156,18 +173,12 @@ void AThirdPersonCharacter::TurnAtRate(float Value) // Should not be called for 
 
 	if (AnimState.bIsAiming)
 	{
-		//
-		/*auto TargetCntrRot = CameraBoom->GetComponentRotation();
-		TargetCntrRot.Pitch = 0;
-		TargetCntrRot.Roll = 0;
-		GetController<AGamePlayerController>()->SetControlRotation(TargetCntrRot);*/
-		
-		AddControllerYawInput(AddedYaw);
+		auto TargetCntrRot = CameraBoom->GetComponentRotation();
+		if(Controller) Controller->SetControlRotation(TargetCntrRot);
 	}
-	else
-	{
-		CameraGimbal->AddLocalRotation(FRotator(0, AddedYaw, 0));
-	}
+	
+	CameraGimbal->AddLocalRotation(FRotator(0, AddedYaw, 0));
+	LastCameraGimbalRotation = CameraGimbal->GetComponentRotation();
 }
 
 void AThirdPersonCharacter::LookUpAtRate(float Value) // Should not be called for AIs 
@@ -183,8 +194,12 @@ void AThirdPersonCharacter::LookUpAtRate(float Value) // Should not be called fo
 	
 	CameraBoom->SetRelativeRotation(TargetCameraBoomRotation);
 
-	// TODO update Controller Pitch so it can be used in AnimBP
-	//AddControllerPitchInput(AddedPitch);
+	if (AnimState.bIsAiming)
+	{
+		auto TargetCntrRot = CameraBoom->GetComponentRotation();
+		TargetCntrRot.Pitch += AddedPitch;
+		if (Controller) Controller->SetControlRotation(TargetCntrRot);
+	}
 }
 
 void AThirdPersonCharacter::AimingMode(float Value)
@@ -192,7 +207,7 @@ void AThirdPersonCharacter::AimingMode(float Value)
 	bool IsAimingNow = Value > 0.7f; // could be anything > 0
 	bool StateChanged = false;
 
-	if (!AnimState.bIsAiming && IsAimingNow)
+	if (!AnimState.bIsAiming && IsAimingNow) // Start to aim
 	{
 		CameraBoom->TargetArmLength = AimingCameraSpringDistance;
 		CameraBoom->SetRelativeLocation(AimingCameraDistance);
@@ -204,7 +219,7 @@ void AThirdPersonCharacter::AimingMode(float Value)
 		//
 		StateChanged = true;
 	}
-	else if (AnimState.bIsAiming && !IsAimingNow)
+	else if (AnimState.bIsAiming && !IsAimingNow) // End aiming
 	{
 		CameraBoom->TargetArmLength = IdleCameraSpringDistance;
 		CameraBoom->SetRelativeLocation(IdleCameraDistance);
@@ -237,6 +252,13 @@ void AThirdPersonCharacter::SwitchShoulderCamera()
 
 	CameraBoom->SetRelativeLocation(NewCameraBoomLocation);
 	CameraBoom->SetRelativeRotation(NewCameraBoomRotation);
+}
+
+void AThirdPersonCharacter::Sprint(float Value)
+{
+	// TODO Add sprint in GAS
+
+	//if (Value > 0.5f) GetCharacterMovement()->MaxWalkSpeed = 600.f;
 }
 
 // END Input related logic

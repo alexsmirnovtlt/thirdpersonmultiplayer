@@ -107,22 +107,26 @@ protected:
 
 protected:
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters")
 	float BaseTurnRate;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters")
 	float BaseLookUpRate;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters")
 	float MaxPitch_FreeCamera;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters")
 	float MaxPitch_Aiming;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters")
 	FVector AimingCameraDistance;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters")
 	FVector IdleCameraDistance;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters")
 	float AimingCameraSpringDistance;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters")
 	float IdleCameraSpringDistance;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters")
+	float MaxWalkSpeed;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters")
+	float MaxSprintSpeed;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USceneComponent* CameraGimbal;
@@ -131,6 +135,8 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FollowCamera;
 
+	FRotator LastCameraGimbalRotation; // Used to keep player`s camera rotation the same. See Tick() for more details
+
 public:
 	void MoveForward(float Value);
 	void MoveRight(float Value);
@@ -138,6 +144,7 @@ public:
 	void TurnAtRate(float Value);
 	void ShootingMode(float Value);
 	void AimingMode(float Value);
+	void Sprint(float Value);
 
 	void SwitchShoulderCamera();
 

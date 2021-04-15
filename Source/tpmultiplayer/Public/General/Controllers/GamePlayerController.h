@@ -65,6 +65,8 @@ public:
 	static const FName MoveRightAxisBindingName;
 	static const FName PrimaryActionAxisBindingName;
 	static const FName SecondaryActionAxisBindingName;
+	static const FName SprintAxisBindingName;
+
 	static const FName MenuActionBindingName;
 	static const FName GamePlayHUDBindingName;
 	static const FName AdditionalActionBindingName;
