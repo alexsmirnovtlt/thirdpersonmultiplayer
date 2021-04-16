@@ -16,6 +16,7 @@ struct FCharacterAnimState
 		bIsDead = false;
 		bIsAiming = false;
 		bIsReloading = false;
+		bIsShooting = false;
 	}
 
 public:
@@ -25,6 +26,23 @@ public:
 	bool bIsAiming;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool bIsReloading;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool bIsShooting;
+};
+
+USTRUCT()
+struct FShootData
+{
+	GENERATED_BODY()
+
+	FShootData()
+	{
+		ShooterLocation = FVector(0);
+	}
+
+public:
+	UPROPERTY()
+	FVector ShooterLocation;
 };
 
 enum class ETeamType : uint8;
@@ -104,6 +122,10 @@ protected:
 	void ReloadingAnimationEnded();
 	
 	//
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_Shoot(FShootData Data);
+	bool Server_Shoot_Validate(FShootData Data);
+	void Server_Shoot_Implementation(FShootData Data);
 
 	// BEGIN Input Related logic
 
@@ -130,6 +152,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters")
 	float MaxSprintSpeed;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters")
+	float ShootingTimeCooldownMS;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters")
 	float ReloadTimeCooldownMS;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
@@ -144,6 +168,7 @@ protected:
 private:
 	float GetRemotePitchAsFloat();
 	float LastReloadTime;
+	float LastShootingTime;
 
 public:
 	void MoveForward(float Value);

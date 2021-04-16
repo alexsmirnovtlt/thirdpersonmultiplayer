@@ -26,8 +26,10 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 	IdleCameraSpringDistance = 150.f;
 	MaxWalkSpeed = 200.f;
 	MaxSprintSpeed = 600.f;
+	LastShootingTime = 0.f;
 	LastReloadTime = 0.f;
 	ReloadTimeCooldownMS = 2.f;
+	ShootingTimeCooldownMS = 0.5f;
 	MaxPitch_FreeCamera = 75;
 	MaxPitch_Aiming = 60;
 	StartingHealth = 100;
@@ -233,17 +235,6 @@ void AThirdPersonCharacter::AimingMode(float Value)
 	}
 }
 
-void AThirdPersonCharacter::ShootingMode(float Value)
-{
-	if (!AnimState.bIsAiming || AnimState.bIsReloading) return;
-
-	// TODO meke unable to shoot if hands are in anim transition idle/aiming
-
-	// TODO Make a shot, preferably on a server
-	
-	// TODO Add shoot particles and damage particles
-}
-
 void AThirdPersonCharacter::SwitchShoulderCamera()
 {
 	auto NewCameraBoomLocation = CameraBoom->GetRelativeLocation();
@@ -263,14 +254,30 @@ void AThirdPersonCharacter::Sprint(float Value)
 	//if (Value > 0.5f) GetCharacterMovement()->MaxWalkSpeed = 600.f;
 }
 
+void AThirdPersonCharacter::ShootingMode(float Value)
+{
+	if (Value < 0.5f || !AnimState.bIsAiming || AnimState.bIsReloading || AnimState.bIsShooting) return;
+	// TODO make unable to shoot if hands are in anim transition between idle/aiming
+
+	float CurrentTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
+	if (CurrentTime - LastShootingTime < ShootingTimeCooldownMS) return;
+
+	LastShootingTime = CurrentTime;
+	AnimState.bIsShooting = true;
+	ReplicateAnimationStateChange();
+
+	FShootData ShootData;
+	Server_Shoot(ShootData);
+
+	// TODO Add shoot particles and damage particles
+}
+
 void AThirdPersonCharacter::ReloadWeapon()
 {
 	if (AnimState.bIsReloading) return;
 
 	float CurrentTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
 	if (CurrentTime - LastReloadTime < ReloadTimeCooldownMS) return;
-
-	UE_LOG(LogTemp, Warning, TEXT("ReloadWeapon %f - %f"), CurrentTime - LastReloadTime, ReloadTimeCooldownMS);
 
 	LastReloadTime = CurrentTime;
 	AnimState.bIsReloading = true;
@@ -351,6 +358,19 @@ void AThirdPersonCharacter::ReplicateAnimationStateChange()
 }
 
 // END General logic
+
+// BEGIN Server logic
+bool AThirdPersonCharacter::Server_Shoot_Validate(FShootData Data)
+{
+	return true;
+}
+
+void AThirdPersonCharacter::Server_Shoot_Implementation(FShootData Data)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Server_Shoot_Implementation"));
+}
+
+// END Server logic
 
 void AThirdPersonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
