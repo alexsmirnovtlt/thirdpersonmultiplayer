@@ -6,10 +6,13 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Camera/PlayerCameraManager.h"
+#include "GameFramework/Controller.h"
 #include "Components/InputComponent.h"
 #include "GameFramework/PlayerState.h"
+#include "Particles/ParticleSystem.h"
 #include "Camera/CameraComponent.h"
-#include "GameFramework/Controller.h"
+#include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 
 #include "General/Controllers/GamePlayerController.h"
@@ -28,11 +31,12 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 	MaxSprintSpeed = 600.f;
 	LastShootingTime = 0.f;
 	LastReloadTime = 0.f;
-	ReloadTimeCooldownMS = 2.f;
+	ReloadTimeCooldownMS = 1.f;
 	ShootingTimeCooldownMS = 0.5f;
 	MaxPitch_FreeCamera = 75;
 	MaxPitch_Aiming = 60;
 	StartingHealth = 100;
+	bViewObstructed = false;
 	bIsVIP = false;
 
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
@@ -76,10 +80,25 @@ void AThirdPersonCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// Player only check. Keeps Camera Rotation the same regardless of Pawn`s movement
-	// Our Camera can only be moved by Player`s Input. But its a part of an actor and will be moved and rotated with it.
-	if (Controller && Controller->PlayerState && !Controller->PlayerState->IsABot())
-		CameraGimbal->SetWorldRotation(LastCameraGimbalRotation);
+	if (IsLocallyControlled())
+	{
+		if (auto PlayerController = GetController<APlayerController>())
+		{
+			FVector CameraRotation = PlayerController->PlayerCameraManager->GetCameraRotation().Vector().GetUnsafeNormal();
+
+			// Check against static geometry if we have space to aim
+			FVector StartLocation = GetShootCheckOrigin()->GetComponentLocation();
+			FVector EndLocation = StartLocation + CameraRotation * ForwardDistanceToAbleToAim;
+			FCollisionQueryParams QueryParams;
+			QueryParams.AddIgnoredActor(this);
+
+			bViewObstructed = GetWorld()->LineTraceTestByChannel(StartLocation, EndLocation, ECollisionChannel::ECC_WorldStatic, QueryParams);
+
+			// Keeps Camera Rotation the same regardless of Pawn`s movement
+			// Our Camera can only be moved by Player`s Input. But its a part of an actor and will be moved and rotated with it.
+			CameraGimbal->SetWorldRotation(LastCameraGimbalRotation);
+		}
+	}
 
 	// Parameters that will be used by Animation Blueprints
 	if (!AnimState.bIsDead)
@@ -207,6 +226,7 @@ void AThirdPersonCharacter::LookUpAtRate(float Value) // Should not be called fo
 void AThirdPersonCharacter::AimingMode(float Value)
 {
 	bool IsAimingNow = Value > 0.7f; // could be anything > 0
+	if (bViewObstructed) IsAimingNow = false;
 	bool StateChanged = false;
 
 	if (!AnimState.bIsAiming && IsAimingNow) // Start to aim
@@ -257,6 +277,7 @@ void AThirdPersonCharacter::Sprint(float Value)
 void AThirdPersonCharacter::ShootingMode(float Value)
 {
 	if (Value < 0.5f || !AnimState.bIsAiming || AnimState.bIsReloading || AnimState.bIsShooting) return;
+	
 	// TODO make unable to shoot if hands are in anim transition between idle/aiming
 
 	float CurrentTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
@@ -266,10 +287,38 @@ void AThirdPersonCharacter::ShootingMode(float Value)
 	AnimState.bIsShooting = true;
 	ReplicateAnimationStateChange();
 
-	FShootData ShootData;
-	Server_Shoot(ShootData);
+	// Gathering info about what we are about to hit
 
-	// TODO Add shoot particles and damage particles
+	FVector CameraRotation;
+	
+	if (auto PlayerController = GetController<APlayerController>())
+		CameraRotation = PlayerController->PlayerCameraManager->GetCameraRotation().Vector().GetUnsafeNormal();
+	else CameraRotation = GetActorForwardVector();
+
+	FHitResult HitResult = FHitResult();
+	FVector StartLocation = GetShootCheckOrigin()->GetComponentLocation();
+	FVector EndLocation = StartLocation + CameraRotation * ShootingDistance;
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+
+	GetWorld()->LineTraceSingleByProfile(HitResult, StartLocation, EndLocation, TEXT("Destructible"), QueryParams); // Meshes have that preset by default
+
+	AActor* TargetActor = nullptr;
+	if (HitResult.Actor.IsValid())
+		TargetActor = Cast<AThirdPersonCharacter>(HitResult.Actor.Get());
+
+	if (TargetActor) { UE_LOG(LogTemp, Warning, TEXT("HIT %s"), *TargetActor->GetFName().ToString()); }
+
+	// Setting up info about our hit to send to server
+	FShootData ShootData;
+
+	ShootData.Shooter = this;
+	ShootData.Target = TargetActor;
+	ShootData.ImpactLocation = HitResult.Location;
+	ShootData.ImpactNormal = HitResult.Normal;
+
+	if (!HasAuthority()) OnRep_Shot(ShootData);
+	Server_Shoot(ShootData);
 }
 
 void AThirdPersonCharacter::ReloadWeapon()
@@ -291,13 +340,6 @@ float AThirdPersonCharacter::GetRemotePitchAsFloat()
 	float UnclampedValue = (float)RemoteViewPitch * 360.0f / 255.0f;
 	if (UnclampedValue > 180.f) return UnclampedValue - 360;
 	else return UnclampedValue;
-}
-
-void AThirdPersonCharacter::ReloadingAnimationEnded()
-{
-	// Gets called from AnimBP
-	AnimState.bIsReloading = false;
-	ReplicateAnimationStateChange();
 }
 
 // BEGIN General logic
@@ -331,7 +373,6 @@ void AThirdPersonCharacter::OnRep_HealthChanged()
 
 		OnPreparedForNewRound();
 	}
-		
 }
 
 void AThirdPersonCharacter::OnRep_VIPChanged()
@@ -359,7 +400,12 @@ void AThirdPersonCharacter::ReplicateAnimationStateChange()
 
 // END General logic
 
-// BEGIN Server logic
+USceneComponent* AThirdPersonCharacter::GetShootCheckOrigin_Implementation()
+{
+	return RootComponent; // Should be overriden in BP
+}
+
+// BEGIN Shooting Server and Client logic
 bool AThirdPersonCharacter::Server_Shoot_Validate(FShootData Data)
 {
 	return true;
@@ -367,7 +413,22 @@ bool AThirdPersonCharacter::Server_Shoot_Validate(FShootData Data)
 
 void AThirdPersonCharacter::Server_Shoot_Implementation(FShootData Data)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Server_Shoot_Implementation"));
+	OnRep_Shot(Data);
+
+	/// TODO Replicate Shot for every client except shooter`s owner
+	// Client_ReplicateShoot(ShootData);
+	// DEBUG
+	if (Data.Shooter && Data.Target)
+	{
+		FDamageEvent DamageEvent;
+		Data.Target->TakeDamage(100.f, DamageEvent, nullptr, Data.Shooter);
+	}
+	// DEBUG
+}
+
+void AThirdPersonCharacter::Client_ReplicateShoot_Implementation(FShootData Data)
+{
+
 }
 
 // END Server logic
