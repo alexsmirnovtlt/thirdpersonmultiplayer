@@ -219,7 +219,6 @@ void AThirdPersonCharacter::LookUpAtRate(float Value) // Should not be called fo
 		auto TargetCntrRot = CameraBoom->GetComponentRotation();
 		TargetCntrRot.Pitch += AddedPitch;
 		if (Controller) Controller->SetControlRotation(TargetCntrRot);
-		SetRemoteViewPitch(TargetCntrRot.Pitch); // TODO doesnt work
 	}
 }
 
@@ -276,7 +275,7 @@ void AThirdPersonCharacter::Sprint(float Value)
 
 void AThirdPersonCharacter::ShootingMode(float Value)
 {
-	if (Value < 0.5f || !AnimState.bIsAiming || AnimState.bIsReloading || AnimState.bIsShooting) return;
+	if (Value < 0.5f || !AnimState.bIsAiming || AnimState.bIsReloading) return;
 	
 	// TODO make unable to shoot if hands are in anim transition between idle/aiming
 
@@ -284,7 +283,6 @@ void AThirdPersonCharacter::ShootingMode(float Value)
 	if (CurrentTime - LastShootingTime < ShootingTimeCooldownMS) return;
 
 	LastShootingTime = CurrentTime;
-	AnimState.bIsShooting = true;
 	ReplicateAnimationStateChange();
 
 	// Gathering info about what we are about to hit
@@ -307,8 +305,6 @@ void AThirdPersonCharacter::ShootingMode(float Value)
 	if (HitResult.Actor.IsValid())
 		TargetActor = Cast<AThirdPersonCharacter>(HitResult.Actor.Get());
 
-	if (TargetActor) { UE_LOG(LogTemp, Warning, TEXT("HIT %s"), *TargetActor->GetFName().ToString()); }
-
 	// Setting up info about our hit to send to server
 	FShootData ShootData;
 
@@ -316,8 +312,9 @@ void AThirdPersonCharacter::ShootingMode(float Value)
 	ShootData.Target = TargetActor;
 	ShootData.ImpactLocation = HitResult.Location;
 	ShootData.ImpactNormal = HitResult.Normal;
-
-	if (!HasAuthority()) OnRep_Shot(ShootData);
+	ShootData.ServerTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
+	
+	OnRep_Shot(ShootData); // Local visualization
 	Server_Shoot(ShootData);
 }
 
@@ -406,29 +403,43 @@ USceneComponent* AThirdPersonCharacter::GetShootCheckOrigin_Implementation()
 }
 
 // BEGIN Shooting Server and Client logic
+
 bool AThirdPersonCharacter::Server_Shoot_Validate(FShootData Data)
 {
+	// TODO Add Validation that player really hit that actor and was not cheating
+	// For that:
+	// - We need to store all pawn`s locations for a period of time (usually a few seconds total, lets say 30 snapshots per second). Better place for this can be a GameMode
+	// - Find closest stored location`s timestamp for shooter and target using FShootData.ServerTime
+	// - Spawn test capsules and raycast to check if hit could have really happened
+
 	return true;
 }
 
 void AThirdPersonCharacter::Server_Shoot_Implementation(FShootData Data)
 {
-	OnRep_Shot(Data);
+	if (!Data.Shooter) return;
+	auto ShooterPawn = CastChecked<AThirdPersonCharacter>(Data.Shooter);
+	AThirdPersonCharacter* TargetPawn = nullptr;
 
-	/// TODO Replicate Shot for every client except shooter`s owner
-	// Client_ReplicateShoot(ShootData);
-	// DEBUG
-	if (Data.Shooter && Data.Target)
+	if(Data.Target) TargetPawn = CastChecked<AThirdPersonCharacter>(Data.Target);
+
+	// Replicating Shot for every client except shooter himself
+	for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		TWeakObjectPtr<APlayerController> WeakPC = *Iterator;
+		if (!WeakPC.IsValid()) continue;
+
+		auto PC = WeakPC.Get();
+		if (Data.Shooter->GetNetOwningPlayer() == PC->Player) continue;
+
+		CastChecked<AGamePlayerController>(PC)->Client_ReplicateShot(Data);
+	}
+
+	if (TargetPawn)
 	{
 		FDamageEvent DamageEvent;
-		Data.Target->TakeDamage(100.f, DamageEvent, nullptr, Data.Shooter);
+		TargetPawn->TakeDamage(DamagePerShot, DamageEvent, nullptr, Data.Shooter);
 	}
-	// DEBUG
-}
-
-void AThirdPersonCharacter::Client_ReplicateShoot_Implementation(FShootData Data)
-{
-
 }
 
 // END Server logic

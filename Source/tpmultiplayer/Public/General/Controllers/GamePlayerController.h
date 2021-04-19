@@ -3,7 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "General/GameplayStructs.h"
 #include "GameFramework/PlayerController.h"
+
 #include "GamePlayerController.generated.h"
 
 enum class ETeamType : uint8;
@@ -36,6 +38,9 @@ public:
 	class AGameplayGameState* GetGameplayState() const { return GameplayState; };
 
 	void ChangeInputMode(bool bMenuMode);
+
+	UFUNCTION(Client, Reliable)
+	void Client_ReplicateShot(const struct FShootData& ShootData);
 
 protected:
 
@@ -80,6 +85,6 @@ public:
 
 	// END Input
 
-private:
-	static const float NewControlRotationPitchOnPawnPossess;
+//private:
+	//static const float NewControlRotationPitchOnPawnPossess;
 };

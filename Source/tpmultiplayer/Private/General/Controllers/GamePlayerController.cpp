@@ -7,12 +7,11 @@
 #include "GameFramework/Pawn.h"
 #include "Net/UnrealNetwork.h"
 
+#include "General/Pawns/ThirdPersonCharacter.h"
 #include "General/States/GameplayGameState.h"
 #include "General/MultiplayerGameInstance.h"
 #include "General/GameModes/MainGameMode.h"
 #include "General/HUD/GameplayHUD.h"
-
-const float AGamePlayerController::NewControlRotationPitchOnPawnPossess = -30.f;
 
 AGamePlayerController::AGamePlayerController()
 {
@@ -46,16 +45,7 @@ void AGamePlayerController::OnRep_Pawn()
 	Super::OnRep_Pawn();
 
 	if(IsValid(GameplayHUD)) GameplayHUD->MainMenu_Hide();
-
-	if (GetPawn())
-	{
-		// Setting control rotation so camera will be set behind the character
-		FRotator NewControlRotation = GetPawn()->GetActorRotation();
-		NewControlRotation.Roll = 0.f;
-		NewControlRotation.Add(NewControlRotationPitchOnPawnPossess, 0, 0);
-		ControlRotation = NewControlRotation;
-	}
-	else if(!IsInState(NAME_Spectating)) ChangeState(NAME_Spectating);
+	if (!GetPawn() && !IsInState(NAME_Spectating)) ChangeState(NAME_Spectating); // Locally spawn spectator pawn 
 }
 
 void AGamePlayerController::JoinGameAsPlayer()
@@ -67,19 +57,7 @@ void AGamePlayerController::JoinGameAsPlayer()
 void AGamePlayerController::JoinGameAsSpectator()
 {
 	GameplayHUD->GameplayMenu_Show();
-
-	if (IsInState(NAME_Inactive))
-	{
-		// Its our first join as a spectator that has no pawn. Without this check spectator will probably spawn at FVector::ZeroVector with zero rotation. We have a special Player Start for that
-		auto GameState = GetWorld()->GetGameState<AGameplayGameState>();
-		ControlRotation = GameState->GetSpectatorInitialSpawnRotation(); // Spectator pawn`s rotation is set from Control Rotation
-		ChangeState(NAME_Spectating); // Creating and posessing local Spectator Pawn
-		GetSpectatorPawn()->SetActorLocation(GameState->GetSpectatorInitialSpawnLocation()); // Manually setting spectator`s location
-
-		GameplayHUD->MainMenu_Hide();
-	}
-	
-	Server_PlayerWantsToSpectate(); // Server will update state to spectating
+	Server_PlayerWantsToSpectate();
 }
 
 void AGamePlayerController::ReturnToLobby()
@@ -144,6 +122,15 @@ void AGamePlayerController::Server_PlayerWantsToSpectate_Implementation()
 }
 
 // END Server logic
+
+// BEGIN Client logic
+
+void AGamePlayerController::Client_ReplicateShot_Implementation(const FShootData& ShootData)
+{
+	if (ShootData.Shooter) CastChecked<AThirdPersonCharacter>(ShootData.Shooter)->OnRep_Shot(ShootData);
+}
+
+// END Client logic
 
 void AGamePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {

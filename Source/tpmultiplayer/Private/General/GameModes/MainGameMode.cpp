@@ -97,10 +97,6 @@ void AMainGameMode::SetupSpawnLocations()
 		if (GameplayState->CurrentPlayers_BlueTeam == 0) { auto NewActor = GetWorld()->SpawnActor<AGameplayPlayerStart>(); NewActor->TeamType = ETeamType::BlueTeam; TeamSpawnLocations.Add(NewActor);  GameplayState->CurrentPlayers_BlueTeam++; }
 		if (GameplayState->CurrentPlayers_RedTeam == 0) { auto NewActor = GetWorld()->SpawnActor<AGameplayPlayerStart>(); NewActor->TeamType = ETeamType::RedTeam; TeamSpawnLocations.Add(NewActor);  GameplayState->CurrentPlayers_RedTeam++; }
 	}
-
-	// Setting up initial spectator location
-	GameplayState->SpectatorInitialSpawnLocation = SpectatorSpawn->GetActorLocation();
-	GameplayState->SpectatorInitialSpawnRotation = SpectatorSpawn->GetActorRotation();
 }
 
 void AMainGameMode::SetupPlayableCharacters()

@@ -35,9 +35,6 @@ void AGameplayGameState::GetLifetimeReplicatedProps(TArray <FLifetimeProperty>& 
 
 	DOREPLIFETIME(AGameplayGameState, CurrentMatchData);
 
-	DOREPLIFETIME_CONDITION(AGameplayGameState, SpectatorInitialSpawnLocation, COND_InitialOnly);
-	DOREPLIFETIME_CONDITION(AGameplayGameState, SpectatorInitialSpawnRotation, COND_InitialOnly);
-
 	DOREPLIFETIME_CONDITION(AGameplayGameState, CurrentPlayers_RedTeam, COND_InitialOnly); 
 	DOREPLIFETIME_CONDITION(AGameplayGameState, CurrentPlayers_BlueTeam, COND_InitialOnly);
 }

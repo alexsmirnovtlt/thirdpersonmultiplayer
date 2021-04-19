@@ -4,52 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "General/GameplayStructs.h"
+
 #include "ThirdPersonCharacter.generated.h"
-
-USTRUCT(Blueprintable)
-struct FCharacterAnimState
-{
-	GENERATED_BODY()
-
-	FCharacterAnimState()
-	{
-		bIsDead = false;
-		bIsAiming = false;
-		bIsReloading = false;
-		bIsShooting = false;
-	}
-
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bIsDead;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bIsAiming;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bIsReloading;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bIsShooting;
-};
-
-USTRUCT(Blueprintable)
-struct FShootData
-{
-	GENERATED_BODY()
-
-	FShootData()
-	{
-		//ShooterLocation = FVector(0);
-	}
-
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	AActor* Shooter;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	AActor* Target;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FVector_NetQuantize ImpactLocation;
-	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	FVector_NetQuantizeNormal ImpactNormal;
-};
 
 enum class ETeamType : uint8;
 
@@ -111,10 +68,8 @@ protected:
 	void CurrentRelativeToPawnVelocity(float Axis_X, float Axis_Y); // used in AnimBP to blend legs movement
 	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
 	void CurrentControllerPitch(float Pitch);
-	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
-	void OnRep_Shot(FShootData ShootData);
 	
-	UFUNCTION(BlueprintNativeEvent, Category = "Pawn Events")
+	UFUNCTION(BlueprintNativeEvent, Category = "Override - Third Person Character")
 	class USceneComponent* GetShootCheckOrigin();
 	
 	void AuthPrepareForNewGameRound();
@@ -130,19 +85,17 @@ protected:
 	
 	UFUNCTION(BlueprintCallable, Category = "Pawn Animation State")
 	void ReplicateAnimationStateChange();
-	
-	bool bViewObstructed; // Do we have a space in front of this pawn to enter aiming state
-
 	//
+
+	bool bViewObstructed; // Do we have a space in front of this pawn to enter aiming state
 
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_Shoot(FShootData Data);
 	bool Server_Shoot_Validate(FShootData Data);
 	void Server_Shoot_Implementation(FShootData Data);
-
-	UFUNCTION(Client, Reliable)
-	void Client_ReplicateShoot(FShootData Data);
-	void Client_ReplicateShoot_Implementation(FShootData Data);
+public:
+	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
+	void OnRep_Shot(FShootData ShootData);
 
 	// BEGIN Input Related logic
 
@@ -176,6 +129,8 @@ protected:
 	float ForwardDistanceToAbleToAim = 65.f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Shooting")
 	float ShootingDistance = 10000.f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Shooting")
+	float DamagePerShot = 100.f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Effects")
 	class UParticleSystem* ShootParticleEffect_Generic;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Effects")

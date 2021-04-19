@@ -12,7 +12,8 @@
 				"Engine",
 				"Slate",
 				"SlateCore",
-				"AIModule"
+				"AIModule",
+				"CoreUObject"
 			]
 		}
 	],

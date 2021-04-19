@@ -145,7 +145,6 @@ void ALobbyGameMode::OnFindSessionsComplete(bool Success)
 
 void ALobbyGameMode::OnDestroySessionComplete(FName SessionName, bool Success)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Session \"%s\" was destroyed"), *SessionName.ToString());
 	LobbyWidget.Get()->ResetButtonState();
 }
 
