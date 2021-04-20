@@ -166,7 +166,7 @@ void AThirdPersonCharacter::MoveForward(float Value)
 	const FVector Direction = FRotationMatrix(ForwardRotation).GetUnitAxis(EAxis::X);
 
 	AddMovementInput(Direction, Value);
-	if (Controller) Controller->SetControlRotation(CameraGimbal->GetComponentRotation());
+	if (Controller && Controller->IsPlayerController()) Controller->SetControlRotation(CameraGimbal->GetComponentRotation());
 }
 
 void AThirdPersonCharacter::MoveRight(float Value)
@@ -184,7 +184,7 @@ void AThirdPersonCharacter::MoveRight(float Value)
 	const FVector Direction = FRotationMatrix(ForwardRotation).GetUnitAxis(EAxis::Y);
 
 	AddMovementInput(Direction, Value);
-	if (Controller) Controller->SetControlRotation(CameraGimbal->GetComponentRotation());
+	if (Controller && Controller->IsPlayerController()) Controller->SetControlRotation(CameraGimbal->GetComponentRotation());
 }
 
 void AThirdPersonCharacter::TurnAtRate(float Value) // Should not be called for AIs 
