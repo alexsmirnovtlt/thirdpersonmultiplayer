@@ -79,6 +79,13 @@ protected:
 
 	// END Match logic
 
+	// BEGIN GAS parameters and Logic
+
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> MovementAbility;
+	
+	// END GAS parameters and Logic
+	
 	static const FString NewPlayerOptionsNameKey; // When new PlayerController gets created, set its name from option parameter with that key name on AMainGameMode::Login() 
 
 public:

@@ -15,6 +15,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 
+#include "General/GameplayAbilitySystem/DefaultPawnAttributeSet.h"
 #include "General/Controllers/GamePlayerController.h"
 #include "General/States/GameplayGameState.h"
 
@@ -66,6 +67,8 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
+	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("Ability System Component"));
+
 	AutoPossessAI = EAutoPossessAI::Disabled;
 }
 
@@ -74,6 +77,9 @@ void AThirdPersonCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	if (HasAuthority()) CurrentHealth = StartingHealth;
+
+	//AttributeSet = AbilitySystemComponent->GetSet<UDefaultPawnAttributeSet>();
+	//if (!AttributeSet) UE_LOG(LogTemp, Error, TEXT("AThirdPersonCharacter: Incorrect AttributeSet"));
 }
 
 void AThirdPersonCharacter::Tick(float DeltaTime)

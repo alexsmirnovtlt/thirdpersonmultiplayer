@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "General/GameplayStructs.h"
+#include "AbilitySystemInterface.h"
 
 #include "ThirdPersonCharacter.generated.h"
 
@@ -13,7 +14,7 @@ enum class ETeamType : uint8;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPawnKilledDelegate, AThirdPersonCharacter*, DiedPawn);
 
 UCLASS(abstract)
-class TPMULTIPLAYER_API AThirdPersonCharacter : public ACharacter
+class TPMULTIPLAYER_API AThirdPersonCharacter : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -29,6 +30,8 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	float TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return AbilitySystemComponent; }
 
 public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
@@ -73,6 +76,15 @@ protected:
 	class USceneComponent* GetShootCheckOrigin();
 	
 	void AuthPrepareForNewGameRound();
+
+	// GAS related 
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "GAS")
+	class UAbilitySystemComponent* AbilitySystemComponent;
+	//UPROPERTY()
+	//const class UDefaultPawnAttributeSet* AttributeSet;
+
+	//
 
 	// Animation variables and their replication
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, ReplicatedUsing=OnAnimStateChanged)

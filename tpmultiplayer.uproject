@@ -13,7 +13,8 @@
 				"Slate",
 				"SlateCore",
 				"AIModule",
-				"CoreUObject"
+				"CoreUObject",
+				"GameplayAbilities"
 			]
 		}
 	],
@@ -364,6 +365,10 @@
 		},
 		{
 			"Name": "FMODStudio",
+			"Enabled": true
+		},
+		{
+			"Name": "GameplayAbilities",
 			"Enabled": true
 		}
 	],

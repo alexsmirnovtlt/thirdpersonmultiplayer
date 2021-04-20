@@ -4,6 +4,7 @@
 #include "General/GameModes/MainGameMode.h"
 
 #include "GameFramework/PlayerController.h"
+#include "AbilitySystemComponent.h"
 #include "EngineUtils.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
@@ -319,6 +320,14 @@ void AMainGameMode::MatchPhaseEnd_Warmup(const FMatchParameters& MatchParameters
 	// Granting moving, aiming, shooting abilities to everyone
 
 	// TODO actually do that
+
+	FGameplayAbilitySpec AbilitySpec( MovementAbility, 0, 0);
+
+	for (auto Char : TeamPawns)
+	{
+		//Char->GetAbilitySystemComponent()->GiveAbility(AbilitySpec);
+		//Char->GetAbilitySystemComponent()->AbilityLocalInputPressed(0);
+	}
 }
 
 void AMainGameMode::MatchPhaseEnd_Gameplay(const FMatchParameters& MatchParameters, const FMatchData& CurrentMatchData)
@@ -335,6 +344,12 @@ void AMainGameMode::MatchPhaseEnd_RoundEnd(const FMatchParameters& MatchParamete
 	// Removing ability to pick up a flag from one team, grantimg it to another team
 
 	// TODO actually do that
+
+	for (auto Char : TeamPawns)
+	{
+		//Char->GetAbilitySystemComponent()->LocalInputCancel();
+	}
+		//Char->GetAbilitySystemComponent()->CancelAbility(MovementAbility.GetDefaultObject());
 }
 
 void AMainGameMode::StopCurrentMatchTimer()
