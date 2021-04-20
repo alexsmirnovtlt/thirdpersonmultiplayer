@@ -33,6 +33,8 @@ protected:
 	void OnMatchStateChanged();
 	EMatchState CurrentMatchState;
 
+	FDelegateHandle MatchStateChangedDelegateHandle;
+
 	// DEBUG
 	float DEBUG_DeltaTimePassed;
 	bool DEBUG_ClockwiseRotation;

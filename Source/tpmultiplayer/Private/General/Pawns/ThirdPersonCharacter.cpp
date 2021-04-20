@@ -299,7 +299,7 @@ void AThirdPersonCharacter::ShootingMode(float Value)
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(this);
 
-	GetWorld()->LineTraceSingleByProfile(HitResult, StartLocation, EndLocation, TEXT("Destructible"), QueryParams); // Meshes have that preset by default
+	bool bValidHit = GetWorld()->LineTraceSingleByProfile(HitResult, StartLocation, EndLocation, TEXT("Destructible"), QueryParams); // Meshes have that preset by default
 
 	AActor* TargetActor = nullptr;
 	if (HitResult.Actor.IsValid())
@@ -310,10 +310,11 @@ void AThirdPersonCharacter::ShootingMode(float Value)
 
 	ShootData.Shooter = this;
 	ShootData.Target = TargetActor;
+	ShootData.bIsValidHit = bValidHit;
 	ShootData.ImpactLocation = HitResult.Location;
 	ShootData.ImpactNormal = HitResult.Normal;
 	ShootData.ServerTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
-	
+
 	OnRep_Shot(ShootData); // Local visualization
 	Server_Shoot(ShootData);
 }

@@ -8,8 +8,6 @@
 
 #include "GameplayGameState.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMatchDataChangedDelegate);
-
 /**
  * Main GameState that used for replicating Match State related parameters
  */
@@ -32,7 +30,8 @@ public:
 	const uint8 GetNumPlayers_Redteam() { return CurrentPlayers_RedTeam; };
 	const uint8 GetNumPlayers_Blueteam() { return CurrentPlayers_BlueTeam; };
 
-	FOnMatchDataChangedDelegate OnMatchDataChangedEvent;
+	DECLARE_EVENT(AGameplayGameState, FOnMatchDataChangedEvent);
+	FOnMatchDataChangedEvent& OnMatchDataChanged() { return OnMatchDataChangedEvent; };
 
 protected:
 
@@ -49,4 +48,6 @@ protected:
 	uint8 CurrentPlayers_RedTeam;
 	UPROPERTY(Replicated)
 	uint8 CurrentPlayers_BlueTeam;
+
+	FOnMatchDataChangedEvent OnMatchDataChangedEvent;
 };

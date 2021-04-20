@@ -3,6 +3,8 @@
 
 #include "General/Controllers/GameplayAIController.h"
 
+#include "Delegates/IDelegateInstance.h"
+
 #include "General/Pawns/ThirdPersonCharacter.h"
 #include "General/States/GameplayGameState.h"
 
@@ -23,7 +25,7 @@ void AGameplayAIController::BeginPlay()
 
 void AGameplayAIController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	if (GameState) GameState->OnMatchDataChangedEvent.RemoveDynamic(this, &AGameplayAIController::OnMatchStateChanged);
+	Super::EndPlay(EndPlayReason);
 }
 
 void AGameplayAIController::Tick(float DeltaTime)
@@ -62,15 +64,15 @@ void AGameplayAIController::OnPossess(class APawn* InPawn)
 	PossessedCharacter = Cast<AThirdPersonCharacter>(InPawn);
 	if (!PossessedCharacter || !GameState) return;
 
-	GameState->OnMatchDataChangedEvent.AddDynamic(this, &AGameplayAIController::OnMatchStateChanged);
 	OnMatchStateChanged();
+	MatchStateChangedDelegateHandle = GameState->OnMatchDataChanged().AddUObject(this, &AGameplayAIController::OnMatchStateChanged);
 }
 
 void AGameplayAIController::OnUnPossess()
 {
-	if (GameState) GameState->OnMatchDataChangedEvent.RemoveDynamic(this, &AGameplayAIController::OnMatchStateChanged);
-
 	Super::OnUnPossess();
+
+	GameState->OnMatchDataChanged().Remove(MatchStateChangedDelegateHandle);
 }
 
 void AGameplayAIController::OnMatchStateChanged()

@@ -21,7 +21,8 @@ void AGameplayHUD::BeginPlay()
 	
 	// Event that will fire every time MatchData was received from the server so we need to update out HUD info about current match state (time, score, etc)
 	if (auto GameState = GameplayPlayerController->GetGameplayState())
-		GameState->OnMatchDataChangedEvent.AddDynamic(this, &AGameplayHUD::OnMatchDataUpdated);
+		GameState->OnMatchDataChanged().AddUObject(this, &AGameplayHUD::OnMatchDataUpdated);
+
 
 	MainMenu_Show(); // Creating and showing main menu widget so player can join a game or return to lobby
 }
@@ -30,9 +31,6 @@ void AGameplayHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	MainMenu_Hide();
 	GameplayMenu_Hide();
-
-	if(GameplayPlayerController && GameplayPlayerController->GetGameplayState())
-		GameplayPlayerController->GetGameplayState()->OnMatchDataChangedEvent.RemoveDynamic(this, &AGameplayHUD::OnMatchDataUpdated);
 
 	Super::EndPlay(EndPlayReason);
 }

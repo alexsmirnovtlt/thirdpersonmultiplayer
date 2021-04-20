@@ -158,9 +158,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	AActor* Target;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	bool bIsValidHit; // Should we visualize ImpactLocation and ImpactNormal
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FVector_NetQuantize ImpactLocation;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FVector_NetQuantizeNormal ImpactNormal;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	float  ServerTime;
+	float ServerTime;
 };
