@@ -68,6 +68,7 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("Ability System Component"));
+	AbilitySystemComponent->SetIsReplicated(true);
 
 	AutoPossessAI = EAutoPossessAI::Disabled;
 }
@@ -78,8 +79,8 @@ void AThirdPersonCharacter::BeginPlay()
 
 	if (HasAuthority()) CurrentHealth = StartingHealth;
 
-	//AttributeSet = AbilitySystemComponent->GetSet<UDefaultPawnAttributeSet>();
-	//if (!AttributeSet) UE_LOG(LogTemp, Error, TEXT("AThirdPersonCharacter: Incorrect AttributeSet"));
+	// TODO Subscribe to health and max speed changes ?
+	//AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate()
 }
 
 void AThirdPersonCharacter::Tick(float DeltaTime)

@@ -7,6 +7,12 @@
 #include "AbilitySystemComponent.h"
 #include "DefaultPawnAttributeSet.generated.h"
 
+#define ATTRIBUTE_ACCESSORS(ClassName, PropertyName) \
+	GAMEPLAYATTRIBUTE_PROPERTY_GETTER(ClassName, PropertyName) \
+	GAMEPLAYATTRIBUTE_VALUE_GETTER(PropertyName) \
+	GAMEPLAYATTRIBUTE_VALUE_SETTER(PropertyName) \
+	GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)
+
 /**
  * 
  */
@@ -17,17 +23,24 @@ class TPMULTIPLAYER_API UDefaultPawnAttributeSet : public UAttributeSet
 
 public:
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character")
+	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	UPROPERTY(BlueprintReadOnly, Category = "AttributeSet", ReplicatedUsing = OnRep_Health)
 	FGameplayAttributeData Health;
-	GAMEPLAYATTRIBUTE_VALUE_GETTER(Health);
-	GAMEPLAYATTRIBUTE_VALUE_SETTER(Health);
-	GAMEPLAYATTRIBUTE_VALUE_INITTER(Health);
-	GAMEPLAYATTRIBUTE_PROPERTY_GETTER(UDefaultPawnAttributeSet, Health);
+	ATTRIBUTE_ACCESSORS(UDefaultPawnAttributeSet, Health)
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character")
+	UPROPERTY(BlueprintReadOnly, Category = "AttributeSet")
 	FGameplayAttributeData WeaponDamage;
-	//GAMEPLAYATTRIBUTE_VALUE_GETTER(WeaponDamage);
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character")
+	UPROPERTY(BlueprintReadOnly, Category = "AttributeSet", ReplicatedUsing = OnRep_MovementSpeed)
 	FGameplayAttributeData MovementSpeed;
+	ATTRIBUTE_ACCESSORS(UDefaultPawnAttributeSet, MovementSpeed)
+
+protected:
+
+	UFUNCTION()
+	virtual void OnRep_Health(const FGameplayAttributeData& OldValue);
+	UFUNCTION()
+	virtual void OnRep_MovementSpeed(const FGameplayAttributeData& OldValue);
 };

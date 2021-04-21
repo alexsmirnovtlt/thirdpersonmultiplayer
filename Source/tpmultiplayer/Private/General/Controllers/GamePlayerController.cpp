@@ -4,6 +4,7 @@
 #include "General/Controllers/GamePlayerController.h"
 
 #include "GameFramework/SpectatorPawn.h"
+#include "AbilitySystemComponent.h"
 #include "GameFramework/Pawn.h"
 #include "Net/UnrealNetwork.h"
 
@@ -46,6 +47,14 @@ void AGamePlayerController::OnRep_Pawn()
 
 	if(IsValid(GameplayHUD)) GameplayHUD->MainMenu_Hide();
 	if (!GetPawn() && !IsInState(NAME_Spectating)) ChangeState(NAME_Spectating); // Locally spawn spectator pawn 
+}
+
+void AGamePlayerController::AcknowledgePossession(class APawn* P)
+{
+	Super::AcknowledgePossession(P);
+
+	if (AThirdPersonCharacter* TPCharacter = Cast<AThirdPersonCharacter>(P))
+		TPCharacter->GetAbilitySystemComponent()->InitAbilityActorInfo(this, TPCharacter);
 }
 
 void AGamePlayerController::JoinGameAsPlayer()

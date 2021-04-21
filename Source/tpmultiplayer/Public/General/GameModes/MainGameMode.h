@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "GameplayTagContainer.h"
+
 #include "MainGameMode.generated.h"
 
 enum class ETeamType : uint8;
@@ -81,9 +83,16 @@ protected:
 
 	// BEGIN GAS parameters and Logic
 
+	// Ability that allows Pawns to move, shoot, aim, etc that is activated when main game phase begins
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<class UGameplayAbility> MovementAbility;
-	
+	TSubclassOf<class UGameplayAbility> WarmupPhasePawnAbility;
+	// Opposite of ActivePawnAbility. Pawn cannot do anything. Activated before main game phase or when pawn got killed
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> MainPhasePawnAbility;
+	// Tags to remove from ActivePawnAbility when End Round phase starts
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	FGameplayTagContainer RoundEndPhaseAbilityTagsToRevoke;
+
 	// END GAS parameters and Logic
 	
 	static const FString NewPlayerOptionsNameKey; // When new PlayerController gets created, set its name from option parameter with that key name on AMainGameMode::Login() 

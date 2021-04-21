@@ -26,6 +26,7 @@ public:
 	void BeginPlay() override;
 	void OnRep_Pawn() override;
 	void PawnLeavingGame() override {}; // Pawn will not be destroyed
+	void AcknowledgePossession(class APawn* P) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:

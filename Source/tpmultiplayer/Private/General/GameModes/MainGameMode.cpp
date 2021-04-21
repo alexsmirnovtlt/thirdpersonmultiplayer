@@ -107,6 +107,9 @@ void AMainGameMode::SetupPlayableCharacters()
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
+	FGameplayAbilitySpec WarmupAbilitySpec(WarmupPhasePawnAbility.GetDefaultObject(), 0, INDEX_NONE);
+	FGameplayAbilitySpec MainAbilitySpec(MainPhasePawnAbility.GetDefaultObject(), 0, INDEX_NONE);
+
 	for (auto& SpawnLocation : TeamSpawnLocations)
 	{
 		AThirdPersonCharacter* Character;
@@ -120,10 +123,18 @@ void AMainGameMode::SetupPlayableCharacters()
 		AIController->GameState = GameplayState;
 		AIController->Possess(Character);
 
-		TeamPawns.Add(Character);
-		InGameControllers_AI.Add(AIController);
+		// Giving and Activating starting Gameplay Abilities
+		auto GameplayAbilityComp = Character->GetAbilitySystemComponent();
+
+		GameplayAbilityComp->GiveAbility(MainAbilitySpec);
+		auto Handle = GameplayAbilityComp->GiveAbility(WarmupAbilitySpec);
+		GameplayAbilityComp->TryActivateAbility(Handle);
+		//
 
 		Character->OnPawnKilledEvent.AddDynamic(this, &AMainGameMode::OnPawnKilled);
+
+		TeamPawns.Add(Character);
+		InGameControllers_AI.Add(AIController);
 	}
 }
 
@@ -168,6 +179,8 @@ void AMainGameMode::AddPlayerToAMatch(AGamePlayerController* PlayerController)
 
 	PlayerController->Possess(ChosenPawn);
 	InGameControllers_Human.Add(PlayerController);
+
+	ChosenPawn->GetAbilitySystemComponent()->InitAbilityActorInfo(PlayerController, ChosenPawn);
 
 	PlayerController->ForceNetUpdate();
 	if (PlayerController->IsLocalPlayerController()) PlayerController->OnRep_Pawn();
@@ -319,37 +332,30 @@ void AMainGameMode::MatchPhaseEnd_Warmup(const FMatchParameters& MatchParameters
 {
 	// Granting moving, aiming, shooting abilities to everyone
 
-	// TODO actually do that
-
-	FGameplayAbilitySpec AbilitySpec( MovementAbility, 0, 0);
-
 	for (auto Char : TeamPawns)
-	{
-		//Char->GetAbilitySystemComponent()->GiveAbility(AbilitySpec);
-		//Char->GetAbilitySystemComponent()->AbilityLocalInputPressed(0);
-	}
+		Char->GetAbilitySystemComponent()->TryActivateAbilityByClass(MainPhasePawnAbility);
 }
 
 void AMainGameMode::MatchPhaseEnd_Gameplay(const FMatchParameters& MatchParameters, const FMatchData& CurrentMatchData)
 {
 	// Revoke aiming and shooting abilities from everyone
 
-	// TODO actually do that
+	for (auto Char : TeamPawns)
+		Char->GetAbilitySystemComponent()->RemoveActiveEffectsWithAppliedTags(RoundEndPhaseAbilityTagsToRevoke);
 }
 
 void AMainGameMode::MatchPhaseEnd_RoundEnd(const FMatchParameters& MatchParameters, const FMatchData& CurrentMatchData)
 {
 	// Removing ability to move from everyone
+	
+	// TODO change comment
 	// Granting one pawn an ability to place a flag, revoking that ability from others
 	// Removing ability to pick up a flag from one team, grantimg it to another team
 
-	// TODO actually do that
-
 	for (auto Char : TeamPawns)
-	{
-		//Char->GetAbilitySystemComponent()->LocalInputCancel();
-	}
-		//Char->GetAbilitySystemComponent()->CancelAbility(MovementAbility.GetDefaultObject());
+		Char->GetAbilitySystemComponent()->TryActivateAbilityByClass(WarmupPhasePawnAbility);
+
+	// TODO actually do that
 }
 
 void AMainGameMode::StopCurrentMatchTimer()

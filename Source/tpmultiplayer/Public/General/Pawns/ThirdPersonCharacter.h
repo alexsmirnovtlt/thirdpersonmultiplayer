@@ -71,7 +71,7 @@ protected:
 	void CurrentRelativeToPawnVelocity(float Axis_X, float Axis_Y); // used in AnimBP to blend legs movement
 	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
 	void CurrentControllerPitch(float Pitch);
-	
+
 	UFUNCTION(BlueprintNativeEvent, Category = "Override - Third Person Character")
 	class USceneComponent* GetShootCheckOrigin();
 	
@@ -81,10 +81,15 @@ protected:
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	class UAbilitySystemComponent* AbilitySystemComponent;
-	//UPROPERTY()
-	//const class UDefaultPawnAttributeSet* AttributeSet;
+
+public:
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
+	void OnMaxSpeedChanged(float NewMaxSpeed); // Gets called from AttibuseSet directly
 
 	//
+
+protected:
 
 	// Animation variables and their replication
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, ReplicatedUsing=OnAnimStateChanged)
