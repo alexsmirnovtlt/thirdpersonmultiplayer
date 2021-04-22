@@ -35,14 +35,9 @@ void AGameplayAIController::Tick(float DeltaTime)
 	if (!GetPawn() || !PossessedCharacter) return;
 
 	// TMP DEBUG
-	if (CurrentMatchState == EMatchState::Warmup)
+	if (CurrentMatchState == EMatchState::Warmup || CurrentMatchState == EMatchState::Gameplay)
 	{
 		PossessedCharacter->StopJumping();
-
-		// TODO debug rotate
-	}
-	else if (CurrentMatchState == EMatchState::Gameplay)
-	{
 		PossessedCharacter->MoveForward(DEBUG_MovementsSpeed);
 	}
 	else if (CurrentMatchState == EMatchState::RoundEnd)

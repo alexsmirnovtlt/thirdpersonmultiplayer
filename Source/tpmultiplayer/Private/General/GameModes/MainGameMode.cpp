@@ -128,7 +128,7 @@ void AMainGameMode::SetupPlayableCharacters()
 
 		GameplayAbilityComp->GiveAbility(MainAbilitySpec);
 		auto Handle = GameplayAbilityComp->GiveAbility(WarmupAbilitySpec);
-		GameplayAbilityComp->TryActivateAbility(Handle);
+		GameplayAbilityComp->TryActivateAbility(Handle, false);
 		//
 
 		Character->OnPawnKilledEvent.AddDynamic(this, &AMainGameMode::OnPawnKilled);
@@ -341,7 +341,7 @@ void AMainGameMode::MatchPhaseEnd_Gameplay(const FMatchParameters& MatchParamete
 	// Revoke aiming and shooting abilities from everyone
 
 	for (auto Char : TeamPawns)
-		Char->GetAbilitySystemComponent()->RemoveActiveEffectsWithAppliedTags(RoundEndPhaseAbilityTagsToRevoke);
+		Char->GetAbilitySystemComponent()->CancelAbilities(&RoundEndPhaseAbilityTagsToRevoke);
 }
 
 void AMainGameMode::MatchPhaseEnd_RoundEnd(const FMatchParameters& MatchParameters, const FMatchData& CurrentMatchData)

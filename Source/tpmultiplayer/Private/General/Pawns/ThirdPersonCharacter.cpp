@@ -16,10 +16,12 @@
 #include "Net/UnrealNetwork.h"
 
 #include "General/GameplayAbilitySystem/DefaultPawnAttributeSet.h"
+#include "General/ActorComponents/TPCMovementComponent.h"
 #include "General/Controllers/GamePlayerController.h"
 #include "General/States/GameplayGameState.h"
 
-AThirdPersonCharacter::AThirdPersonCharacter()
+AThirdPersonCharacter::AThirdPersonCharacter(const class FObjectInitializer& ObjectInitializer) :
+	Super(ObjectInitializer.SetDefaultSubobjectClass<UTPCMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -28,8 +30,6 @@ AThirdPersonCharacter::AThirdPersonCharacter()
 	AnimState = FCharacterAnimState();
 	AimingCameraSpringDistance = 50.f;
 	IdleCameraSpringDistance = 150.f;
-	MaxWalkSpeed = 200.f;
-	MaxSprintSpeed = 600.f;
 	LastShootingTime = 0.f;
 	LastReloadTime = 0.f;
 	ReloadTimeCooldownMS = 1.f;

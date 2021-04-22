@@ -19,7 +19,7 @@ class TPMULTIPLAYER_API AThirdPersonCharacter : public ACharacter, public IAbili
 	GENERATED_BODY()
 
 public:
-	AThirdPersonCharacter();
+	AThirdPersonCharacter(const class FObjectInitializer& ObjectInitializer);
 	friend class AMainGameMode;
 protected:
 	virtual void BeginPlay() override;
@@ -82,11 +82,6 @@ protected:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	class UAbilitySystemComponent* AbilitySystemComponent;
 
-public:
-
-	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
-	void OnMaxSpeedChanged(float NewMaxSpeed); // Gets called from AttibuseSet directly
-
 	//
 
 protected:
@@ -134,10 +129,6 @@ protected:
 	float AimingCameraSpringDistance;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - General")
 	float IdleCameraSpringDistance;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Movement")
-	float MaxWalkSpeed;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Movement")
-	float MaxSprintSpeed;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Shooting")
 	float ShootingTimeCooldownMS;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Shooting")

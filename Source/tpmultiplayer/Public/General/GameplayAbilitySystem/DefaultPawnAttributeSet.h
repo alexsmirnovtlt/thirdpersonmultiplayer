@@ -30,17 +30,8 @@ public:
 	FGameplayAttributeData Health;
 	ATTRIBUTE_ACCESSORS(UDefaultPawnAttributeSet, Health)
 
-	UPROPERTY(BlueprintReadOnly, Category = "AttributeSet")
-	FGameplayAttributeData WeaponDamage;
-
-	UPROPERTY(BlueprintReadOnly, Category = "AttributeSet", ReplicatedUsing = OnRep_MovementSpeed)
-	FGameplayAttributeData MovementSpeed;
-	ATTRIBUTE_ACCESSORS(UDefaultPawnAttributeSet, MovementSpeed)
-
 protected:
 
 	UFUNCTION()
 	virtual void OnRep_Health(const FGameplayAttributeData& OldValue);
-	UFUNCTION()
-	virtual void OnRep_MovementSpeed(const FGameplayAttributeData& OldValue);
 };

@@ -25,11 +25,6 @@ void UDefaultPawnAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 		// TODO Clamp Health, notify BP
 		// TODO Handle Health <= 0
 	}
-	else if (Data.EvaluatedData.Attribute == GetMovementSpeedAttribute())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("PostGameplayEffectExecute"));
-		if(TargetPawn) TargetPawn->OnMaxSpeedChanged(GetMovementSpeed());
-	}
 }
 
 void UDefaultPawnAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -37,15 +32,9 @@ void UDefaultPawnAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME_CONDITION_NOTIFY(UDefaultPawnAttributeSet, Health, COND_None, REPNOTIFY_Always);
-	DOREPLIFETIME_CONDITION_NOTIFY(UDefaultPawnAttributeSet, MovementSpeed, COND_None, REPNOTIFY_Always);
 }
 
 void UDefaultPawnAttributeSet::OnRep_Health(const FGameplayAttributeData& OldValue)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UDefaultPawnAttributeSet, Health, OldValue);
-}
-
-void UDefaultPawnAttributeSet::OnRep_MovementSpeed(const FGameplayAttributeData& OldValue)
-{
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UDefaultPawnAttributeSet, MovementSpeed, OldValue);
 }
