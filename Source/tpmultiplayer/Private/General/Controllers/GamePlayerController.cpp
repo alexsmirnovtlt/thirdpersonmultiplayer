@@ -155,16 +155,19 @@ const FName AGamePlayerController::HorizontalAxisBindingName("AxisHorizontal");
 const FName AGamePlayerController::VerticalAxisBindingName("AxisVertical");
 const FName AGamePlayerController::MoveForwardAxisBindingName("MoveForward");
 const FName AGamePlayerController::MoveRightAxisBindingName("MoveRight");
-const FName AGamePlayerController::PrimaryActionAxisBindingName("AxisPrimaryAction");
-const FName AGamePlayerController::SecondaryActionAxisBindingName("AxisSecondaryAction");
-const FName AGamePlayerController::SprintAxisBindingName("AxisSprint");
 
 // Actions
 const FName AGamePlayerController::MenuActionBindingName("Menu");
 const FName AGamePlayerController::GamePlayHUDBindingName("HUDToggle");
 const FName AGamePlayerController::AdditionalActionBindingName("AdditionalAction");
 const FName AGamePlayerController::SwitchShoulderBindingName("SwitchShoulder");
+const FName AGamePlayerController::ShootBindingName("Shoot");
+const FName AGamePlayerController::AimBindingName("Aim");
 const FName AGamePlayerController::ReloadBindingName("Reload");
+const FName AGamePlayerController::SprintBindingName("Sprint");
+const FName AGamePlayerController::AbilityConfirmBindingName("AbilityConfirm");
+const FName AGamePlayerController::AbilityCancelBindingName("AbilityCancel");
+
 // Debug
 const FName AGamePlayerController::DebugKillBindingName("DebugKill");
 

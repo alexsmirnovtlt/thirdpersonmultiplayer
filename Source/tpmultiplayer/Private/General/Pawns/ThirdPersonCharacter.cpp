@@ -30,10 +30,13 @@ AThirdPersonCharacter::AThirdPersonCharacter(const class FObjectInitializer& Obj
 	AnimState = FCharacterAnimState();
 	AimingCameraSpringDistance = 50.f;
 	IdleCameraSpringDistance = 150.f;
-	LastShootingTime = 0.f;
-	LastReloadTime = 0.f;
-	ReloadTimeCooldownMS = 1.f;
+
 	ShootingTimeCooldownMS = 0.5f;
+	ReloadTimeCooldownMS = 1.f;
+	LastReloadTime = 0.f;
+	LastShootingTime = 0.f;
+	
+	//bAbilityInputWasSet = false;
 	MaxPitch_FreeCamera = 75;
 	MaxPitch_Aiming = 60;
 	StartingHealth = 100;
@@ -144,16 +147,22 @@ void AThirdPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 	PlayerInputComponent->BindAxis(AGamePlayerController::MoveForwardAxisBindingName, this, &AThirdPersonCharacter::MoveForward);
 	PlayerInputComponent->BindAxis(AGamePlayerController::MoveRightAxisBindingName, this, &AThirdPersonCharacter::MoveRight);
 
-	PlayerInputComponent->BindAxis(AGamePlayerController::PrimaryActionAxisBindingName, this, &AThirdPersonCharacter::ShootingMode);
-	PlayerInputComponent->BindAxis(AGamePlayerController::SecondaryActionAxisBindingName, this, &AThirdPersonCharacter::AimingMode);
-
 	PlayerInputComponent->BindAxis(AGamePlayerController::HorizontalAxisBindingName, this, &AThirdPersonCharacter::TurnAtRate);
 	PlayerInputComponent->BindAxis(AGamePlayerController::VerticalAxisBindingName, this, &AThirdPersonCharacter::LookUpAtRate);
-	
-	PlayerInputComponent->BindAxis(AGamePlayerController::SprintAxisBindingName, this, &AThirdPersonCharacter::Sprint);
 
-	PlayerInputComponent->BindAction(AGamePlayerController::ReloadBindingName, IE_Pressed, this, &AThirdPersonCharacter::ReloadWeapon);
 	PlayerInputComponent->BindAction(AGamePlayerController::SwitchShoulderBindingName, IE_Pressed, this, &AThirdPersonCharacter::SwitchShoulderCamera);
+
+	// Binding Input in project settings with Ability system`s Ability Tasks
+
+	FGameplayAbilityInputBinds InputBinds = FGameplayAbilityInputBinds(
+		AGamePlayerController::AbilityConfirmBindingName.ToString(),
+		AGamePlayerController::AbilityCancelBindingName.ToString(),
+		FString("EAbilityInputID"), // enum name
+		int32(EAbilityInputID::AbilityConfirm),
+		int32(EAbilityInputID::AbilityCancel)
+	);
+
+	AbilitySystemComponent->BindAbilityActivationToInputComponent(PlayerInputComponent, InputBinds);
 }
 
 // BEGIN Input related logic
@@ -228,7 +237,7 @@ void AThirdPersonCharacter::LookUpAtRate(float Value) // Should not be called fo
 		if (Controller) Controller->SetControlRotation(TargetCntrRot);
 	}
 }
-
+/*
 void AThirdPersonCharacter::AimingMode(float Value)
 {
 	bool IsAimingNow = Value > 0.7f; // could be anything > 0
@@ -259,7 +268,7 @@ void AThirdPersonCharacter::AimingMode(float Value)
 		AnimState.bIsAiming = IsAimingNow;
 		ReplicateAnimationStateChange();
 	}
-}
+}*/
 
 void AThirdPersonCharacter::SwitchShoulderCamera()
 {
@@ -272,14 +281,7 @@ void AThirdPersonCharacter::SwitchShoulderCamera()
 	CameraBoom->SetRelativeLocation(NewCameraBoomLocation);
 	CameraBoom->SetRelativeRotation(NewCameraBoomRotation);
 }
-
-void AThirdPersonCharacter::Sprint(float Value)
-{
-	// TODO Add sprint in GAS
-
-	//if (Value > 0.5f) GetCharacterMovement()->MaxWalkSpeed = 600.f;
-}
-
+/*
 void AThirdPersonCharacter::ShootingMode(float Value)
 {
 	if (Value < 0.5f || !AnimState.bIsAiming || AnimState.bIsReloading) return;
@@ -336,7 +338,7 @@ void AThirdPersonCharacter::ReloadWeapon()
 	LastReloadTime = CurrentTime;
 	AnimState.bIsReloading = true;
 	ReplicateAnimationStateChange();
-}
+}*/
 
 // END Input related logic
 

@@ -7,6 +7,18 @@
 #include "GameplayStructs.generated.h"
 
 UENUM(BlueprintType)
+enum class EAbilityInputID : uint8
+{
+	None = 0,
+	AbilityCancel = 1,
+	AbilityConfirm = 2,
+	Shoot = 3,
+	Aim = 4,
+	Sprint = 5,
+	Reload = 6
+};
+
+UENUM(BlueprintType)
 enum class ETeamType : uint8 {
 	Spectator = 0,
 	RedTeam = 1,

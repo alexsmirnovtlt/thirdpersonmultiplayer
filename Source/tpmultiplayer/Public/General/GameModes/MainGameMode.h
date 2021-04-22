@@ -56,6 +56,7 @@ protected:
 	// Inital setup logic
 	void SetupSpawnLocations();
 	void SetupPlayableCharacters();
+	void GrantGameplayAbilities();
 	//
 
 	class AGameplayGameState* GameplayState;
@@ -92,7 +93,14 @@ protected:
 	// Tags to remove from ActivePawnAbility when End Round phase starts
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	FGameplayTagContainer RoundEndPhaseAbilityTagsToRevoke;
-
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> ShootAbility;
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> AimAbility;
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> ReloadAbility;
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> SprintAbility;
 	// END GAS parameters and Logic
 	
 	static const FString NewPlayerOptionsNameKey; // When new PlayerController gets created, set its name from option parameter with that key name on AMainGameMode::Login() 

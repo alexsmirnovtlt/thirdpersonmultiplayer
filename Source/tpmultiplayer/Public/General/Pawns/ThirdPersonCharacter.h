@@ -78,9 +78,11 @@ protected:
 	void AuthPrepareForNewGameRound();
 
 	// GAS related 
-
+protected:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	class UAbilitySystemComponent* AbilitySystemComponent;
+
+	//bool bAbilityInputWasSet;
 
 	//
 
@@ -163,10 +165,8 @@ public:
 	void MoveRight(float Value);
 	void LookUpAtRate(float Value);
 	void TurnAtRate(float Value);
-	void ShootingMode(float Value);
-	void AimingMode(float Value);
-	void Sprint(float Value);
-	void ReloadWeapon();
+	//void ShootingMode(float Value);
+	//void AimingMode(float Value);
 
 	void SwitchShoulderCamera();
 

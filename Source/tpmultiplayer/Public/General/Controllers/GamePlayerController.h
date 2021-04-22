@@ -69,15 +69,17 @@ public:
 	static const FName VerticalAxisBindingName;
 	static const FName MoveForwardAxisBindingName;
 	static const FName MoveRightAxisBindingName;
-	static const FName PrimaryActionAxisBindingName;
-	static const FName SecondaryActionAxisBindingName;
-	static const FName SprintAxisBindingName;
 
 	static const FName MenuActionBindingName;
 	static const FName GamePlayHUDBindingName;
 	static const FName AdditionalActionBindingName;
 	static const FName SwitchShoulderBindingName;
+	static const FName ShootBindingName;
+	static const FName AimBindingName;
 	static const FName ReloadBindingName;
+	static const FName SprintBindingName;
+	static const FName AbilityConfirmBindingName;
+	static const FName AbilityCancelBindingName;
 	static const FName DebugKillBindingName;
 
 	void MenuActionInput();

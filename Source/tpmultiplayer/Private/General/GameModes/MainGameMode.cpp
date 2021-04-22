@@ -37,8 +37,9 @@ void AMainGameMode::StartPlay()
 	GameplayState = GetGameState<AGameplayGameState>();
 	if (!GameplayState) { ensure(false); return; }
 	
-	SetupSpawnLocations(); // Get actors from level that will be used as spawn points and flag locations
+	SetupSpawnLocations(); // Get actors from level that will be used as spawn points and capture locations
 	SetupPlayableCharacters(); // Spawn all players and possess them with AIs
+	GrantGameplayAbilities(); // Giving and Activating starting Gameplay Abilities, some of them will be bind to Input
 
 	InitialMatchStateSetup(); // Start main game Loop(csgo like): 1. warmup where players teleported to spawn locations and cannot move, 2. main phase where players shoot each other and defend/attack the flag 3. end match phase that starts the loop again
 }
@@ -107,9 +108,6 @@ void AMainGameMode::SetupPlayableCharacters()
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
-	FGameplayAbilitySpec WarmupAbilitySpec(WarmupPhasePawnAbility.GetDefaultObject(), 0, INDEX_NONE);
-	FGameplayAbilitySpec MainAbilitySpec(MainPhasePawnAbility.GetDefaultObject(), 0, INDEX_NONE);
-
 	for (auto& SpawnLocation : TeamSpawnLocations)
 	{
 		AThirdPersonCharacter* Character;
@@ -123,18 +121,36 @@ void AMainGameMode::SetupPlayableCharacters()
 		AIController->GameState = GameplayState;
 		AIController->Possess(Character);
 
-		// Giving and Activating starting Gameplay Abilities
-		auto GameplayAbilityComp = Character->GetAbilitySystemComponent();
-
-		GameplayAbilityComp->GiveAbility(MainAbilitySpec);
-		auto Handle = GameplayAbilityComp->GiveAbility(WarmupAbilitySpec);
-		GameplayAbilityComp->TryActivateAbility(Handle, false);
-		//
-
 		Character->OnPawnKilledEvent.AddDynamic(this, &AMainGameMode::OnPawnKilled);
 
 		TeamPawns.Add(Character);
 		InGameControllers_AI.Add(AIController);
+	}
+}
+
+void AMainGameMode::GrantGameplayAbilities()
+{
+	FGameplayAbilitySpec WarmupAbilitySpec(WarmupPhasePawnAbility.GetDefaultObject(), 0, INDEX_NONE);
+	FGameplayAbilitySpec MainAbilitySpec(MainPhasePawnAbility.GetDefaultObject(), 0, INDEX_NONE);
+
+	FGameplayAbilitySpec ShootAbilitySpec(ShootAbility.GetDefaultObject(), 0, (int32)EAbilityInputID::Shoot);
+	FGameplayAbilitySpec AimAbilitySpec(AimAbility.GetDefaultObject(), 0, (int32)EAbilityInputID::Aim);
+	FGameplayAbilitySpec ReloadAbilitySpec(ReloadAbility.GetDefaultObject(), 0, (int32)EAbilityInputID::Reload);
+	FGameplayAbilitySpec SprintAbilitySpec(SprintAbility.GetDefaultObject(), 0, (int32)EAbilityInputID::Sprint);
+
+	for (auto Char : TeamPawns)
+	{
+		auto GameplayAbilityComp = Char->GetAbilitySystemComponent();
+
+		GameplayAbilityComp->GiveAbility(MainAbilitySpec);
+
+		auto Handle = GameplayAbilityComp->GiveAbility(WarmupAbilitySpec);
+		GameplayAbilityComp->TryActivateAbility(Handle, false);
+
+		GameplayAbilityComp->GiveAbility(ShootAbilitySpec);
+		GameplayAbilityComp->GiveAbility(AimAbilitySpec);
+		GameplayAbilityComp->GiveAbility(ReloadAbilitySpec);
+		GameplayAbilityComp->GiveAbility(SprintAbilitySpec);
 	}
 }
 

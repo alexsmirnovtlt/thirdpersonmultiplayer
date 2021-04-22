@@ -32,6 +32,19 @@ void UTPCMovementComponent::UpdateFromCompressedFlags(uint8 Flags)
 	RequestToStartSprinting = (Flags & FSavedMove_Character::FLAG_Custom_0) != 0;
 }
 
+FNetworkPredictionData_Client* UTPCMovementComponent::GetPredictionData_Client() const
+{
+	if (ClientPredictionData == nullptr)
+	{
+		auto MutableThis = const_cast<UTPCMovementComponent*>(this);
+		MutableThis->ClientPredictionData = new FNetworkPredictionDataCharacter_Client(*this);
+		MutableThis->ClientPredictionData->MaxSmoothNetUpdateDist = 92.f;
+		MutableThis->ClientPredictionData->NoSmoothNetUpdateDist = 140.f;
+	}
+
+	return ClientPredictionData;
+}
+
 void UTPCMovementComponent::FGDSavedMove::Clear()
 {
 	Super::Clear();

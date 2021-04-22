@@ -30,11 +30,26 @@ class TPMULTIPLAYER_API UTPCMovementComponent : public UCharacterMovementCompone
 		uint8 SavedRequestToStartSprinting : 1;
 	};
 
+	class FNetworkPredictionDataCharacter_Client : public FNetworkPredictionData_Client_Character
+	{
+	public:
+
+		FNetworkPredictionDataCharacter_Client(const UCharacterMovementComponent& ClientMovement) : FNetworkPredictionData_Client_Character(ClientMovement) {};
+		virtual FSavedMovePtr AllocateNewMove() override { return FSavedMovePtr(new FGDSavedMove()); };
+	};
+
 public:
 	UTPCMovementComponent();
 
 	virtual float GetMaxSpeed() const override;
 	virtual void UpdateFromCompressedFlags(uint8 Flags) override;
+	virtual FNetworkPredictionData_Client* GetPredictionData_Client() const override;
+
+public:
+	UFUNCTION(BlueprintCallable, Category = "Third Person Character Movement")
+	void StartSprinting() { RequestToStartSprinting = true; };
+	UFUNCTION(BlueprintCallable, Category = "Third Person Character Movement")
+	void StopSprinting() { RequestToStartSprinting = false; };
 
 protected:
 
