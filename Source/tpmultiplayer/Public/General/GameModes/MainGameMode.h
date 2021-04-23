@@ -70,9 +70,6 @@ protected:
 	void MatchPhaseStart_Warmup();
 	void MatchPhaseStart_Gameplay();
 	void MatchPhaseStart_RoundEnd();
-	void MatchPhaseEnd_Warmup(const struct FMatchParameters& MatchParameters, const struct FMatchData& CurrentMatchData);
-	void MatchPhaseEnd_Gameplay(const struct FMatchParameters& MatchParameters, const struct FMatchData& CurrentMatchData);
-	void MatchPhaseEnd_RoundEnd(const struct FMatchParameters& MatchParameters, const struct FMatchData& CurrentMatchData);
 
 	void StopCurrentMatchTimer();
 	FTimerHandle MatchTimerHandle;
@@ -86,13 +83,13 @@ protected:
 
 	// Ability that allows Pawns to move, shoot, aim, etc that is activated when main game phase begins
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<class UGameplayAbility> WarmupPhasePawnAbility;
+	TSubclassOf<class UGameplayEffect> WarmupPhaseEffect;
 	// Opposite of ActivePawnAbility. Pawn cannot do anything. Activated before main game phase or when pawn got killed
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<class UGameplayAbility> MainPhasePawnAbility;
+	TSubclassOf<class UGameplayEffect> MainPhaseEffect;
 	// Tags to remove from ActivePawnAbility when End Round phase starts
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	FGameplayTagContainer RoundEndPhaseAbilityTagsToRevoke;
+	TSubclassOf<class UGameplayEffect> EndPhaseEffect;
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TSubclassOf<class UGameplayAbility> ShootAbility;
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
@@ -101,6 +98,9 @@ protected:
 	TSubclassOf<class UGameplayAbility> ReloadAbility;
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TSubclassOf<class UGameplayAbility> SprintAbility;
+
+	void ApplyGameplayEffectToAllPawns(UGameplayEffect* GEffectPtr);
+
 	// END GAS parameters and Logic
 	
 	static const FString NewPlayerOptionsNameKey; // When new PlayerController gets created, set its name from option parameter with that key name on AMainGameMode::Login() 

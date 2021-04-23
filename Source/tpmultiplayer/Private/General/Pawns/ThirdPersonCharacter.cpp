@@ -30,11 +30,6 @@ AThirdPersonCharacter::AThirdPersonCharacter(const class FObjectInitializer& Obj
 	AnimState = FCharacterAnimState();
 	AimingCameraSpringDistance = 50.f;
 	IdleCameraSpringDistance = 150.f;
-
-	ShootingTimeCooldownMS = 0.5f;
-	ReloadTimeCooldownMS = 1.f;
-	LastReloadTime = 0.f;
-	LastShootingTime = 0.f;
 	
 	//bAbilityInputWasSet = false;
 	MaxPitch_FreeCamera = 75;
@@ -55,8 +50,8 @@ AThirdPersonCharacter::AThirdPersonCharacter(const class FObjectInitializer& Obj
 	GetCharacterMovement()->bUseControllerDesiredRotation = true;
 	GetCharacterMovement()->bOrientRotationToMovement = false;
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 540.0f, 0.0f);
-	GetCharacterMovement()->JumpZVelocity = 600.f;
-	GetCharacterMovement()->AirControl = 0.2f;
+	GetCharacterMovement()->JumpZVelocity = 150;
+	GetCharacterMovement()->MaxWalkSpeed = 200.f;
 
 	CameraGimbal = CreateDefaultSubobject<USceneComponent>(TEXT("CameraGimbal"));
 	CameraGimbal->SetupAttachment(RootComponent);
@@ -90,7 +85,7 @@ void AThirdPersonCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (IsLocallyControlled())
+	if (IsLocallyControlled() && IsPlayerControlled()) // Updating Local player`s camera location and rotation
 	{
 		if (auto PlayerController = GetController<APlayerController>())
 		{
@@ -109,19 +104,6 @@ void AThirdPersonCharacter::Tick(float DeltaTime)
 			CameraGimbal->SetWorldRotation(LastCameraGimbalRotation);
 		}
 	}
-
-	// Parameters that will be used by Animation Blueprints
-	if (!AnimState.bIsDead)
-	{
-		// Calculate current velocity relative to pawn`s forward vector. Will be used at AnimBP`s blend space for movement
-		const FVector WorldVelocity = GetCharacterMovement()->Velocity;
-		const FVector RelativeVelocity = WorldVelocity.RotateAngleAxis(-RootComponent->GetComponentRotation().Yaw, FVector::UpVector);
-		CurrentRelativeToPawnVelocity(RelativeVelocity.Y, RelativeVelocity.X); // BP Event
-	}
-	else CurrentRelativeToPawnVelocity(0, 0);
-
-	if (IsLocallyControlled()) CurrentControllerPitch(Controller->GetControlRotation().Pitch); // Used in AnimBP too
-	else CurrentControllerPitch(GetRemotePitchAsFloat());
 }
 
 float AThirdPersonCharacter::TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
@@ -152,7 +134,7 @@ void AThirdPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 
 	PlayerInputComponent->BindAction(AGamePlayerController::SwitchShoulderBindingName, IE_Pressed, this, &AThirdPersonCharacter::SwitchShoulderCamera);
 
-	// Binding Input in project settings with Ability system`s Ability Tasks
+	// Binding Input in project settings with Ability system`s Abilities. No additional setup needed for them to Activate
 
 	FGameplayAbilityInputBinds InputBinds = FGameplayAbilityInputBinds(
 		AGamePlayerController::AbilityConfirmBindingName.ToString(),
@@ -207,7 +189,7 @@ void AThirdPersonCharacter::TurnAtRate(float Value) // Should not be called for 
 {
 	float AddedYaw = Value * BaseLookUpRate * GetWorld()->GetDeltaSeconds();
 
-	if (AnimState.bIsAiming)
+	if (IsInAimingAnimation())
 	{
 		auto TargetCntrRot = CameraBoom->GetComponentRotation();
 		if(Controller) Controller->SetControlRotation(TargetCntrRot);
@@ -223,14 +205,16 @@ void AThirdPersonCharacter::LookUpAtRate(float Value) // Should not be called fo
 	FRotator AddedRotation = FRotator(AddedPitch, 0, 0);
 	FRotator TargetCameraBoomRotation = CameraBoom->GetRelativeRotation() + AddedRotation;
 	
+	bool bIsAimingNow = IsInAimingAnimation();
+
 	// Restricting Camera Pitch
-	float MaxPitch = AnimState.bIsAiming ? MaxPitch_Aiming : MaxPitch_FreeCamera;
-	float MinPitch = AnimState.bIsAiming ? -MaxPitch_Aiming : -MaxPitch_FreeCamera;
+	float MaxPitch = bIsAimingNow ? MaxPitch_Aiming : MaxPitch_FreeCamera;
+	float MinPitch = bIsAimingNow ? -MaxPitch_Aiming : -MaxPitch_FreeCamera;
 	TargetCameraBoomRotation.Pitch = FMath::Clamp(TargetCameraBoomRotation.Pitch, MinPitch, MaxPitch);
 	
 	CameraBoom->SetRelativeRotation(TargetCameraBoomRotation);
 
-	if (AnimState.bIsAiming)
+	if (bIsAimingNow)
 	{
 		auto TargetCntrRot = CameraBoom->GetComponentRotation();
 		TargetCntrRot.Pitch += AddedPitch;
@@ -342,13 +326,6 @@ void AThirdPersonCharacter::ReloadWeapon()
 
 // END Input related logic
 
-float AThirdPersonCharacter::GetRemotePitchAsFloat()
-{
-	float UnclampedValue = (float)RemoteViewPitch * 360.0f / 255.0f;
-	if (UnclampedValue > 180.f) return UnclampedValue - 360;
-	else return UnclampedValue;
-}
-
 // BEGIN General logic
 
 void AThirdPersonCharacter::OnRep_HealthChanged()
@@ -405,11 +382,65 @@ void AThirdPersonCharacter::ReplicateAnimationStateChange()
 	if (!HasAuthority()) Server_UpdateAnimationState(AnimState);
 }
 
+float AThirdPersonCharacter::GetCurrentPitch()
+{
+	if (IsLocallyControlled()) return Controller->GetControlRotation().Pitch;
+	else return GetRemotePitchAsFloat();
+}
+
+float AThirdPersonCharacter::GetRemotePitchAsFloat()
+{
+	float UnclampedValue = (float)RemoteViewPitch * 360.0f / 255.0f;
+	if (UnclampedValue > 180.f) return UnclampedValue - 360;
+	else return UnclampedValue;
+}
+
+FVector AThirdPersonCharacter::GetCurrentRelativeToPawnVelocity()
+{
+	// Calculate current velocity relative to pawn`s forward vector. Will be used at AnimBP`s blend space for movement
+	const FVector WorldVelocity = GetCharacterMovement()->Velocity;
+	const FVector RelativeVelocity = WorldVelocity.RotateAngleAxis(-RootComponent->GetComponentRotation().Yaw, FVector::UpVector);
+
+	return FVector(RelativeVelocity.Y, RelativeVelocity.X, 0.f);
+}
+
 // END General logic
 
 USceneComponent* AThirdPersonCharacter::GetShootCheckOrigin_Implementation()
 {
 	return RootComponent; // Should be overriden in BP
+}
+
+bool AThirdPersonCharacter::IsInAimingAnimation_Implementation()
+{
+	return false; // Should be overriden in BP
+}
+
+bool AThirdPersonCharacter::StartAiming()
+{
+	if (bViewObstructed) return false;
+	if (!IsLocallyControlled() || !IsPlayerControlled()) return true; // Some simulated proxy, it should not check anything or update camera
+
+	CameraBoom->TargetArmLength = AimingCameraSpringDistance;
+	CameraBoom->SetRelativeLocation(AimingCameraDistance);
+	//
+	auto TargetCntrRot = CameraBoom->GetComponentRotation();
+	TargetCntrRot.Pitch = 0;
+	TargetCntrRot.Roll = 0;
+	GetController<AGamePlayerController>()->SetControlRotation(TargetCntrRot);
+
+	return true;
+}
+
+bool AThirdPersonCharacter::EndAiming()
+{
+	if (bViewObstructed) return false;
+	if (!IsLocallyControlled() || !IsPlayerControlled()) return true;
+
+	CameraBoom->TargetArmLength = IdleCameraSpringDistance;
+	CameraBoom->SetRelativeLocation(IdleCameraDistance);
+
+	return true;
 }
 
 // BEGIN Shooting Server and Client logic

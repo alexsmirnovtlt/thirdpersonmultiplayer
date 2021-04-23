@@ -67,28 +67,29 @@ protected:
 	void OnVIPChanged(bool IsVIP);
 	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
 	void OnAnimStateChanged();
-	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
-	void CurrentRelativeToPawnVelocity(float Axis_X, float Axis_Y); // used in AnimBP to blend legs movement
-	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
-	void CurrentControllerPitch(float Pitch);
 
 	UFUNCTION(BlueprintNativeEvent, Category = "Override - Third Person Character")
 	class USceneComponent* GetShootCheckOrigin();
-	
+	UFUNCTION(BlueprintNativeEvent, Category = "Override - Third Person Character")
+	bool IsInAimingAnimation();
+
 	void AuthPrepareForNewGameRound();
 
-	// GAS related 
+	// BEGIN GAS related 
 protected:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	class UAbilitySystemComponent* AbilitySystemComponent;
 
-	//bool bAbilityInputWasSet;
+	UFUNCTION(BlueprintCallable, Category = "Pawn Animation State")
+	bool StartAiming();
+	UFUNCTION(BlueprintCallable, Category = "Pawn Animation State")
+	bool EndAiming();
 
-	//
+	// END GAS related 
 
 protected:
 
-	// Animation variables and their replication
+	// BEGIN Animation logic
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, ReplicatedUsing=OnAnimStateChanged)
 	FCharacterAnimState AnimState;
 	UFUNCTION(BlueprintCallable, Category = "Pawn Animation State")
@@ -99,7 +100,13 @@ protected:
 	
 	UFUNCTION(BlueprintCallable, Category = "Pawn Animation State")
 	void ReplicateAnimationStateChange();
-	//
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn Animation State")
+	float GetCurrentPitch();
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn Animation State")
+	FVector GetCurrentRelativeToPawnVelocity();
+
+	// END Animation logic
 
 	bool bViewObstructed; // Do we have a space in front of this pawn to enter aiming state
 
@@ -131,10 +138,7 @@ protected:
 	float AimingCameraSpringDistance;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - General")
 	float IdleCameraSpringDistance;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Shooting")
-	float ShootingTimeCooldownMS;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Shooting")
-	float ReloadTimeCooldownMS;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Shooting")
 	float ForwardDistanceToAbleToAim = 65.f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Shooting")
@@ -157,8 +161,6 @@ protected:
 
 private:
 	float GetRemotePitchAsFloat();
-	float LastReloadTime;
-	float LastShootingTime;
 
 public:
 	void MoveForward(float Value);

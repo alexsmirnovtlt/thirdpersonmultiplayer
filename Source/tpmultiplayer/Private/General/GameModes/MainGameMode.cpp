@@ -130,9 +130,6 @@ void AMainGameMode::SetupPlayableCharacters()
 
 void AMainGameMode::GrantGameplayAbilities()
 {
-	FGameplayAbilitySpec WarmupAbilitySpec(WarmupPhasePawnAbility.GetDefaultObject(), 0, INDEX_NONE);
-	FGameplayAbilitySpec MainAbilitySpec(MainPhasePawnAbility.GetDefaultObject(), 0, INDEX_NONE);
-
 	FGameplayAbilitySpec ShootAbilitySpec(ShootAbility.GetDefaultObject(), 0, (int32)EAbilityInputID::Shoot);
 	FGameplayAbilitySpec AimAbilitySpec(AimAbility.GetDefaultObject(), 0, (int32)EAbilityInputID::Aim);
 	FGameplayAbilitySpec ReloadAbilitySpec(ReloadAbility.GetDefaultObject(), 0, (int32)EAbilityInputID::Reload);
@@ -142,16 +139,13 @@ void AMainGameMode::GrantGameplayAbilities()
 	{
 		auto GameplayAbilityComp = Char->GetAbilitySystemComponent();
 
-		GameplayAbilityComp->GiveAbility(MainAbilitySpec);
-
-		auto Handle = GameplayAbilityComp->GiveAbility(WarmupAbilitySpec);
-		GameplayAbilityComp->TryActivateAbility(Handle, false);
-
 		GameplayAbilityComp->GiveAbility(ShootAbilitySpec);
 		GameplayAbilityComp->GiveAbility(AimAbilitySpec);
 		GameplayAbilityComp->GiveAbility(ReloadAbilitySpec);
 		GameplayAbilityComp->GiveAbility(SprintAbilitySpec);
 	}
+
+	ApplyGameplayEffectToAllPawns(WarmupPhaseEffect.GetDefaultObject());
 }
 
 void AMainGameMode::AddPlayerToAMatch(AGamePlayerController* PlayerController)
@@ -259,7 +253,9 @@ void AMainGameMode::MatchPhaseStart_Warmup()
 	auto& MatchParameters = GameplayState->GetMatchParameters();
 	auto& CurrentMatchData = GameplayState->CurrentMatchData;
 
-	MatchPhaseEnd_RoundEnd(MatchParameters, CurrentMatchData);
+	// Removing ability to move from everyone, 
+	// Granting one pawn an VIP ability (be able to capture a zone), revoking that ability from others
+	ApplyGameplayEffectToAllPawns(WarmupPhaseEffect.GetDefaultObject());
 
 	if (CurrentMatchData.FirstTeam_MatchesWon >= MatchParameters.MaxGameRoundsToWin)
 	{
@@ -314,7 +310,8 @@ void AMainGameMode::MatchPhaseStart_Gameplay()
 	auto& MatchParameters = GameplayState->GetMatchParameters();
 	auto& CurrentMatchData = GameplayState->CurrentMatchData;
 
-	MatchPhaseEnd_Warmup(MatchParameters, CurrentMatchData);
+	// Granting moving, aiming, shooting abilities to everyone
+	ApplyGameplayEffectToAllPawns(MainPhaseEffect.GetDefaultObject());
 
 	CurrentMatchData.MatchState = EMatchState::Gameplay;
 	CurrentMatchData.SpecialMessage = EInGameSpecialMessage::Nothing;
@@ -331,7 +328,8 @@ void AMainGameMode::MatchPhaseStart_RoundEnd()
 	auto& MatchParameters = GameplayState->GetMatchParameters();
 	auto& CurrentMatchData = GameplayState->CurrentMatchData;
 
-	MatchPhaseEnd_Gameplay(MatchParameters, CurrentMatchData);
+	// Revoke aiming and shooting abilities from everyone
+	ApplyGameplayEffectToAllPawns(EndPhaseEffect.GetDefaultObject());
 
 	DetermineTeamThatWonThatRound(CurrentMatchData); // updating CurrentMatchData based on a few winning conditions
 
@@ -344,34 +342,14 @@ void AMainGameMode::MatchPhaseStart_RoundEnd()
 	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AMainGameMode::MatchPhaseStart_Warmup, MatchParameters.EndRoundPeriodSec, false);
 }
 
-void AMainGameMode::MatchPhaseEnd_Warmup(const FMatchParameters& MatchParameters, const FMatchData& CurrentMatchData)
+void AMainGameMode::ApplyGameplayEffectToAllPawns(UGameplayEffect* GEffectPtr)
 {
-	// Granting moving, aiming, shooting abilities to everyone
-
 	for (auto Char : TeamPawns)
-		Char->GetAbilitySystemComponent()->TryActivateAbilityByClass(MainPhasePawnAbility);
-}
-
-void AMainGameMode::MatchPhaseEnd_Gameplay(const FMatchParameters& MatchParameters, const FMatchData& CurrentMatchData)
-{
-	// Revoke aiming and shooting abilities from everyone
-
-	for (auto Char : TeamPawns)
-		Char->GetAbilitySystemComponent()->CancelAbilities(&RoundEndPhaseAbilityTagsToRevoke);
-}
-
-void AMainGameMode::MatchPhaseEnd_RoundEnd(const FMatchParameters& MatchParameters, const FMatchData& CurrentMatchData)
-{
-	// Removing ability to move from everyone
-	
-	// TODO change comment
-	// Granting one pawn an ability to place a flag, revoking that ability from others
-	// Removing ability to pick up a flag from one team, grantimg it to another team
-
-	for (auto Char : TeamPawns)
-		Char->GetAbilitySystemComponent()->TryActivateAbilityByClass(WarmupPhasePawnAbility);
-
-	// TODO actually do that
+	{
+		auto AbilityComponent = Char->GetAbilitySystemComponent();
+		FGameplayEffectContextHandle ContextHandle = AbilityComponent->MakeEffectContext();
+		AbilityComponent->ApplyGameplayEffectToSelf(GEffectPtr, 0, ContextHandle);
+	}
 }
 
 void AMainGameMode::StopCurrentMatchTimer()
