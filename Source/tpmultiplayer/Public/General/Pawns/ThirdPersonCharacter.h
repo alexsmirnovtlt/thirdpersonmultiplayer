@@ -3,9 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
+#include "AbilitySystemInterface.h"
+//#include "GameplayCueInterface.h"
 #include "GameFramework/Character.h"
 #include "General/GameplayStructs.h"
-#include "AbilitySystemInterface.h"
 
 #include "ThirdPersonCharacter.generated.h"
 
@@ -14,7 +16,7 @@ enum class ETeamType : uint8;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPawnKilledDelegate, AThirdPersonCharacter*, DiedPawn);
 
 UCLASS(abstract)
-class TPMULTIPLAYER_API AThirdPersonCharacter : public ACharacter, public IAbilitySystemInterface
+class TPMULTIPLAYER_API AThirdPersonCharacter : public ACharacter, public IAbilitySystemInterface//, public IGameplayCueInterface
 {
 	GENERATED_BODY()
 
@@ -26,9 +28,9 @@ protected:
 
 public:	
 	virtual void Tick(float DeltaTime) override;
-	virtual void Reset() override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	float TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+	virtual void PossessedBy(class AController* NewController) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return AbilitySystemComponent; }
@@ -67,6 +69,10 @@ protected:
 	void OnVIPChanged(bool IsVIP);
 	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
 	void OnAnimStateChanged();
+	UFUNCTION(BlueprintImplementableEvent, Category = "Third Person Char - Animation")
+	void OnAnimStateChanged_Aiming(bool bIsAiming);
+	UFUNCTION(BlueprintImplementableEvent, Category = "Third Person Char - Animation")
+	void OnAnimStateChanged_IsDead(bool bIsDead);
 
 	UFUNCTION(BlueprintNativeEvent, Category = "Override - Third Person Character")
 	class USceneComponent* GetShootCheckOrigin();
@@ -81,9 +87,36 @@ protected:
 	class UAbilitySystemComponent* AbilitySystemComponent;
 
 	UFUNCTION(BlueprintCallable, Category = "Pawn Animation State")
-	bool StartAiming();
+	bool StartAiming_LocalPlayer();
 	UFUNCTION(BlueprintCallable, Category = "Pawn Animation State")
-	bool EndAiming();
+	void EndAiming_LocalPlayer();
+
+	void OnHealthAttibuteChanged(const struct FOnAttributeChangeData& Data);
+	void OnAimStateTagChanged(const struct FGameplayTag CallbackTag, int32 NewCount);
+	void OnDeadStateTagChanged(const struct FGameplayTag CallbackTag, int32 NewCount);
+
+	// Tag that will be used on simulated proxies to update Aiming Animation. Tag will be replicated to them when aiming on owning player happens
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	FGameplayTag AimingTagForSimulatedProxies;
+	// Same as AimingTag but for Dead AnimMontage
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	FGameplayTag DeadTagForSimulatedProxies;
+
+	// Gameplay Cue interface
+/*public:
+	virtual void HandleGameplayCue(UObject* Self, FGameplayTag GameplayCueTag, EGameplayCueEvent::Type EventType, FGameplayCueParameters Parameters) { UE_LOG(LogTemp, Warning, TEXT("1!")); };
+	virtual void HandleGameplayCues(UObject* Self, const FGameplayTagContainer& GameplayCueTags, EGameplayCueEvent::Type EventType, FGameplayCueParameters Parameters) {};
+	virtual bool ShouldAcceptGameplayCue(UObject* Self, FGameplayTag GameplayCueTag, EGameplayCueEvent::Type EventType, FGameplayCueParameters Parameters) { return true; };
+
+	//	Deprecated
+	virtual void HandleGameplayCue(AActor* Self, FGameplayTag GameplayCueTag, EGameplayCueEvent::Type EventType, FGameplayCueParameters Parameters) { UE_LOG(LogTemp ,Warning, TEXT("%s"), *this->GetFName().ToString()); };
+	virtual void HandleGameplayCues(AActor* Self, const FGameplayTagContainer& GameplayCueTags, EGameplayCueEvent::Type EventType, FGameplayCueParameters Parameters) {};
+	virtual bool ShouldAcceptGameplayCue(AActor* Self, FGameplayTag GameplayCueTag, EGameplayCueEvent::Type EventType, FGameplayCueParameters Parameters) { return true; };
+	// Deprecated
+	
+	virtual void GameplayCueDefaultHandler(EGameplayCueEvent::Type EventType, FGameplayCueParameters Parameters) {};
+	virtual void ForwardGameplayCueToParent() {};*/
+	//
 
 	// END GAS related 
 
@@ -105,6 +138,8 @@ protected:
 	float GetCurrentPitch();
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn Animation State")
 	FVector GetCurrentRelativeToPawnVelocity();
+
+	FDelegateHandle AimTagChangedDelegateHandle;
 
 	// END Animation logic
 

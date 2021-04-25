@@ -123,6 +123,8 @@ void AMainGameMode::SetupPlayableCharacters()
 
 		Character->OnPawnKilledEvent.AddDynamic(this, &AMainGameMode::OnPawnKilled);
 
+		Character->GetAbilitySystemComponent()->InitAbilityActorInfo(Character, Character);
+
 		TeamPawns.Add(Character);
 		InGameControllers_AI.Add(AIController);
 	}
@@ -190,7 +192,7 @@ void AMainGameMode::AddPlayerToAMatch(AGamePlayerController* PlayerController)
 	PlayerController->Possess(ChosenPawn);
 	InGameControllers_Human.Add(PlayerController);
 
-	ChosenPawn->GetAbilitySystemComponent()->InitAbilityActorInfo(PlayerController, ChosenPawn);
+	ChosenPawn->GetAbilitySystemComponent()->RefreshAbilityActorInfo();
 
 	PlayerController->ForceNetUpdate();
 	if (PlayerController->IsLocalPlayerController()) PlayerController->OnRep_Pawn();

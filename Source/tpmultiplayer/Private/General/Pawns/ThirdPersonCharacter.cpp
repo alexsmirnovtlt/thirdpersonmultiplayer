@@ -13,7 +13,8 @@
 #include "Particles/ParticleSystem.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "Net/UnrealNetwork.h"
+#include "GameplayTagContainer.h"
+#include "Net/UnrealNetwork.h" // TODO Remove unneeded
 
 #include "General/GameplayAbilitySystem/DefaultPawnAttributeSet.h"
 #include "General/ActorComponents/TPCMovementComponent.h"
@@ -66,7 +67,7 @@ AThirdPersonCharacter::AThirdPersonCharacter(const class FObjectInitializer& Obj
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("Ability System Component"));
-	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Full); // We dont know what pawn will each player will possess and we use effects for different rounds so we cannot use Minimal or Mixed unfortunately
 
 	AutoPossessAI = EAutoPossessAI::Disabled;
 }
@@ -74,11 +75,12 @@ AThirdPersonCharacter::AThirdPersonCharacter(const class FObjectInitializer& Obj
 void AThirdPersonCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	if(auto AttributeSet = AbilitySystemComponent->GetSet<UDefaultPawnAttributeSet>())
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AttributeSet->GetHealthAttribute()).AddUObject(this, &AThirdPersonCharacter::OnHealthAttibuteChanged);
 
-	if (HasAuthority()) CurrentHealth = StartingHealth;
-
-	// TODO Subscribe to health and max speed changes ?
-	//AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate()
+	AimTagChangedDelegateHandle = AbilitySystemComponent->RegisterGameplayTagEvent(AimingTagForSimulatedProxies).AddUObject(this, &AThirdPersonCharacter::OnAimStateTagChanged);
+	AbilitySystemComponent->RegisterGameplayTagEvent(DeadTagForSimulatedProxies).AddUObject(this, &AThirdPersonCharacter::OnDeadStateTagChanged);
 }
 
 void AThirdPersonCharacter::Tick(float DeltaTime)
@@ -106,6 +108,12 @@ void AThirdPersonCharacter::Tick(float DeltaTime)
 	}
 }
 
+void AThirdPersonCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	//AbilitySystemComponent->RefreshAbilityActorInfo();
+}
+
 float AThirdPersonCharacter::TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	float DamageTaken = Super::TakeDamage(Damage, DamageEvent, EventInstigator, DamageCauser);
@@ -115,11 +123,6 @@ float AThirdPersonCharacter::TakeDamage(float Damage, FDamageEvent const& Damage
 	OnRep_HealthChanged();
 
 	return DamageTaken;
-}
-
-void AThirdPersonCharacter::Reset()
-{
-	Super::Reset();
 }
 
 void AThirdPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -221,6 +224,21 @@ void AThirdPersonCharacter::LookUpAtRate(float Value) // Should not be called fo
 		if (Controller) Controller->SetControlRotation(TargetCntrRot);
 	}
 }
+
+void AThirdPersonCharacter::SwitchShoulderCamera()
+{
+	auto NewCameraBoomLocation = CameraBoom->GetRelativeLocation();
+	auto NewCameraBoomRotation = CameraBoom->GetRelativeRotation();
+
+	NewCameraBoomLocation.Y *= -1;
+	NewCameraBoomRotation.Yaw *= -1;
+
+	CameraBoom->SetRelativeLocation(NewCameraBoomLocation);
+	CameraBoom->SetRelativeRotation(NewCameraBoomRotation);
+}
+
+// END Input related logic
+
 /*
 void AThirdPersonCharacter::AimingMode(float Value)
 {
@@ -253,18 +271,6 @@ void AThirdPersonCharacter::AimingMode(float Value)
 		ReplicateAnimationStateChange();
 	}
 }*/
-
-void AThirdPersonCharacter::SwitchShoulderCamera()
-{
-	auto NewCameraBoomLocation = CameraBoom->GetRelativeLocation();
-	auto NewCameraBoomRotation = CameraBoom->GetRelativeRotation();
-
-	NewCameraBoomLocation.Y *= -1;
-	NewCameraBoomRotation.Yaw *= -1;
-
-	CameraBoom->SetRelativeLocation(NewCameraBoomLocation);
-	CameraBoom->SetRelativeRotation(NewCameraBoomRotation);
-}
 /*
 void AThirdPersonCharacter::ShootingMode(float Value)
 {
@@ -323,8 +329,6 @@ void AThirdPersonCharacter::ReloadWeapon()
 	AnimState.bIsReloading = true;
 	ReplicateAnimationStateChange();
 }*/
-
-// END Input related logic
 
 // BEGIN General logic
 
@@ -404,8 +408,6 @@ FVector AThirdPersonCharacter::GetCurrentRelativeToPawnVelocity()
 	return FVector(RelativeVelocity.Y, RelativeVelocity.X, 0.f);
 }
 
-// END General logic
-
 USceneComponent* AThirdPersonCharacter::GetShootCheckOrigin_Implementation()
 {
 	return RootComponent; // Should be overriden in BP
@@ -416,14 +418,18 @@ bool AThirdPersonCharacter::IsInAimingAnimation_Implementation()
 	return false; // Should be overriden in BP
 }
 
-bool AThirdPersonCharacter::StartAiming()
+// END General logic
+
+// BEGIN Ability System related logic
+
+bool AThirdPersonCharacter::StartAiming_LocalPlayer()
 {
-	if (bViewObstructed) return false;
-	if (!IsLocallyControlled() || !IsPlayerControlled()) return true; // Some simulated proxy, it should not check anything or update camera
+	if (bViewObstructed) return false; // If local player have an obstacle before him, ability should end immediately
+	if (!IsLocallyControlled() || !IsPlayerControlled()) return true; // Skip camera update for non local player
 
 	CameraBoom->TargetArmLength = AimingCameraSpringDistance;
 	CameraBoom->SetRelativeLocation(AimingCameraDistance);
-	//
+
 	auto TargetCntrRot = CameraBoom->GetComponentRotation();
 	TargetCntrRot.Pitch = 0;
 	TargetCntrRot.Roll = 0;
@@ -432,16 +438,33 @@ bool AThirdPersonCharacter::StartAiming()
 	return true;
 }
 
-bool AThirdPersonCharacter::EndAiming()
+void AThirdPersonCharacter::EndAiming_LocalPlayer()
 {
-	if (bViewObstructed) return false;
-	if (!IsLocallyControlled() || !IsPlayerControlled()) return true;
+	if (!IsLocallyControlled() || !IsPlayerControlled()) return;
 
 	CameraBoom->TargetArmLength = IdleCameraSpringDistance;
 	CameraBoom->SetRelativeLocation(IdleCameraDistance);
 
-	return true;
 }
+
+void AThirdPersonCharacter::OnHealthAttibuteChanged(const struct FOnAttributeChangeData& Data)
+{
+	// TODO Maybe add HUD to a local player when his health is below some threshold
+}
+
+void AThirdPersonCharacter::OnAimStateTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
+{
+	bool bIsAimingNow = NewCount > 0;
+	OnAnimStateChanged_Aiming(bIsAimingNow);
+}
+
+void AThirdPersonCharacter::OnDeadStateTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
+{
+	bool bNewIsDead = NewCount > 0;
+	OnAnimStateChanged_IsDead(bNewIsDead);
+}
+
+// END Ability System related logic
 
 // BEGIN Shooting Server and Client logic
 
