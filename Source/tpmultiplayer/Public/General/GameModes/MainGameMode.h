@@ -99,7 +99,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TSubclassOf<class UGameplayAbility> SprintAbility;
 
-	void ApplyGameplayEffectToAllPawns(UGameplayEffect* GEffectPtr);
+	void ApplyGameplayEffectToAllPawns(class UGameplayEffect* GEffectToAddPtr);
 
 	// END GAS parameters and Logic
 	

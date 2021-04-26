@@ -67,7 +67,7 @@ AThirdPersonCharacter::AThirdPersonCharacter(const class FObjectInitializer& Obj
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("Ability System Component"));
-	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Full); // We dont know what pawn will each player will possess and we use effects for different rounds so we cannot use Minimal or Mixed unfortunately
+	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
 	AutoPossessAI = EAutoPossessAI::Disabled;
 }
@@ -76,6 +76,8 @@ void AThirdPersonCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	CurrentHealth = StartingHealth;
+
 	if(auto AttributeSet = AbilitySystemComponent->GetSet<UDefaultPawnAttributeSet>())
 		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AttributeSet->GetHealthAttribute()).AddUObject(this, &AThirdPersonCharacter::OnHealthAttibuteChanged);
 
@@ -111,7 +113,8 @@ void AThirdPersonCharacter::Tick(float DeltaTime)
 void AThirdPersonCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
-	//AbilitySystemComponent->RefreshAbilityActorInfo();
+
+	AbilitySystemComponent->InitAbilityActorInfo(NewController, this);
 }
 
 float AThirdPersonCharacter::TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)

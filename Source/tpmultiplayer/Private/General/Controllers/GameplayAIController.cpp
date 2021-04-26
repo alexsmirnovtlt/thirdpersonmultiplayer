@@ -4,6 +4,7 @@
 #include "General/Controllers/GameplayAIController.h"
 
 #include "Delegates/IDelegateInstance.h"
+#include "AbilitySystemComponent.h"
 
 #include "General/Pawns/ThirdPersonCharacter.h"
 #include "General/States/GameplayGameState.h"
@@ -35,9 +36,17 @@ void AGameplayAIController::Tick(float DeltaTime)
 	if (!GetPawn() || !PossessedCharacter) return;
 
 	// TMP DEBUG
-	if (CurrentMatchState == EMatchState::Warmup || CurrentMatchState == EMatchState::Gameplay)
+	if (CurrentMatchState == EMatchState::Warmup)
 	{
 		PossessedCharacter->StopJumping();
+		PossessedCharacter->MoveForward(DEBUG_MovementsSpeed);
+
+		//FGameplayTagContainer tagcontainer;
+		//tagcontainer.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Reload")));
+		//PossessedCharacter->GetAbilitySystemComponent()->TryActivateAbilitiesByTag(tagcontainer);
+	}
+	else if (CurrentMatchState == EMatchState::Gameplay)
+	{
 		PossessedCharacter->MoveForward(DEBUG_MovementsSpeed);
 	}
 	else if (CurrentMatchState == EMatchState::RoundEnd)

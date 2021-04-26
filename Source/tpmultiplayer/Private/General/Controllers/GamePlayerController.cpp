@@ -54,7 +54,19 @@ void AGamePlayerController::AcknowledgePossession(class APawn* P)
 	Super::AcknowledgePossession(P);
 
 	if (AThirdPersonCharacter* TPCharacter = Cast<AThirdPersonCharacter>(P))
+	{
+		if (!HasAuthority())
+		{
+			// When player takes ownership of a pawn, it already has replicated effect tags that will never be removed, idk if this is a bug or intended
+			// f.e if player possessed a pawn on a main phase, main phase effect tags will not be removed ever
+			FGameplayTagContainer AppliedTags;
+			TPCharacter->GetAbilitySystemComponent()->GetOwnedGameplayTags(AppliedTags);
+			for (auto& item : AppliedTags)
+				TPCharacter->GetAbilitySystemComponent()->SetTagMapCount(item, 0);
+		}
+
 		TPCharacter->GetAbilitySystemComponent()->InitAbilityActorInfo(this, TPCharacter);
+	}
 }
 
 void AGamePlayerController::JoinGameAsPlayer()

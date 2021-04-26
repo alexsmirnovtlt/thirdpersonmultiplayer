@@ -123,8 +123,6 @@ void AMainGameMode::SetupPlayableCharacters()
 
 		Character->OnPawnKilledEvent.AddDynamic(this, &AMainGameMode::OnPawnKilled);
 
-		Character->GetAbilitySystemComponent()->InitAbilityActorInfo(Character, Character);
-
 		TeamPawns.Add(Character);
 		InGameControllers_AI.Add(AIController);
 	}
@@ -178,7 +176,7 @@ void AMainGameMode::AddPlayerToAMatch(AGamePlayerController* PlayerController)
 			} else if(!LastAvailablePawn) LastAvailablePawn = AvailablePawn;
 		}
 	}
-
+	
 	if (ChosenPawn == nullptr) // everyone from this team is dead, possessing died pawn
 		ChosenPawn = LastAvailablePawn;
 
@@ -191,8 +189,6 @@ void AMainGameMode::AddPlayerToAMatch(AGamePlayerController* PlayerController)
 
 	PlayerController->Possess(ChosenPawn);
 	InGameControllers_Human.Add(PlayerController);
-
-	ChosenPawn->GetAbilitySystemComponent()->RefreshAbilityActorInfo();
 
 	PlayerController->ForceNetUpdate();
 	if (PlayerController->IsLocalPlayerController()) PlayerController->OnRep_Pawn();
@@ -344,13 +340,14 @@ void AMainGameMode::MatchPhaseStart_RoundEnd()
 	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AMainGameMode::MatchPhaseStart_Warmup, MatchParameters.EndRoundPeriodSec, false);
 }
 
-void AMainGameMode::ApplyGameplayEffectToAllPawns(UGameplayEffect* GEffectPtr)
+void AMainGameMode::ApplyGameplayEffectToAllPawns(UGameplayEffect* GEffectToAddPtr)
 {
 	for (auto Char : TeamPawns)
 	{
 		auto AbilityComponent = Char->GetAbilitySystemComponent();
+
 		FGameplayEffectContextHandle ContextHandle = AbilityComponent->MakeEffectContext();
-		AbilityComponent->ApplyGameplayEffectToSelf(GEffectPtr, 0, ContextHandle);
+		AbilityComponent->ApplyGameplayEffectToSelf(GEffectToAddPtr, 0, ContextHandle);
 	}
 }
 
