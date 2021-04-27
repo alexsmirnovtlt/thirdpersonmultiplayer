@@ -151,6 +151,11 @@ void AGamePlayerController::Client_ReplicateShot_Implementation(const FShootData
 	if (ShootData.Shooter) CastChecked<AThirdPersonCharacter>(ShootData.Shooter)->OnRep_Shot(ShootData);
 }
 
+void AGamePlayerController::Client_ReplicateReload_Implementation(AActor* ReloadingActor)
+{
+	if (ReloadingActor) CastChecked<AThirdPersonCharacter>(ReloadingActor)->OnRep_Reload();
+}
+
 // END Client logic
 
 void AGamePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

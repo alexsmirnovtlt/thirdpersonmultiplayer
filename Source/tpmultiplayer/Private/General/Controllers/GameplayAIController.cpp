@@ -41,9 +41,9 @@ void AGameplayAIController::Tick(float DeltaTime)
 		PossessedCharacter->StopJumping();
 		PossessedCharacter->MoveForward(DEBUG_MovementsSpeed);
 
-		//FGameplayTagContainer tagcontainer;
-		//tagcontainer.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Reload")));
-		//PossessedCharacter->GetAbilitySystemComponent()->TryActivateAbilitiesByTag(tagcontainer);
+		/*FGameplayTagContainer tagcontainer;
+		tagcontainer.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Reload")));
+		PossessedCharacter->GetAbilitySystemComponent()->TryActivateAbilitiesByTag(tagcontainer);*/
 	}
 	else if (CurrentMatchState == EMatchState::Gameplay)
 	{

@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "AbilitySystemInterface.h"
-//#include "GameplayCueInterface.h"
 #include "GameFramework/Character.h"
 #include "General/GameplayStructs.h"
 
@@ -16,7 +15,7 @@ enum class ETeamType : uint8;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPawnKilledDelegate, AThirdPersonCharacter*, DiedPawn);
 
 UCLASS(abstract)
-class TPMULTIPLAYER_API AThirdPersonCharacter : public ACharacter, public IAbilitySystemInterface//, public IGameplayCueInterface
+class TPMULTIPLAYER_API AThirdPersonCharacter : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -29,17 +28,16 @@ protected:
 public:	
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
-	float TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	virtual void PossessedBy(class AController* NewController) override;
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	//virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return AbilitySystemComponent; }
 
 public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
-	bool IsAlive() { return CurrentHealth > 0; };
+	bool IsAlive();
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
-	bool IsVIP() { return bIsVIP; };
+	bool IsVIP();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
 	ETeamType TeamType;
@@ -48,27 +46,6 @@ public:
 
 protected:
 
-	UPROPERTY(EditDefaultsOnly, Category = "Player Stats")
-	float StartingHealth;
-
-	UPROPERTY(ReplicatedUsing=OnRep_HealthChanged)
-	float CurrentHealth;
-	UFUNCTION()
-	void OnRep_HealthChanged();
-
-	UPROPERTY(ReplicatedUsing = OnRep_VIPChanged)
-	bool bIsVIP;
-	UFUNCTION()
-	void OnRep_VIPChanged();
-
-	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
-	void OnKilled();
-	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
-	void OnPreparedForNewRound();
-	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
-	void OnVIPChanged(bool IsVIP);
-	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
-	void OnAnimStateChanged();
 	UFUNCTION(BlueprintImplementableEvent, Category = "Third Person Char - Animation")
 	void OnAnimStateChanged_Aiming(bool bIsAiming);
 	UFUNCTION(BlueprintImplementableEvent, Category = "Third Person Char - Animation")
@@ -102,35 +79,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	FGameplayTag DeadTagForSimulatedProxies;
 
-	// Gameplay Cue interface
-/*public:
-	virtual void HandleGameplayCue(UObject* Self, FGameplayTag GameplayCueTag, EGameplayCueEvent::Type EventType, FGameplayCueParameters Parameters) { UE_LOG(LogTemp, Warning, TEXT("1!")); };
-	virtual void HandleGameplayCues(UObject* Self, const FGameplayTagContainer& GameplayCueTags, EGameplayCueEvent::Type EventType, FGameplayCueParameters Parameters) {};
-	virtual bool ShouldAcceptGameplayCue(UObject* Self, FGameplayTag GameplayCueTag, EGameplayCueEvent::Type EventType, FGameplayCueParameters Parameters) { return true; };
-
-	//	Deprecated
-	virtual void HandleGameplayCue(AActor* Self, FGameplayTag GameplayCueTag, EGameplayCueEvent::Type EventType, FGameplayCueParameters Parameters) { UE_LOG(LogTemp ,Warning, TEXT("%s"), *this->GetFName().ToString()); };
-	virtual void HandleGameplayCues(AActor* Self, const FGameplayTagContainer& GameplayCueTags, EGameplayCueEvent::Type EventType, FGameplayCueParameters Parameters) {};
-	virtual bool ShouldAcceptGameplayCue(AActor* Self, FGameplayTag GameplayCueTag, EGameplayCueEvent::Type EventType, FGameplayCueParameters Parameters) { return true; };
-	// Deprecated
-	
-	virtual void GameplayCueDefaultHandler(EGameplayCueEvent::Type EventType, FGameplayCueParameters Parameters) {};
-	virtual void ForwardGameplayCueToParent() {};*/
-	//
-
 	// END GAS related 
 
 protected:
 
-	// BEGIN Animation logic
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, ReplicatedUsing=OnAnimStateChanged)
-	FCharacterAnimState AnimState;
-	UFUNCTION(BlueprintCallable, Category = "Pawn Animation State")
-	const FCharacterAnimState& GetAnimState() const { return AnimState; };
-	UFUNCTION(Server, Unreliable)
-	void Server_UpdateAnimationState(FCharacterAnimState NewAnimState);
-	void Server_UpdateAnimationState_Implementation(FCharacterAnimState NewAnimState) { AnimState = NewAnimState; OnAnimStateChanged(); };
-	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Effects")
+	class UParticleSystem* ShootParticleEffect_Generic;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Effects")
+	class UParticleSystem* ShootParticleEffect_Player;
+
 	UFUNCTION(BlueprintCallable, Category = "Pawn Animation State")
 	void ReplicateAnimationStateChange();
 
@@ -149,9 +106,12 @@ protected:
 	void Server_Shoot(FShootData Data);
 	bool Server_Shoot_Validate(FShootData Data);
 	void Server_Shoot_Implementation(FShootData Data);
+
 public:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
 	void OnRep_Shot(FShootData ShootData);
+	UFUNCTION(BlueprintImplementableEvent, Category = "Pawn Events")
+	void OnRep_Reload();
 
 	// BEGIN Input Related logic
 
@@ -180,10 +140,6 @@ protected:
 	float ShootingDistance = 10000.f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Shooting")
 	float DamagePerShot = 100.f;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Effects")
-	class UParticleSystem* ShootParticleEffect_Generic;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Effects")
-	class UParticleSystem* ShootParticleEffect_Player;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USceneComponent* CameraGimbal;
@@ -202,10 +158,11 @@ public:
 	void MoveRight(float Value);
 	void LookUpAtRate(float Value);
 	void TurnAtRate(float Value);
-	//void ShootingMode(float Value);
-	//void AimingMode(float Value);
-
 	void SwitchShoulderCamera();
+	UFUNCTION(BlueprintCallable, Category = "Pawn Ability Handling")
+	void MakeAShot();
+	UFUNCTION(BlueprintCallable, Category = "Pawn Ability Handling")
+	void ReloadWeaponAndReplicate();
 
 	// END Input Related logic
 };

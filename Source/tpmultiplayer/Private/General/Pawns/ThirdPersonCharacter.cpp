@@ -3,23 +3,20 @@
 
 #include "General/Pawns/ThirdPersonCharacter.h"
 
-#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Camera/PlayerCameraManager.h"
-#include "GameFramework/Controller.h"
 #include "Components/InputComponent.h"
 #include "GameFramework/PlayerState.h"
-#include "Particles/ParticleSystem.h"
+#include "GameFramework/GameState.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameplayTagContainer.h"
-#include "Net/UnrealNetwork.h" // TODO Remove unneeded
 
 #include "General/GameplayAbilitySystem/DefaultPawnAttributeSet.h"
 #include "General/ActorComponents/TPCMovementComponent.h"
 #include "General/Controllers/GamePlayerController.h"
-#include "General/States/GameplayGameState.h"
+
 
 AThirdPersonCharacter::AThirdPersonCharacter(const class FObjectInitializer& ObjectInitializer) :
 	Super(ObjectInitializer.SetDefaultSubobjectClass<UTPCMovementComponent>(ACharacter::CharacterMovementComponentName))
@@ -28,16 +25,11 @@ AThirdPersonCharacter::AThirdPersonCharacter(const class FObjectInitializer& Obj
 
 	AimingCameraDistance = FVector(0, 40.f, 0);
 	IdleCameraDistance = FVector(0, 70.f, 0);
-	AnimState = FCharacterAnimState();
 	AimingCameraSpringDistance = 50.f;
 	IdleCameraSpringDistance = 150.f;
-	
-	//bAbilityInputWasSet = false;
 	MaxPitch_FreeCamera = 75;
-	MaxPitch_Aiming = 60;
-	StartingHealth = 100;
 	bViewObstructed = false;
-	bIsVIP = false;
+	MaxPitch_Aiming = 60;
 
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 
@@ -60,11 +52,11 @@ AThirdPersonCharacter::AThirdPersonCharacter(const class FObjectInitializer& Obj
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(CameraGimbal);
 	CameraBoom->TargetArmLength = IdleCameraSpringDistance;
-	CameraBoom->bUsePawnControlRotation = false; // Enables only when aiming
+	CameraBoom->bUsePawnControlRotation = false;
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
-	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
+	FollowCamera->bUsePawnControlRotation = false;
 
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("Ability System Component"));
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
@@ -75,8 +67,6 @@ AThirdPersonCharacter::AThirdPersonCharacter(const class FObjectInitializer& Obj
 void AThirdPersonCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	CurrentHealth = StartingHealth;
 
 	if(auto AttributeSet = AbilitySystemComponent->GetSet<UDefaultPawnAttributeSet>())
 		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AttributeSet->GetHealthAttribute()).AddUObject(this, &AThirdPersonCharacter::OnHealthAttibuteChanged);
@@ -115,17 +105,6 @@ void AThirdPersonCharacter::PossessedBy(AController* NewController)
 	Super::PossessedBy(NewController);
 
 	AbilitySystemComponent->InitAbilityActorInfo(NewController, this);
-}
-
-float AThirdPersonCharacter::TakeDamage(float Damage, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
-{
-	float DamageTaken = Super::TakeDamage(Damage, DamageEvent, EventInstigator, DamageCauser);
-
-	if (DamageTaken > 0) CurrentHealth -= DamageTaken;
-
-	OnRep_HealthChanged();
-
-	return DamageTaken;
 }
 
 void AThirdPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -179,7 +158,7 @@ void AThirdPersonCharacter::MoveRight(float Value)
 
 	FRotator CurrentRotation;
 
-	if (Controller->PlayerState && Controller->PlayerState->IsABot())
+	if (Controller->PlayerState && !Controller->PlayerState->IsABot())
 		CurrentRotation = Controller->GetControlRotation();
 	else
 		CurrentRotation = FollowCamera->GetComponentRotation();
@@ -188,7 +167,7 @@ void AThirdPersonCharacter::MoveRight(float Value)
 	const FVector Direction = FRotationMatrix(ForwardRotation).GetUnitAxis(EAxis::Y);
 
 	AddMovementInput(Direction, Value);
-	if (Controller && Controller->IsPlayerController()) Controller->SetControlRotation(CameraGimbal->GetComponentRotation());
+	if (Controller->IsPlayerController()) Controller->SetControlRotation(CameraGimbal->GetComponentRotation());
 }
 
 void AThirdPersonCharacter::TurnAtRate(float Value) // Should not be called for AIs 
@@ -242,50 +221,21 @@ void AThirdPersonCharacter::SwitchShoulderCamera()
 
 // END Input related logic
 
-/*
-void AThirdPersonCharacter::AimingMode(float Value)
+bool AThirdPersonCharacter::IsAlive()
 {
-	bool IsAimingNow = Value > 0.7f; // could be anything > 0
-	if (bViewObstructed) IsAimingNow = false;
-	bool StateChanged = false;
+	// TODO GAS stat check
+	return true;
+}
 
-	if (!AnimState.bIsAiming && IsAimingNow) // Start to aim
-	{
-		CameraBoom->TargetArmLength = AimingCameraSpringDistance;
-		CameraBoom->SetRelativeLocation(AimingCameraDistance);
-		//
-		auto TargetCntrRot = CameraBoom->GetComponentRotation();
-		TargetCntrRot.Pitch = 0;
-		TargetCntrRot.Roll = 0;
-		GetController<AGamePlayerController>()->SetControlRotation(TargetCntrRot);
-		//
-		StateChanged = true;
-	}
-	else if (AnimState.bIsAiming && !IsAimingNow) // End aiming
-	{
-		CameraBoom->TargetArmLength = IdleCameraSpringDistance;
-		CameraBoom->SetRelativeLocation(IdleCameraDistance);
-		StateChanged = true;
-	}
-
-	if (StateChanged)
-	{
-		AnimState.bIsAiming = IsAimingNow;
-		ReplicateAnimationStateChange();
-	}
-}*/
-/*
-void AThirdPersonCharacter::ShootingMode(float Value)
+bool AThirdPersonCharacter::IsVIP()
 {
-	if (Value < 0.5f || !AnimState.bIsAiming || AnimState.bIsReloading) return;
-	
-	// TODO make unable to shoot if hands are in anim transition between idle/aiming
+	// TODO Tag Check
+	return false;
+}
 
-	float CurrentTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
-	if (CurrentTime - LastShootingTime < ShootingTimeCooldownMS) return;
-
-	LastShootingTime = CurrentTime;
-	ReplicateAnimationStateChange();
+void AThirdPersonCharacter::MakeAShot()
+{
+	if (!IsLocallyControlled()) return;
 
 	// Gathering info about what we are about to hit
 
@@ -321,72 +271,51 @@ void AThirdPersonCharacter::ShootingMode(float Value)
 	Server_Shoot(ShootData);
 }
 
-void AThirdPersonCharacter::ReloadWeapon()
+void AThirdPersonCharacter::ReloadWeaponAndReplicate()
 {
-	if (AnimState.bIsReloading) return;
+	if (HasAuthority())
+	{
+		// Replicate to other clients, skip owner
+		for (FConstPlayerControllerIterator Iterator = GetWorld()->GetPlayerControllerIterator(); Iterator; ++Iterator)
+		{
+			TWeakObjectPtr<APlayerController> WeakPC = *Iterator;
+			if (!WeakPC.IsValid()) continue;
 
-	float CurrentTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
-	if (CurrentTime - LastReloadTime < ReloadTimeCooldownMS) return;
+			auto PC = WeakPC.Get();
+			if (this->GetNetOwningPlayer() == PC->Player) continue;
 
-	LastReloadTime = CurrentTime;
-	AnimState.bIsReloading = true;
-	ReplicateAnimationStateChange();
-}*/
+			// TODO Relevancy check may be added here. Otherwise it looks like NetMulticast except we are skipping owner
+
+			CastChecked<AGamePlayerController>(PC)->Client_ReplicateReload(this);
+		}
+	}
+
+	OnRep_Reload();
+}
 
 // BEGIN General logic
 
-void AThirdPersonCharacter::OnRep_HealthChanged()
+/*void AThirdPersonCharacter::OnRep_VIPChanged()
 {
-	if (!IsAlive())
-	{
-		OnPawnKilledEvent.Broadcast(this);
-		OnKilled(); // call to BP	
-
-		if (!HasAuthority() && IsLocallyControlled())
-		{
-			// Special case when pawn owner will not receive updated AnimState bacause of the replication condition so it need to change it for itself too
-			AnimState.bIsDead = true; 
-			OnAnimStateChanged();
-		}
-
-		return;
-	}
-
-	auto GameState = GetWorld()->GetGameState<AGameplayGameState>();
-	if (GameState && GameState->GetCurrentMatchData().MatchState == EMatchState::Warmup && CurrentHealth == StartingHealth)
-	{
-		// Just started new round, set animations to idle and other custom stuff in BP
-		if (!HasAuthority() && IsLocallyControlled())
-		{
-			AnimState = FCharacterAnimState(); // Same logic as special case before, local authonomous proxy need to reset its state manually
-			OnAnimStateChanged();
-		}
-
-		OnPreparedForNewRound();
-	}
-}
-
-void AThirdPersonCharacter::OnRep_VIPChanged()
-{
-	OnVIPChanged(bIsVIP); // Call to BP
-}
+	//OnVIPChanged(bIsVIP); // Call to BP
+}*/
 
 void AThirdPersonCharacter::AuthPrepareForNewGameRound()
 {
-	if (!HasAuthority()) return;
+	/*if (!HasAuthority()) return;
 
 	AnimState = FCharacterAnimState(); // Resetting and replicating animation variables
 	ReplicateAnimationStateChange();
 
 	CurrentHealth = StartingHealth; // Resetting and replicating health
 	
-	OnPreparedForNewRound(); // call to BP
+	OnPreparedForNewRound(); // call to BP*/
 }
 
 void AThirdPersonCharacter::ReplicateAnimationStateChange()
 {
-	OnAnimStateChanged(); // Auth will replicate FCharacterAnimState without any additional code, but need to call OnRep function on itself
-	if (!HasAuthority()) Server_UpdateAnimationState(AnimState);
+	//OnAnimStateChanged(); // Auth will replicate FCharacterAnimState without any additional code, but need to call OnRep function on itself
+	//if (!HasAuthority()) Server_UpdateAnimationState(AnimState);
 }
 
 float AThirdPersonCharacter::GetCurrentPitch()
@@ -499,6 +428,8 @@ void AThirdPersonCharacter::Server_Shoot_Implementation(FShootData Data)
 		auto PC = WeakPC.Get();
 		if (Data.Shooter->GetNetOwningPlayer() == PC->Player) continue;
 
+		// TODO Relevancy check may be added here. Otherwise it looks like NetMulticast except we are skipping owner
+
 		CastChecked<AGamePlayerController>(PC)->Client_ReplicateShot(Data);
 	}
 
@@ -507,15 +438,17 @@ void AThirdPersonCharacter::Server_Shoot_Implementation(FShootData Data)
 		FDamageEvent DamageEvent;
 		TargetPawn->TakeDamage(DamagePerShot, DamageEvent, nullptr, Data.Shooter);
 	}
+
+	OnRep_Shot(Data);
 }
 
 // END Server logic
 
-void AThirdPersonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+/*void AThirdPersonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(AThirdPersonCharacter, bIsVIP);
-	DOREPLIFETIME(AThirdPersonCharacter, CurrentHealth);
-	DOREPLIFETIME_CONDITION(AThirdPersonCharacter, AnimState, COND_SkipOwner);
-}
+	//DOREPLIFETIME(AThirdPersonCharacter, bIsVIP);
+	//DOREPLIFETIME(AThirdPersonCharacter, CurrentHealth);
+	//DOREPLIFETIME_CONDITION(AThirdPersonCharacter, AnimState, COND_SkipOwner);
+}*/

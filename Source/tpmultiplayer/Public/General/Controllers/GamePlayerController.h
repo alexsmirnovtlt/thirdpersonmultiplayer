@@ -40,8 +40,10 @@ public:
 
 	void ChangeInputMode(bool bMenuMode);
 
-	UFUNCTION(Client, Reliable)
+	UFUNCTION(Client, Unreliable)
 	void Client_ReplicateShot(const struct FShootData& ShootData);
+	UFUNCTION(Client, Unreliable)
+	void Client_ReplicateReload(AActor* ReloadingActor);
 
 protected:
 

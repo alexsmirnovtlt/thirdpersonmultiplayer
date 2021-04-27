@@ -236,7 +236,7 @@ void AMainGameMode::InitialMatchStateSetup()
 
 	// Giving a random pawn a flag
 	auto Pawn = GiveFlagToARandomPawn(ETeamType::RedTeam);
-	Pawn->OnRep_VIPChanged();
+	//Pawn->OnRep_VIPChanged();
 
 	// Initializing all flag areas on a map
 	for(auto FlagArea : FlagPlacements)
@@ -294,7 +294,7 @@ void AMainGameMode::MatchPhaseStart_Warmup()
 	for (auto TPCPawn : TeamPawns)
 	{
 		TPCPawn->AuthPrepareForNewGameRound(); // setting back health, idle animation and other optional stuff
-		TPCPawn->OnRep_VIPChanged(); // Showing/hiding flag model on all pawns
+		//TPCPawn->OnRep_VIPChanged(); // Showing/hiding flag model on all pawns
 	}
 
 	// Finalize
@@ -447,7 +447,7 @@ void AMainGameMode::ResetPawnsForNewRound()
 
 AThirdPersonCharacter* AMainGameMode::GiveFlagToARandomPawn(ETeamType TeamWithFlag)
 {
-	TArray<AThirdPersonCharacter*> SelectedPawns;
+	/*TArray<AThirdPersonCharacter*> SelectedPawns;
 	for (auto TPCPawn : TeamPawns)
 	{
 		TPCPawn->bIsVIP = false;
@@ -456,7 +456,8 @@ AThirdPersonCharacter* AMainGameMode::GiveFlagToARandomPawn(ETeamType TeamWithFl
 	}
 	int32 ChosenIndex = FMath::RandRange(0, SelectedPawns.Num() - 1);
 	SelectedPawns[ChosenIndex]->bIsVIP = true;
-	return SelectedPawns[ChosenIndex];
+	return SelectedPawns[ChosenIndex];*/
+	return nullptr;
 }
 
 int32 AMainGameMode::GetNextSpawnLocationIndex(int32 StartingIndex, ETeamType TeamType)
@@ -529,8 +530,8 @@ void AMainGameMode::OnPawnKilled(AThirdPersonCharacter* DiedPawn)
 		MatchPhaseStart_RoundEnd();
 	}
 
-	DiedPawn->AnimState.bIsDead = true; // Play dying animation and replicate it to clients
-	DiedPawn->ReplicateAnimationStateChange();
+	//DiedPawn->AnimState.bIsDead = true; // Play dying animation and replicate it to clients
+	//DiedPawn->ReplicateAnimationStateChange();
 }
 
 void AMainGameMode::DetermineTeamThatWonThatRound(FMatchData& CurrentMatchData)
@@ -608,7 +609,7 @@ void AMainGameMode::Debug_KillRandomPawn()
 	int32 ChosenIndex = FMath::RandRange(0, CharsArray.Num() - 1);
 	
 	FDamageEvent DamageEvent;
-	CharsArray[ChosenIndex]->TakeDamage(CharsArray[ChosenIndex]->StartingHealth, DamageEvent, nullptr, nullptr);
+	//CharsArray[ChosenIndex]->TakeDamage(CharsArray[ChosenIndex]->StartingHealth, DamageEvent, nullptr, nullptr);
 }
 
 // DEBUG
