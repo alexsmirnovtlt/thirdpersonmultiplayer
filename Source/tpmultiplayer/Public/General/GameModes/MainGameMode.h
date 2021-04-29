@@ -30,6 +30,7 @@ public:
 	void AddPlayerToAMatch(class AGamePlayerController* PlayerController);
 	void RemovePlayerFromAMatch(class AGamePlayerController* PlayerController);
 
+	void ApplyShootDamageToAPawn(class AThirdPersonCharacter* DamagedPawn);
 	void OnAreaStateChanged(EAreaState AreaState);
 
 protected:
@@ -75,6 +76,7 @@ protected:
 	FTimerHandle MatchTimerHandle;
 
 	UFUNCTION()
+	void OnPawnDamaged(AThirdPersonCharacter* DamagedPawn);
 	void OnPawnKilled(AThirdPersonCharacter* DiedPawn);
 
 	// END Match logic
@@ -90,6 +92,8 @@ protected:
 	// Tags to remove from ActivePawnAbility when End Round phase starts
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TSubclassOf<class UGameplayEffect> EndPhaseEffect;
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayEffect> WeaponDamageEffect;
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TSubclassOf<class UGameplayAbility> ShootAbility;
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")

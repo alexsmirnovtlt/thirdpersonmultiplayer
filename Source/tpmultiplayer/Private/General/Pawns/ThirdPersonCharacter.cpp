@@ -59,7 +59,10 @@ AThirdPersonCharacter::AThirdPersonCharacter(const class FObjectInitializer& Obj
 	FollowCamera->bUsePawnControlRotation = false;
 
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("Ability System Component"));
+	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
+
+	AttributeSet = CreateDefaultSubobject<UDefaultPawnAttributeSet>(TEXT("AttributeSet"));
 
 	AutoPossessAI = EAutoPossessAI::Disabled;
 }
@@ -68,11 +71,10 @@ void AThirdPersonCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if(auto AttributeSet = AbilitySystemComponent->GetSet<UDefaultPawnAttributeSet>())
-		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AttributeSet->GetHealthAttribute()).AddUObject(this, &AThirdPersonCharacter::OnHealthAttibuteChanged);
-
+	if (AttributeSet)
+		HealthChangedDelegateHandle = AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AttributeSet->GetHealthAttribute()).AddUObject(this, &AThirdPersonCharacter::OnHealthAttibuteChanged);
+	
 	AimTagChangedDelegateHandle = AbilitySystemComponent->RegisterGameplayTagEvent(AimingTagForSimulatedProxies).AddUObject(this, &AThirdPersonCharacter::OnAimStateTagChanged);
-	AbilitySystemComponent->RegisterGameplayTagEvent(DeadTagForSimulatedProxies).AddUObject(this, &AThirdPersonCharacter::OnDeadStateTagChanged);
 }
 
 void AThirdPersonCharacter::Tick(float DeltaTime)
@@ -223,19 +225,37 @@ void AThirdPersonCharacter::SwitchShoulderCamera()
 
 bool AThirdPersonCharacter::IsAlive()
 {
-	// TODO GAS stat check
-	return true;
+	if (!AttributeSet) return false;
+	return AttributeSet->GetHealth() > 0.f;
 }
 
 bool AThirdPersonCharacter::IsVIP()
 {
-	// TODO Tag Check
-	return false;
+	if (!AbilitySystemComponent) return false;
+	return AbilitySystemComponent->HasMatchingGameplayTag(VIPTag);
 }
 
-void AThirdPersonCharacter::MakeAShot()
+bool AThirdPersonCharacter::ShootIfAble_Local()
 {
-	if (!IsLocallyControlled()) return;
+	// If no ammo, we still need to replicate shot, but it will just replicate empty mag sound
+	if (AttributeSet && AttributeSet->GetAmmoCount() < 1.f)
+	{
+		FShootData ShootData;
+		ShootData.Shooter = this;
+		ShootData.Target = nullptr;
+		ShootData.bIsClipEmpty = true;
+		ShootData.ImpactLocation = FVector::ZeroVector;
+		ShootData.ImpactNormal = FVector::ZeroVector;
+		ShootData.ServerTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
+
+		if(!HasAuthority()) OnRep_Shot(ShootData); // servil will call that in Server_Shoot
+		Server_Shoot(ShootData);
+		return false;
+	}
+
+	// Allow server to execute Shoot Effect (decrease number of bullets) when client shoots but do nothing else
+	// and wait for client to receive shooting data and replicate if data is ok.
+	if (HasAuthority() && !IsLocallyControlled()) return true;
 
 	// Gathering info about what we are about to hit
 
@@ -263,12 +283,14 @@ void AThirdPersonCharacter::MakeAShot()
 	ShootData.Shooter = this;
 	ShootData.Target = TargetActor;
 	ShootData.bIsValidHit = bValidHit;
+	ShootData.bIsClipEmpty = false;
 	ShootData.ImpactLocation = HitResult.Location;
 	ShootData.ImpactNormal = HitResult.Normal;
 	ShootData.ServerTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
 
-	OnRep_Shot(ShootData); // Local visualization
+	if (!HasAuthority()) OnRep_Shot(ShootData); // Local visualization
 	Server_Shoot(ShootData);
+	return true;
 }
 
 void AThirdPersonCharacter::ReloadWeaponAndReplicate()
@@ -286,7 +308,7 @@ void AThirdPersonCharacter::ReloadWeaponAndReplicate()
 
 			// TODO Relevancy check may be added here. Otherwise it looks like NetMulticast except we are skipping owner
 
-			CastChecked<AGamePlayerController>(PC)->Client_ReplicateReload(this);
+			if (!PC->IsLocalController()) CastChecked<AGamePlayerController>(PC)->Client_ReplicateReload(this);
 		}
 	}
 
@@ -302,20 +324,7 @@ void AThirdPersonCharacter::ReloadWeaponAndReplicate()
 
 void AThirdPersonCharacter::AuthPrepareForNewGameRound()
 {
-	/*if (!HasAuthority()) return;
-
-	AnimState = FCharacterAnimState(); // Resetting and replicating animation variables
-	ReplicateAnimationStateChange();
-
-	CurrentHealth = StartingHealth; // Resetting and replicating health
-	
-	OnPreparedForNewRound(); // call to BP*/
-}
-
-void AThirdPersonCharacter::ReplicateAnimationStateChange()
-{
-	//OnAnimStateChanged(); // Auth will replicate FCharacterAnimState without any additional code, but need to call OnRep function on itself
-	//if (!HasAuthority()) Server_UpdateAnimationState(AnimState);
+	// TODo REMOVE?
 }
 
 float AThirdPersonCharacter::GetCurrentPitch()
@@ -367,6 +376,8 @@ bool AThirdPersonCharacter::StartAiming_LocalPlayer()
 	TargetCntrRot.Roll = 0;
 	GetController<AGamePlayerController>()->SetControlRotation(TargetCntrRot);
 
+	OnAnimStateChanged_Aiming(true);
+
 	return true;
 }
 
@@ -377,23 +388,20 @@ void AThirdPersonCharacter::EndAiming_LocalPlayer()
 	CameraBoom->TargetArmLength = IdleCameraSpringDistance;
 	CameraBoom->SetRelativeLocation(IdleCameraDistance);
 
+	OnAnimStateChanged_Aiming(false);
 }
 
 void AThirdPersonCharacter::OnHealthAttibuteChanged(const struct FOnAttributeChangeData& Data)
 {
 	// TODO Maybe add HUD to a local player when his health is below some threshold
+	OnHealthChanged(Data.OldValue, Data.NewValue);
 }
 
 void AThirdPersonCharacter::OnAimStateTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
 {
+	if (IsLocallyControlled()) return;
 	bool bIsAimingNow = NewCount > 0;
 	OnAnimStateChanged_Aiming(bIsAimingNow);
-}
-
-void AThirdPersonCharacter::OnDeadStateTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
-{
-	bool bNewIsDead = NewCount > 0;
-	OnAnimStateChanged_IsDead(bNewIsDead);
 }
 
 // END Ability System related logic
@@ -430,25 +438,14 @@ void AThirdPersonCharacter::Server_Shoot_Implementation(FShootData Data)
 
 		// TODO Relevancy check may be added here. Otherwise it looks like NetMulticast except we are skipping owner
 
-		CastChecked<AGamePlayerController>(PC)->Client_ReplicateShot(Data);
+		if(!PC->IsLocalController()) CastChecked<AGamePlayerController>(PC)->Client_ReplicateShot(Data);
 	}
 
-	if (TargetPawn)
-	{
-		FDamageEvent DamageEvent;
-		TargetPawn->TakeDamage(DamagePerShot, DamageEvent, nullptr, Data.Shooter);
-	}
+	// Broadcasting event that will be picked up by GameMode.
+	// This allows us to decouple Pawn and GameMode and in theory have separate client build that does not contain Auth GameMode class where all main logic happens
+	if (TargetPawn) TargetPawn->OnPawnDamagedEvent.Broadcast(TargetPawn);
 
 	OnRep_Shot(Data);
 }
 
 // END Server logic
-
-/*void AThirdPersonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	//DOREPLIFETIME(AThirdPersonCharacter, bIsVIP);
-	//DOREPLIFETIME(AThirdPersonCharacter, CurrentHealth);
-	//DOREPLIFETIME_CONDITION(AThirdPersonCharacter, AnimState, COND_SkipOwner);
-}*/

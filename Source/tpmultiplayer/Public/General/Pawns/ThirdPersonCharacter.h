@@ -12,7 +12,7 @@
 
 enum class ETeamType : uint8;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPawnKilledDelegate, AThirdPersonCharacter*, DiedPawn);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPawnDamagedDelegate, AThirdPersonCharacter*, DamagedPawn);
 
 UCLASS(abstract)
 class TPMULTIPLAYER_API AThirdPersonCharacter : public ACharacter, public IAbilitySystemInterface
@@ -29,7 +29,6 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void PossessedBy(class AController* NewController) override;
-	//virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return AbilitySystemComponent; }
 
@@ -42,14 +41,14 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
 	ETeamType TeamType;
 
-	FOnPawnKilledDelegate OnPawnKilledEvent;
+	FOnPawnDamagedDelegate OnPawnDamagedEvent;
 
 protected:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Third Person Char - Animation")
 	void OnAnimStateChanged_Aiming(bool bIsAiming);
 	UFUNCTION(BlueprintImplementableEvent, Category = "Third Person Char - Animation")
-	void OnAnimStateChanged_IsDead(bool bIsDead);
+	void OnHealthChanged(float OldValue, float NewValue);
 
 	UFUNCTION(BlueprintNativeEvent, Category = "Override - Third Person Character")
 	class USceneComponent* GetShootCheckOrigin();
@@ -70,14 +69,15 @@ protected:
 
 	void OnHealthAttibuteChanged(const struct FOnAttributeChangeData& Data);
 	void OnAimStateTagChanged(const struct FGameplayTag CallbackTag, int32 NewCount);
-	void OnDeadStateTagChanged(const struct FGameplayTag CallbackTag, int32 NewCount);
+
+	const class UDefaultPawnAttributeSet* AttributeSet;
 
 	// Tag that will be used on simulated proxies to update Aiming Animation. Tag will be replicated to them when aiming on owning player happens
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	FGameplayTag AimingTagForSimulatedProxies;
 	// Same as AimingTag but for Dead AnimMontage
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	FGameplayTag DeadTagForSimulatedProxies;
+	FGameplayTag VIPTag;
 
 	// END GAS related 
 
@@ -88,14 +88,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Effects")
 	class UParticleSystem* ShootParticleEffect_Player;
 
-	UFUNCTION(BlueprintCallable, Category = "Pawn Animation State")
-	void ReplicateAnimationStateChange();
-
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn Animation State")
 	float GetCurrentPitch();
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn Animation State")
 	FVector GetCurrentRelativeToPawnVelocity();
 
+	FDelegateHandle HealthChangedDelegateHandle;
 	FDelegateHandle AimTagChangedDelegateHandle;
 
 	// END Animation logic
@@ -138,8 +136,6 @@ protected:
 	float ForwardDistanceToAbleToAim = 65.f;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Shooting")
 	float ShootingDistance = 10000.f;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Shooting")
-	float DamagePerShot = 100.f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USceneComponent* CameraGimbal;
@@ -159,8 +155,9 @@ public:
 	void LookUpAtRate(float Value);
 	void TurnAtRate(float Value);
 	void SwitchShoulderCamera();
+	// Local pawn calculates all info and sends data to a server
 	UFUNCTION(BlueprintCallable, Category = "Pawn Ability Handling")
-	void MakeAShot();
+	bool ShootIfAble_Local();
 	UFUNCTION(BlueprintCallable, Category = "Pawn Ability Handling")
 	void ReloadWeaponAndReplicate();
 

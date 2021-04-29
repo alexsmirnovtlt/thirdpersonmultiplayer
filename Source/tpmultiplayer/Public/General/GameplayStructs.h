@@ -172,6 +172,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	bool bIsValidHit; // Should we visualize ImpactLocation and ImpactNormal
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	bool bIsClipEmpty;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FVector_NetQuantize ImpactLocation;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FVector_NetQuantizeNormal ImpactNormal;

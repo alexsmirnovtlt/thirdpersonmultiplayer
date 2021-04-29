@@ -30,8 +30,18 @@ public:
 	FGameplayAttributeData Health;
 	ATTRIBUTE_ACCESSORS(UDefaultPawnAttributeSet, Health)
 
+	UPROPERTY(BlueprintReadOnly, Category = "AttributeSet", ReplicatedUsing = OnRep_AmmoCount)
+	FGameplayAttributeData AmmoCount;
+	ATTRIBUTE_ACCESSORS(UDefaultPawnAttributeSet, AmmoCount)
+
+	UPROPERTY(BlueprintReadOnly, Category = "AttributeSet")
+	FGameplayAttributeData WeaponDamage;
+	ATTRIBUTE_ACCESSORS(UDefaultPawnAttributeSet, WeaponDamage)
+
 protected:
 
 	UFUNCTION()
 	virtual void OnRep_Health(const FGameplayAttributeData& OldValue);
+	UFUNCTION()
+	virtual void OnRep_AmmoCount(const FGameplayAttributeData& OldValue);
 };

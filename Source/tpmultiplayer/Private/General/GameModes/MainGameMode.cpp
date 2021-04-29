@@ -121,7 +121,7 @@ void AMainGameMode::SetupPlayableCharacters()
 		AIController->GameState = GameplayState;
 		AIController->Possess(Character);
 
-		Character->OnPawnKilledEvent.AddDynamic(this, &AMainGameMode::OnPawnKilled);
+		Character->OnPawnDamagedEvent.AddDynamic(this, &AMainGameMode::OnPawnDamaged);
 
 		TeamPawns.Add(Character);
 		InGameControllers_AI.Add(AIController);
@@ -499,18 +499,7 @@ int32 AMainGameMode::GetNextUnpossessedPawnIndex(int32 StartingIndex, ETeamType 
 
 void AMainGameMode::OnPawnKilled(AThirdPersonCharacter* DiedPawn)
 {
-	if (DiedPawn->IsPlayerControlled())
-	{
-		if (auto PlayerController = DiedPawn->GetController<AGamePlayerController>())
-		{
-			// TODO restrict control instead of unpossessing (movement and aiming)
-		
-			//PlayerController->UnPossess();
-			//PlayerController->ChangeState(NAME_Spectating);
-			//if (PlayerController->IsLocalPlayerController()) PlayerController->OnRep_Pawn();
-		}
-	}
-	else
+	if (!DiedPawn->IsPlayerControlled())
 	{
 		if (auto AIController = DiedPawn->GetController<AGameplayAIController>())
 			AIController->UnPossess();
@@ -529,9 +518,6 @@ void AMainGameMode::OnPawnKilled(AThirdPersonCharacter* DiedPawn)
 		StopCurrentMatchTimer();
 		MatchPhaseStart_RoundEnd();
 	}
-
-	//DiedPawn->AnimState.bIsDead = true; // Play dying animation and replicate it to clients
-	//DiedPawn->ReplicateAnimationStateChange();
 }
 
 void AMainGameMode::DetermineTeamThatWonThatRound(FMatchData& CurrentMatchData)
@@ -591,6 +577,18 @@ void AMainGameMode::OnAreaStateChanged(EAreaState AreaState)
 	GameplayState->OnRep_MatchStateChanged();
 }
 
+void AMainGameMode::OnPawnDamaged(AThirdPersonCharacter* DamagedPawn)
+{
+	ApplyShootDamageToAPawn(DamagedPawn);
+}
+
+void AMainGameMode::ApplyShootDamageToAPawn(AThirdPersonCharacter* DamagedPawn)
+{
+	auto Context = DamagedPawn->GetAbilitySystemComponent()->MakeEffectContext();
+	DamagedPawn->GetAbilitySystemComponent()->ApplyGameplayEffectToSelf(WeaponDamageEffect.GetDefaultObject(), 1, Context);
+	if (!DamagedPawn->IsAlive()) OnPawnKilled(DamagedPawn);
+}
+
 // END Match related logic
 
 // DEBUG
@@ -607,9 +605,9 @@ void AMainGameMode::Debug_KillRandomPawn()
 			CharsArray.Add(Pawn);
 
 	int32 ChosenIndex = FMath::RandRange(0, CharsArray.Num() - 1);
-	
-	FDamageEvent DamageEvent;
-	//CharsArray[ChosenIndex]->TakeDamage(CharsArray[ChosenIndex]->StartingHealth, DamageEvent, nullptr, nullptr);
+	if (ChosenIndex == 0 && CharsArray.Num() == 0) return;
+
+	ApplyShootDamageToAPawn(TeamPawns[ChosenIndex]);
 }
 
 // DEBUG

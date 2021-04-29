@@ -32,9 +32,15 @@ void UDefaultPawnAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME_CONDITION_NOTIFY(UDefaultPawnAttributeSet, Health, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UDefaultPawnAttributeSet, AmmoCount, COND_None, REPNOTIFY_Always);
 }
 
 void UDefaultPawnAttributeSet::OnRep_Health(const FGameplayAttributeData& OldValue)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UDefaultPawnAttributeSet, Health, OldValue);
+}
+
+void UDefaultPawnAttributeSet::OnRep_AmmoCount(const FGameplayAttributeData& OldValue)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UDefaultPawnAttributeSet, AmmoCount, OldValue);
 }
