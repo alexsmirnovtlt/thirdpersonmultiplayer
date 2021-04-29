@@ -48,14 +48,14 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "Third Person Char - Animation")
 	void OnAnimStateChanged_Aiming(bool bIsAiming);
 	UFUNCTION(BlueprintImplementableEvent, Category = "Third Person Char - Animation")
+	void OnVIPStateChanged(bool bIsVIP);
+	UFUNCTION(BlueprintImplementableEvent, Category = "Third Person Char - Animation")
 	void OnHealthChanged(float OldValue, float NewValue);
 
 	UFUNCTION(BlueprintNativeEvent, Category = "Override - Third Person Character")
 	class USceneComponent* GetShootCheckOrigin();
 	UFUNCTION(BlueprintNativeEvent, Category = "Override - Third Person Character")
 	bool IsInAimingAnimation();
-
-	void AuthPrepareForNewGameRound();
 
 	// BEGIN GAS related 
 protected:
@@ -69,6 +69,7 @@ protected:
 
 	void OnHealthAttibuteChanged(const struct FOnAttributeChangeData& Data);
 	void OnAimStateTagChanged(const struct FGameplayTag CallbackTag, int32 NewCount);
+	void OnVIPTagChanged(const struct FGameplayTag CallbackTag, int32 NewCount);
 
 	const class UDefaultPawnAttributeSet* AttributeSet;
 
@@ -92,9 +93,6 @@ protected:
 	float GetCurrentPitch();
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn Animation State")
 	FVector GetCurrentRelativeToPawnVelocity();
-
-	FDelegateHandle HealthChangedDelegateHandle;
-	FDelegateHandle AimTagChangedDelegateHandle;
 
 	// END Animation logic
 

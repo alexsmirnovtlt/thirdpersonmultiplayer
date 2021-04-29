@@ -72,9 +72,10 @@ void AThirdPersonCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	if (AttributeSet)
-		HealthChangedDelegateHandle = AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AttributeSet->GetHealthAttribute()).AddUObject(this, &AThirdPersonCharacter::OnHealthAttibuteChanged);
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AttributeSet->GetHealthAttribute()).AddUObject(this, &AThirdPersonCharacter::OnHealthAttibuteChanged);
 	
-	AimTagChangedDelegateHandle = AbilitySystemComponent->RegisterGameplayTagEvent(AimingTagForSimulatedProxies).AddUObject(this, &AThirdPersonCharacter::OnAimStateTagChanged);
+	AbilitySystemComponent->RegisterGameplayTagEvent(AimingTagForSimulatedProxies).AddUObject(this, &AThirdPersonCharacter::OnAimStateTagChanged);
+	AbilitySystemComponent->RegisterGameplayTagEvent(VIPTag).AddUObject(this, &AThirdPersonCharacter::OnVIPTagChanged);
 }
 
 void AThirdPersonCharacter::Tick(float DeltaTime)
@@ -317,16 +318,6 @@ void AThirdPersonCharacter::ReloadWeaponAndReplicate()
 
 // BEGIN General logic
 
-/*void AThirdPersonCharacter::OnRep_VIPChanged()
-{
-	//OnVIPChanged(bIsVIP); // Call to BP
-}*/
-
-void AThirdPersonCharacter::AuthPrepareForNewGameRound()
-{
-	// TODo REMOVE?
-}
-
 float AThirdPersonCharacter::GetCurrentPitch()
 {
 	if (IsLocallyControlled()) return Controller->GetControlRotation().Pitch;
@@ -402,6 +393,11 @@ void AThirdPersonCharacter::OnAimStateTagChanged(const FGameplayTag CallbackTag,
 	if (IsLocallyControlled()) return;
 	bool bIsAimingNow = NewCount > 0;
 	OnAnimStateChanged_Aiming(bIsAimingNow);
+}
+
+void AThirdPersonCharacter::OnVIPTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
+{
+	OnVIPStateChanged(NewCount > 0);
 }
 
 // END Ability System related logic

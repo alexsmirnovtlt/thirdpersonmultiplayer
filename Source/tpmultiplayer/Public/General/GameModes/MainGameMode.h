@@ -66,7 +66,7 @@ protected:
 	void InitialMatchStateSetup();
 	void ResetPawnsForNewRound();
 	void DetermineTeamThatWonThatRound(struct FMatchData& CurrentMatchData);
-	AThirdPersonCharacter* GiveFlagToARandomPawn(ETeamType TeamWithFlag);
+	void GiveFlagToARandomPawn(ETeamType TeamWithFlag);
 
 	void MatchPhaseStart_Warmup();
 	void MatchPhaseStart_Gameplay();
@@ -78,6 +78,8 @@ protected:
 	UFUNCTION()
 	void OnPawnDamaged(AThirdPersonCharacter* DamagedPawn);
 	void OnPawnKilled(AThirdPersonCharacter* DiedPawn);
+
+	int32 VIPPawnIndex = -1;
 
 	// END Match logic
 
@@ -94,6 +96,9 @@ protected:
 	TSubclassOf<class UGameplayEffect> EndPhaseEffect;
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TSubclassOf<class UGameplayEffect> WeaponDamageEffect;
+	// Permanent effect that will be applied to one random pawn at the start of the round. This pawn is able to capture game zones
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayEffect> ZoneCaptureEffect;
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TSubclassOf<class UGameplayAbility> ShootAbility;
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")

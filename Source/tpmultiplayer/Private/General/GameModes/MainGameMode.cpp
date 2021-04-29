@@ -235,8 +235,7 @@ void AMainGameMode::InitialMatchStateSetup()
 	GameplayState->OnRep_MatchStateChanged();
 
 	// Giving a random pawn a flag
-	auto Pawn = GiveFlagToARandomPawn(ETeamType::RedTeam);
-	//Pawn->OnRep_VIPChanged();
+	GiveFlagToARandomPawn(ETeamType::RedTeam);
 
 	// Initializing all flag areas on a map
 	for(auto FlagArea : FlagPlacements)
@@ -251,8 +250,7 @@ void AMainGameMode::MatchPhaseStart_Warmup()
 	auto& MatchParameters = GameplayState->GetMatchParameters();
 	auto& CurrentMatchData = GameplayState->CurrentMatchData;
 
-	// Removing ability to move from everyone, 
-	// Granting one pawn an VIP ability (be able to capture a zone), revoking that ability from others
+	// Removing ability to move from everyone
 	ApplyGameplayEffectToAllPawns(WarmupPhaseEffect.GetDefaultObject());
 
 	if (CurrentMatchData.FirstTeam_MatchesWon >= MatchParameters.MaxGameRoundsToWin)
@@ -285,17 +283,11 @@ void AMainGameMode::MatchPhaseStart_Warmup()
 
 	for (auto FlagActor : FlagPlacements) FlagActor->ResetFlagState();
 
-	// Giving random pawn a flag
+	// Giving random pawn a VIP status (can capture zones). Previosly was a flag.
 	ETeamType TeamWithAFlag = CurrentMatchData.RedTeamHasFlag ? ETeamType::RedTeam : ETeamType::BlueTeam;
 	GiveFlagToARandomPawn(TeamWithAFlag);
 	
 	ResetPawnsForNewRound(); // Teleports pawns back and possesses died ones
-
-	for (auto TPCPawn : TeamPawns)
-	{
-		TPCPawn->AuthPrepareForNewGameRound(); // setting back health, idle animation and other optional stuff
-		//TPCPawn->OnRep_VIPChanged(); // Showing/hiding flag model on all pawns
-	}
 
 	// Finalize
 	GameplayState->ForceNetUpdate(); // TODO make it so GameplayState will not check for replication updates automatically and we update it manually like that. NetUpdateFrequency 0 in GameplayState may not be it
@@ -445,19 +437,24 @@ void AMainGameMode::ResetPawnsForNewRound()
 	}
 }
 
-AThirdPersonCharacter* AMainGameMode::GiveFlagToARandomPawn(ETeamType TeamWithFlag)
+void AMainGameMode::GiveFlagToARandomPawn(ETeamType TeamWithFlag)
 {
-	/*TArray<AThirdPersonCharacter*> SelectedPawns;
-	for (auto TPCPawn : TeamPawns)
+	if (VIPPawnIndex > -1)
 	{
-		TPCPawn->bIsVIP = false;
-		if (TPCPawn->TeamType == TeamWithFlag)
-			SelectedPawns.Add(TPCPawn);
+		auto AbilitySystem = TeamPawns[VIPPawnIndex]->GetAbilitySystemComponent();
+		AbilitySystem->RemoveActiveGameplayEffectBySourceEffect(ZoneCaptureEffect, AbilitySystem);
+		UE_LOG(LogTemp, Warning, TEXT("Effect removed from %s"), *TeamPawns[VIPPawnIndex]->GetName());
 	}
-	int32 ChosenIndex = FMath::RandRange(0, SelectedPawns.Num() - 1);
-	SelectedPawns[ChosenIndex]->bIsVIP = true;
-	return SelectedPawns[ChosenIndex];*/
-	return nullptr;
+	
+	TArray<int32> SelectedPawnsIndexes;
+	for (int32 i = 0; i < TeamPawns.Num(); ++i)
+		if (TeamPawns[i]->TeamType == TeamWithFlag)
+			SelectedPawnsIndexes.Add(i);
+
+	VIPPawnIndex = SelectedPawnsIndexes[FMath::RandRange(0, SelectedPawnsIndexes.Num() - 1)];
+	auto Context = TeamPawns[VIPPawnIndex]->GetAbilitySystemComponent()->MakeEffectContext();
+	TeamPawns[VIPPawnIndex]->GetAbilitySystemComponent()->ApplyGameplayEffectToSelf(ZoneCaptureEffect.GetDefaultObject(), 1, Context);
+	UE_LOG(LogTemp, Warning, TEXT("Effect added to %s"), *TeamPawns[VIPPawnIndex]->GetName());
 }
 
 int32 AMainGameMode::GetNextSpawnLocationIndex(int32 StartingIndex, ETeamType TeamType)
