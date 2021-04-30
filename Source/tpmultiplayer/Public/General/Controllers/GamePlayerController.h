@@ -3,7 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "General/GameplayStructs.h"
 #include "GameFramework/PlayerController.h"
+
 #include "GamePlayerController.generated.h"
 
 enum class ETeamType : uint8;
@@ -24,6 +26,7 @@ public:
 	void BeginPlay() override;
 	void OnRep_Pawn() override;
 	void PawnLeavingGame() override {}; // Pawn will not be destroyed
+	void AcknowledgePossession(class APawn* P) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:
@@ -36,6 +39,11 @@ public:
 	class AGameplayGameState* GetGameplayState() const { return GameplayState; };
 
 	void ChangeInputMode(bool bMenuMode);
+
+	UFUNCTION(Client, Unreliable)
+	void Client_ReplicateShot(const struct FShootData& ShootData);
+	UFUNCTION(Client, Unreliable)
+	void Client_ReplicateReload(AActor* ReloadingActor);
 
 protected:
 
@@ -63,11 +71,17 @@ public:
 	static const FName VerticalAxisBindingName;
 	static const FName MoveForwardAxisBindingName;
 	static const FName MoveRightAxisBindingName;
-	static const FName PrimaryActionAxisBindingName;
-	static const FName SecondaryActionAxisBindingName;
+
 	static const FName MenuActionBindingName;
 	static const FName GamePlayHUDBindingName;
 	static const FName AdditionalActionBindingName;
+	static const FName SwitchShoulderBindingName;
+	static const FName ShootBindingName;
+	static const FName AimBindingName;
+	static const FName ReloadBindingName;
+	static const FName SprintBindingName;
+	static const FName AbilityConfirmBindingName;
+	static const FName AbilityCancelBindingName;
 	static const FName DebugKillBindingName;
 
 	void MenuActionInput();
@@ -76,6 +90,6 @@ public:
 
 	// END Input
 
-private:
-	static const float NewControlRotationPitchOnPawnPossess;
+//private:
+	//static const float NewControlRotationPitchOnPawnPossess;
 };

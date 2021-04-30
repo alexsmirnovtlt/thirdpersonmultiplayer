@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "GameplayTagContainer.h"
+
 #include "MainGameMode.generated.h"
 
 enum class ETeamType : uint8;
@@ -28,6 +30,7 @@ public:
 	void AddPlayerToAMatch(class AGamePlayerController* PlayerController);
 	void RemovePlayerFromAMatch(class AGamePlayerController* PlayerController);
 
+	void ApplyShootDamageToAPawn(class AThirdPersonCharacter* DamagedPawn);
 	void OnAreaStateChanged(EAreaState AreaState);
 
 protected:
@@ -54,6 +57,7 @@ protected:
 	// Inital setup logic
 	void SetupSpawnLocations();
 	void SetupPlayableCharacters();
+	void GrantGameplayAbilities();
 	//
 
 	class AGameplayGameState* GameplayState;
@@ -62,23 +66,54 @@ protected:
 	void InitialMatchStateSetup();
 	void ResetPawnsForNewRound();
 	void DetermineTeamThatWonThatRound(struct FMatchData& CurrentMatchData);
-	AThirdPersonCharacter* GiveFlagToARandomPawn(ETeamType TeamWithFlag);
+	void GiveFlagToARandomPawn(ETeamType TeamWithFlag);
 
 	void MatchPhaseStart_Warmup();
 	void MatchPhaseStart_Gameplay();
 	void MatchPhaseStart_RoundEnd();
-	void MatchPhaseEnd_Warmup(const struct FMatchParameters& MatchParameters, const struct FMatchData& CurrentMatchData);
-	void MatchPhaseEnd_Gameplay(const struct FMatchParameters& MatchParameters, const struct FMatchData& CurrentMatchData);
-	void MatchPhaseEnd_RoundEnd(const struct FMatchParameters& MatchParameters, const struct FMatchData& CurrentMatchData);
 
 	void StopCurrentMatchTimer();
 	FTimerHandle MatchTimerHandle;
 
 	UFUNCTION()
+	void OnPawnDamaged(AThirdPersonCharacter* DamagedPawn);
 	void OnPawnKilled(AThirdPersonCharacter* DiedPawn);
+
+	int32 VIPPawnIndex = -1;
 
 	// END Match logic
 
+	// BEGIN GAS parameters and Logic
+
+	// Ability that allows Pawns to move, shoot, aim, etc that is activated when main game phase begins
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayEffect> WarmupPhaseEffect;
+	// Opposite of ActivePawnAbility. Pawn cannot do anything. Activated before main game phase or when pawn got killed
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayEffect> MainPhaseEffect;
+	// Tags to remove from ActivePawnAbility when End Round phase starts
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayEffect> EndPhaseEffect;
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayEffect> WeaponDamageEffect;
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayEffect> DeadStateEffect;
+	// Permanent effect that will be applied to one random pawn at the start of the round. This pawn is able to capture game zones
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayEffect> ZoneCaptureEffect;
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> ShootAbility;
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> AimAbility;
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> ReloadAbility;
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> SprintAbility;
+
+	void ApplyGameplayEffectToAllPawns(class UGameplayEffect* GEffectToAddPtr);
+
+	// END GAS parameters and Logic
+	
 	static const FString NewPlayerOptionsNameKey; // When new PlayerController gets created, set its name from option parameter with that key name on AMainGameMode::Login() 
 
 public:

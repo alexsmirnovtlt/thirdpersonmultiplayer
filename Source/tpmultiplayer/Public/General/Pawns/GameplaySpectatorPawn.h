@@ -17,4 +17,5 @@ public:
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 protected:
 	void MoveDown_World(float value) { MoveUp_World(-value); };
+	void AddControllerPitchInput_Reversed(float value) { AddControllerPitchInput(-value); };
 };

@@ -47,7 +47,7 @@ void SGameplayMainMenuWidget::Construct(const FArguments& InArgs)
 				.Padding(0, 0, 0, 30.f)
 				[
 					SAssignNew(PlayButton, SButton)
-					.OnClicked_Raw(this, &SGameplayMainMenuWidget::OnPlayButtonPress)
+					.OnClicked(this, &SGameplayMainMenuWidget::OnPlayButtonPress)
 					.VAlign(VAlign_Center)
 					.Content()
 					[
@@ -62,7 +62,7 @@ void SGameplayMainMenuWidget::Construct(const FArguments& InArgs)
 				.Padding(0, 0, 0, 30.f)
 				[
 					SAssignNew(SpectateButton, SButton)
-					.OnClicked_Raw(this, &SGameplayMainMenuWidget::OSpectateButtonPress)
+					.OnClicked(this, &SGameplayMainMenuWidget::OSpectateButtonPress)
 					.VAlign(VAlign_Center)
 					.Content()
 					[
@@ -76,7 +76,7 @@ void SGameplayMainMenuWidget::Construct(const FArguments& InArgs)
 				+ SVerticalBox::Slot()
 				[
 					SAssignNew(ToLobbyButton, SButton)
-					.OnClicked_Raw(this, &SGameplayMainMenuWidget::OnBackToLobbyButtonPress)
+					.OnClicked(this, &SGameplayMainMenuWidget::OnBackToLobbyButtonPress)
 					.VAlign(VAlign_Center)
 					.Content()
 					[

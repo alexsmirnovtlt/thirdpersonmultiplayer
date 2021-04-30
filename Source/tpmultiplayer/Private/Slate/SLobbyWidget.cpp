@@ -145,7 +145,7 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 							[
 								SAssignNew(HostButton, SButton)
 								.ContentPadding(FMargin(10.f, 0, 10.f, 0))
-								.OnClicked_Raw(this, &SLobbyWidget::OnHostButtonClick)
+								.OnClicked(this, &SLobbyWidget::OnHostButtonClick)
 								.IsEnabled(true)
 								.Content()
 								[
@@ -201,7 +201,7 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 							[
 								SAssignNew(JoinButton, SButton)
 								.ContentPadding(FMargin(10.f, 0, 10.f, 0))
-								.OnClicked_Raw(this, &SLobbyWidget::OnJoinButtonClick)
+								.OnClicked(this, &SLobbyWidget::OnJoinButtonClick)
 								.IsEnabled(false)
 								.Content()
 								[
@@ -221,7 +221,7 @@ void SLobbyWidget::Construct(const FArguments& InArgs)
 							[
 								SAssignNew(SearchButton, SButton)
 								.ContentPadding(FMargin(10.f, 0, 10.f, 0))
-								.OnClicked_Raw(this, &SLobbyWidget::OnSearchButtonClick)
+								.OnClicked(this, &SLobbyWidget::OnSearchButtonClick)
 								.IsEnabled(true)
 								.Content()
 								[

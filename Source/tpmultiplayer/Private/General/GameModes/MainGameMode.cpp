@@ -4,6 +4,7 @@
 #include "General/GameModes/MainGameMode.h"
 
 #include "GameFramework/PlayerController.h"
+#include "AbilitySystemComponent.h"
 #include "EngineUtils.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
@@ -36,8 +37,9 @@ void AMainGameMode::StartPlay()
 	GameplayState = GetGameState<AGameplayGameState>();
 	if (!GameplayState) { ensure(false); return; }
 	
-	SetupSpawnLocations(); // Get actors from level that will be used as spawn points and flag locations
+	SetupSpawnLocations(); // Get actors from level that will be used as spawn points and capture locations
 	SetupPlayableCharacters(); // Spawn all players and possess them with AIs
+	GrantGameplayAbilities(); // Giving and Activating starting Gameplay Abilities, some of them will be bind to Input
 
 	InitialMatchStateSetup(); // Start main game Loop(csgo like): 1. warmup where players teleported to spawn locations and cannot move, 2. main phase where players shoot each other and defend/attack the flag 3. end match phase that starts the loop again
 }
@@ -97,10 +99,6 @@ void AMainGameMode::SetupSpawnLocations()
 		if (GameplayState->CurrentPlayers_BlueTeam == 0) { auto NewActor = GetWorld()->SpawnActor<AGameplayPlayerStart>(); NewActor->TeamType = ETeamType::BlueTeam; TeamSpawnLocations.Add(NewActor);  GameplayState->CurrentPlayers_BlueTeam++; }
 		if (GameplayState->CurrentPlayers_RedTeam == 0) { auto NewActor = GetWorld()->SpawnActor<AGameplayPlayerStart>(); NewActor->TeamType = ETeamType::RedTeam; TeamSpawnLocations.Add(NewActor);  GameplayState->CurrentPlayers_RedTeam++; }
 	}
-
-	// Setting up initial spectator location
-	GameplayState->SpectatorInitialSpawnLocation = SpectatorSpawn->GetActorLocation();
-	GameplayState->SpectatorInitialSpawnRotation = SpectatorSpawn->GetActorRotation();
 }
 
 void AMainGameMode::SetupPlayableCharacters()
@@ -123,11 +121,31 @@ void AMainGameMode::SetupPlayableCharacters()
 		AIController->GameState = GameplayState;
 		AIController->Possess(Character);
 
+		Character->OnPawnDamagedEvent.AddDynamic(this, &AMainGameMode::OnPawnDamaged);
+
 		TeamPawns.Add(Character);
 		InGameControllers_AI.Add(AIController);
-
-		Character->OnPawnKilledEvent.AddDynamic(this, &AMainGameMode::OnPawnKilled);
 	}
+}
+
+void AMainGameMode::GrantGameplayAbilities()
+{
+	FGameplayAbilitySpec ShootAbilitySpec(ShootAbility.GetDefaultObject(), 0, (int32)EAbilityInputID::Shoot);
+	FGameplayAbilitySpec AimAbilitySpec(AimAbility.GetDefaultObject(), 0, (int32)EAbilityInputID::Aim);
+	FGameplayAbilitySpec ReloadAbilitySpec(ReloadAbility.GetDefaultObject(), 0, (int32)EAbilityInputID::Reload);
+	FGameplayAbilitySpec SprintAbilitySpec(SprintAbility.GetDefaultObject(), 0, (int32)EAbilityInputID::Sprint);
+
+	for (auto Char : TeamPawns)
+	{
+		auto GameplayAbilityComp = Char->GetAbilitySystemComponent();
+
+		GameplayAbilityComp->GiveAbility(ShootAbilitySpec);
+		GameplayAbilityComp->GiveAbility(AimAbilitySpec);
+		GameplayAbilityComp->GiveAbility(ReloadAbilitySpec);
+		GameplayAbilityComp->GiveAbility(SprintAbilitySpec);
+	}
+
+	ApplyGameplayEffectToAllPawns(WarmupPhaseEffect.GetDefaultObject());
 }
 
 void AMainGameMode::AddPlayerToAMatch(AGamePlayerController* PlayerController)
@@ -158,7 +176,7 @@ void AMainGameMode::AddPlayerToAMatch(AGamePlayerController* PlayerController)
 			} else if(!LastAvailablePawn) LastAvailablePawn = AvailablePawn;
 		}
 	}
-
+	
 	if (ChosenPawn == nullptr) // everyone from this team is dead, possessing died pawn
 		ChosenPawn = LastAvailablePawn;
 
@@ -171,6 +189,8 @@ void AMainGameMode::AddPlayerToAMatch(AGamePlayerController* PlayerController)
 
 	PlayerController->Possess(ChosenPawn);
 	InGameControllers_Human.Add(PlayerController);
+
+	ChosenPawn->ForceNetUpdate();
 
 	PlayerController->ForceNetUpdate();
 	if (PlayerController->IsLocalPlayerController()) PlayerController->OnRep_Pawn();
@@ -185,6 +205,8 @@ void AMainGameMode::RemovePlayerFromAMatch(AGamePlayerController* PlayerControll
 
 	if (auto PlayerPawn = PlayerController->GetPawn<AThirdPersonCharacter>()) // Need to create new AI and assign it to a pawn
 	{
+		PlayerController->UnPossess();
+
 		auto AIController = GetWorld()->SpawnActor<AGameplayAIController>(AIControllerClass);
 		InGameControllers_AI.Add(AIController);
 		AIController->GameState = GameplayState;
@@ -215,8 +237,7 @@ void AMainGameMode::InitialMatchStateSetup()
 	GameplayState->OnRep_MatchStateChanged();
 
 	// Giving a random pawn a flag
-	auto Pawn = GiveFlagToARandomPawn(ETeamType::RedTeam);
-	Pawn->OnRep_FlagOwnerChanged();
+	GiveFlagToARandomPawn(ETeamType::RedTeam);
 
 	// Initializing all flag areas on a map
 	for(auto FlagArea : FlagPlacements)
@@ -231,7 +252,8 @@ void AMainGameMode::MatchPhaseStart_Warmup()
 	auto& MatchParameters = GameplayState->GetMatchParameters();
 	auto& CurrentMatchData = GameplayState->CurrentMatchData;
 
-	MatchPhaseEnd_RoundEnd(MatchParameters, CurrentMatchData);
+	// Removing ability to move from everyone
+	ApplyGameplayEffectToAllPawns(WarmupPhaseEffect.GetDefaultObject());
 
 	if (CurrentMatchData.FirstTeam_MatchesWon >= MatchParameters.MaxGameRoundsToWin)
 	{
@@ -263,17 +285,11 @@ void AMainGameMode::MatchPhaseStart_Warmup()
 
 	for (auto FlagActor : FlagPlacements) FlagActor->ResetFlagState();
 
-	// Giving random pawn a flag
+	// Giving random pawn a VIP status (can capture zones). Previosly was a flag.
 	ETeamType TeamWithAFlag = CurrentMatchData.RedTeamHasFlag ? ETeamType::RedTeam : ETeamType::BlueTeam;
 	GiveFlagToARandomPawn(TeamWithAFlag);
 	
 	ResetPawnsForNewRound(); // Teleports pawns back and possesses died ones
-
-	for (auto TPCPawn : TeamPawns)
-	{
-		TPCPawn->AuthPrepareForNewGameRound(); // setting back health, idle animation and other optional stuff
-		TPCPawn->OnRep_FlagOwnerChanged(); // Showing/hiding flag model on all pawns
-	}
 
 	// Finalize
 	GameplayState->ForceNetUpdate(); // TODO make it so GameplayState will not check for replication updates automatically and we update it manually like that. NetUpdateFrequency 0 in GameplayState may not be it
@@ -286,7 +302,8 @@ void AMainGameMode::MatchPhaseStart_Gameplay()
 	auto& MatchParameters = GameplayState->GetMatchParameters();
 	auto& CurrentMatchData = GameplayState->CurrentMatchData;
 
-	MatchPhaseEnd_Warmup(MatchParameters, CurrentMatchData);
+	// Granting moving, aiming, shooting abilities to everyone
+	ApplyGameplayEffectToAllPawns(MainPhaseEffect.GetDefaultObject());
 
 	CurrentMatchData.MatchState = EMatchState::Gameplay;
 	CurrentMatchData.SpecialMessage = EInGameSpecialMessage::Nothing;
@@ -303,7 +320,8 @@ void AMainGameMode::MatchPhaseStart_RoundEnd()
 	auto& MatchParameters = GameplayState->GetMatchParameters();
 	auto& CurrentMatchData = GameplayState->CurrentMatchData;
 
-	MatchPhaseEnd_Gameplay(MatchParameters, CurrentMatchData);
+	// Revoke aiming and shooting abilities from everyone
+	ApplyGameplayEffectToAllPawns(EndPhaseEffect.GetDefaultObject());
 
 	DetermineTeamThatWonThatRound(CurrentMatchData); // updating CurrentMatchData based on a few winning conditions
 
@@ -316,27 +334,15 @@ void AMainGameMode::MatchPhaseStart_RoundEnd()
 	GetWorld()->GetTimerManager().SetTimer(MatchTimerHandle, this, &AMainGameMode::MatchPhaseStart_Warmup, MatchParameters.EndRoundPeriodSec, false);
 }
 
-void AMainGameMode::MatchPhaseEnd_Warmup(const FMatchParameters& MatchParameters, const FMatchData& CurrentMatchData)
+void AMainGameMode::ApplyGameplayEffectToAllPawns(UGameplayEffect* GEffectToAddPtr)
 {
-	// Granting moving, aiming, shooting abilities to everyone
+	for (auto Char : TeamPawns)
+	{
+		auto AbilityComponent = Char->GetAbilitySystemComponent();
 
-	// TODO actually do that
-}
-
-void AMainGameMode::MatchPhaseEnd_Gameplay(const FMatchParameters& MatchParameters, const FMatchData& CurrentMatchData)
-{
-	// Revoke aiming and shooting abilities from everyone
-
-	// TODO actually do that
-}
-
-void AMainGameMode::MatchPhaseEnd_RoundEnd(const FMatchParameters& MatchParameters, const FMatchData& CurrentMatchData)
-{
-	// Removing ability to move from everyone
-	// Granting one pawn an ability to place a flag, revoking that ability from others
-	// Removing ability to pick up a flag from one team, grantimg it to another team
-
-	// TODO actually do that
+		FGameplayEffectContextHandle ContextHandle = AbilityComponent->MakeEffectContext();
+		AbilityComponent->ApplyGameplayEffectToSelf(GEffectToAddPtr, 0, ContextHandle);
+	}
 }
 
 void AMainGameMode::StopCurrentMatchTimer()
@@ -363,10 +369,14 @@ void AMainGameMode::ResetPawnsForNewRound()
 			ChosenIndex = GetNextSpawnLocationIndex(BlueTeamSpawnIndex, ETeamType::BlueTeam);
 
 		if (ChosenIndex > -1)
-			Character->SetActorLocationAndRotation(TeamSpawnLocations[ChosenIndex]->GetActorLocation(), TeamSpawnLocations[ChosenIndex]->GetActorRotation(), false, nullptr, ETeleportType::ResetPhysics);
+			Character->SetActorLocation(TeamSpawnLocations[ChosenIndex]->GetActorLocation(), false, nullptr, ETeleportType::ResetPhysics);
 	
 		if (Character->TeamType == ETeamType::RedTeam) RedTeamSpawnIndex = ChosenIndex + 1;
 		else BlueTeamSpawnIndex = ChosenIndex + 1;
+
+		// Removing Dead state effects from pawns
+		auto AbilitySystem = Character->GetAbilitySystemComponent();
+		AbilitySystem->RemoveActiveGameplayEffectBySourceEffect(DeadStateEffect, nullptr);
 	}
 
 	int32 ArrayIndex = 0;
@@ -433,18 +443,22 @@ void AMainGameMode::ResetPawnsForNewRound()
 	}
 }
 
-AThirdPersonCharacter* AMainGameMode::GiveFlagToARandomPawn(ETeamType TeamWithFlag)
+void AMainGameMode::GiveFlagToARandomPawn(ETeamType TeamWithFlag)
 {
-	TArray<AThirdPersonCharacter*> SelectedPawns;
-	for (auto TPCPawn : TeamPawns)
+	if (VIPPawnIndex > -1)
 	{
-		TPCPawn->bHasFlag = false;
-		if (TPCPawn->TeamType == TeamWithFlag)
-			SelectedPawns.Add(TPCPawn);
+		auto AbilitySystem = TeamPawns[VIPPawnIndex]->GetAbilitySystemComponent();
+		AbilitySystem->RemoveActiveGameplayEffectBySourceEffect(ZoneCaptureEffect, nullptr);
 	}
-	int32 ChosenIndex = FMath::RandRange(0, SelectedPawns.Num() - 1);
-	SelectedPawns[ChosenIndex]->bHasFlag = true;
-	return SelectedPawns[ChosenIndex];
+	
+	TArray<int32> SelectedPawnsIndexes;
+	for (int32 i = 0; i < TeamPawns.Num(); ++i)
+		if (TeamPawns[i]->TeamType == TeamWithFlag)
+			SelectedPawnsIndexes.Add(i);
+
+	VIPPawnIndex = SelectedPawnsIndexes[FMath::RandRange(0, SelectedPawnsIndexes.Num() - 1)];
+	auto Context = TeamPawns[VIPPawnIndex]->GetAbilitySystemComponent()->MakeEffectContext();
+	TeamPawns[VIPPawnIndex]->GetAbilitySystemComponent()->ApplyGameplayEffectToSelf(ZoneCaptureEffect.GetDefaultObject(), 1, Context);
 }
 
 int32 AMainGameMode::GetNextSpawnLocationIndex(int32 StartingIndex, ETeamType TeamType)
@@ -486,16 +500,13 @@ int32 AMainGameMode::GetNextUnpossessedPawnIndex(int32 StartingIndex, ETeamType 
 
 void AMainGameMode::OnPawnKilled(AThirdPersonCharacter* DiedPawn)
 {
-	if (DiedPawn->IsPlayerControlled())
-	{
-		if (auto PlayerController = DiedPawn->GetController<AGamePlayerController>())
-		{
-			PlayerController->UnPossess();
-			PlayerController->ChangeState(NAME_Spectating);
-			if (PlayerController->IsLocalPlayerController()) PlayerController->OnRep_Pawn();
-		}
-	}
-	else
+	if (DiedPawn->IsAlive()) return;
+
+	// Applying dead effect to a pawn so it cannot move, aim and shoot
+	auto Context = DiedPawn->GetAbilitySystemComponent()->MakeEffectContext();
+	DiedPawn->GetAbilitySystemComponent()->ApplyGameplayEffectToSelf(DeadStateEffect.GetDefaultObject(), 1, Context);
+
+	if (!DiedPawn->IsPlayerControlled())
 	{
 		if (auto AIController = DiedPawn->GetController<AGameplayAIController>())
 			AIController->UnPossess();
@@ -508,9 +519,9 @@ void AMainGameMode::OnPawnKilled(AThirdPersonCharacter* DiedPawn)
 	else if (DiedPawn->TeamType == ETeamType::BlueTeam)
 		CurrentMatchData.SecondTeam_PlayersAlive--;
 
-	if (DiedPawn->HasFlag() || GameplayState->CurrentMatchData.FirstTeam_PlayersAlive <= 0 || CurrentMatchData.SecondTeam_PlayersAlive <= 0)
+	if (DiedPawn->IsVIP() || GameplayState->CurrentMatchData.FirstTeam_PlayersAlive <= 0 || CurrentMatchData.SecondTeam_PlayersAlive <= 0)
 	{
-		CurrentMatchData.VIPWasKilled = DiedPawn->HasFlag();
+		CurrentMatchData.VIPWasKilled = DiedPawn->IsVIP();
 		StopCurrentMatchTimer();
 		MatchPhaseStart_RoundEnd();
 	}
@@ -573,6 +584,18 @@ void AMainGameMode::OnAreaStateChanged(EAreaState AreaState)
 	GameplayState->OnRep_MatchStateChanged();
 }
 
+void AMainGameMode::OnPawnDamaged(AThirdPersonCharacter* DamagedPawn)
+{
+	if(DamagedPawn->IsAlive()) ApplyShootDamageToAPawn(DamagedPawn);
+}
+
+void AMainGameMode::ApplyShootDamageToAPawn(AThirdPersonCharacter* DamagedPawn)
+{
+	auto Context = DamagedPawn->GetAbilitySystemComponent()->MakeEffectContext();
+	DamagedPawn->GetAbilitySystemComponent()->ApplyGameplayEffectToSelf(WeaponDamageEffect.GetDefaultObject(), 1, Context);
+	OnPawnKilled(DamagedPawn);
+}
+
 // END Match related logic
 
 // DEBUG
@@ -589,9 +612,9 @@ void AMainGameMode::Debug_KillRandomPawn()
 			CharsArray.Add(Pawn);
 
 	int32 ChosenIndex = FMath::RandRange(0, CharsArray.Num() - 1);
-	
-	FDamageEvent DamageEvent;
-	CharsArray[ChosenIndex]->TakeDamage(CharsArray[ChosenIndex]->StartingHealth, DamageEvent, nullptr, nullptr);
+	if (ChosenIndex == 0 && CharsArray.Num() == 0) return;
+
+	ApplyShootDamageToAPawn(TeamPawns[ChosenIndex]);
 }
 
 // DEBUG

@@ -3,8 +3,12 @@
 
 #include "General/Controllers/GameplayAIController.h"
 
+#include "Delegates/IDelegateInstance.h"
+#include "AbilitySystemComponent.h"
+
 #include "General/Pawns/ThirdPersonCharacter.h"
 #include "General/States/GameplayGameState.h"
+#include "General/GameplayStructs.h"
 
 AGameplayAIController::AGameplayAIController()
 {
@@ -23,7 +27,7 @@ void AGameplayAIController::BeginPlay()
 
 void AGameplayAIController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	if (GameState) GameState->OnMatchDataChangedEvent.RemoveDynamic(this, &AGameplayAIController::OnMatchStateChanged);
+	Super::EndPlay(EndPlayReason);
 }
 
 void AGameplayAIController::Tick(float DeltaTime)
@@ -33,19 +37,56 @@ void AGameplayAIController::Tick(float DeltaTime)
 	if (!GetPawn() || !PossessedCharacter) return;
 
 	// TMP DEBUG
+	ActionTime += DeltaTime;
+
+	bool bActionTime = false;
+	
+	if (ActionTime > 1.f)
+	{
+		ActionTime = 0.f;
+		bActionTime = true;
+	}
+
 	if (CurrentMatchState == EMatchState::Warmup)
 	{
-		if(DEBUG_ClockwiseRotation)
-			PossessedCharacter->AddActorLocalRotation(FRotator(0.f, DEBUG_RotationSpeed, 0.f));
-		else 
-			PossessedCharacter->AddActorLocalRotation(FRotator(0.f, -1 * DEBUG_RotationSpeed, 0.f));
+		if (bActionTime)
+		{
+			PossessedCharacter->StopJumping();
+			FGameplayTagContainer tagcontainer;
+			tagcontainer.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Reload")));
+			//PossessedCharacter->GetAbilitySystemComponent()->TryActivateAbilitiesByTag(tagcontainer);
+		}
+		
+		PossessedCharacter->MoveForward(DEBUG_MovementsSpeed);
 	}
 	else if (CurrentMatchState == EMatchState::Gameplay)
 	{
+		if (bActionTime)
+		{
+			if (!PossessedCharacter->IsInAimingAnimation())
+			{
+				FGameplayTagContainer tagcontainer;
+				tagcontainer.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Aim")));
+				//PossessedCharacter->GetAbilitySystemComponent()->TryActivateAbilitiesByTag(tagcontainer);
+				//PossessedCharacter->GetAbilitySystemComponent()->AbilityLocalInputPressed((int32)EAbilityInputID::Aim);
+			}
+		}
+
 		PossessedCharacter->MoveForward(DEBUG_MovementsSpeed);
 	}
 	else if (CurrentMatchState == EMatchState::RoundEnd)
 	{
+		if (bActionTime)
+		{
+			if (PossessedCharacter->IsInAimingAnimation())
+			{
+				FGameplayTagContainer tagcontainer;
+				tagcontainer.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Aim")));
+				//PossessedCharacter->GetAbilitySystemComponent()->CancelAbilities(&tagcontainer);
+				//PossessedCharacter->GetAbilitySystemComponent()->AbilityLocalInputReleased((int32)EAbilityInputID::Aim);
+			}
+		}
+
 		DEBUG_DeltaTimePassed += DeltaTime;
 		if (DEBUG_DeltaTimePassed > DEBUG_JumpPeriod)
 		{
@@ -63,15 +104,15 @@ void AGameplayAIController::OnPossess(class APawn* InPawn)
 	PossessedCharacter = Cast<AThirdPersonCharacter>(InPawn);
 	if (!PossessedCharacter || !GameState) return;
 
-	GameState->OnMatchDataChangedEvent.AddDynamic(this, &AGameplayAIController::OnMatchStateChanged);
 	OnMatchStateChanged();
+	MatchStateChangedDelegateHandle = GameState->OnMatchDataChanged().AddUObject(this, &AGameplayAIController::OnMatchStateChanged);
 }
 
 void AGameplayAIController::OnUnPossess()
 {
-	if (GameState) GameState->OnMatchDataChangedEvent.RemoveDynamic(this, &AGameplayAIController::OnMatchStateChanged);
-
 	Super::OnUnPossess();
+
+	GameState->OnMatchDataChanged().Remove(MatchStateChangedDelegateHandle);
 }
 
 void AGameplayAIController::OnMatchStateChanged()

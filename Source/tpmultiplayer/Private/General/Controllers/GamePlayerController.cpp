@@ -4,15 +4,15 @@
 #include "General/Controllers/GamePlayerController.h"
 
 #include "GameFramework/SpectatorPawn.h"
+#include "AbilitySystemComponent.h"
 #include "GameFramework/Pawn.h"
 #include "Net/UnrealNetwork.h"
 
+#include "General/Pawns/ThirdPersonCharacter.h"
 #include "General/States/GameplayGameState.h"
 #include "General/MultiplayerGameInstance.h"
 #include "General/GameModes/MainGameMode.h"
 #include "General/HUD/GameplayHUD.h"
-
-const float AGamePlayerController::NewControlRotationPitchOnPawnPossess = -30.f;
 
 AGamePlayerController::AGamePlayerController()
 {
@@ -46,16 +46,27 @@ void AGamePlayerController::OnRep_Pawn()
 	Super::OnRep_Pawn();
 
 	if(IsValid(GameplayHUD)) GameplayHUD->MainMenu_Hide();
+	if (!GetPawn() && !IsInState(NAME_Spectating)) ChangeState(NAME_Spectating); // Locally spawn spectator pawn 
+}
 
-	if (GetPawn())
+void AGamePlayerController::AcknowledgePossession(class APawn* P)
+{
+	Super::AcknowledgePossession(P);
+
+	if (AThirdPersonCharacter* TPCharacter = Cast<AThirdPersonCharacter>(P))
 	{
-		// Setting control rotation so camera will be set behind the character
-		FRotator NewControlRotation = GetPawn()->GetActorRotation();
-		NewControlRotation.Roll = 0.f;
-		NewControlRotation.Add(NewControlRotationPitchOnPawnPossess, 0, 0);
-		ControlRotation = NewControlRotation;
+		if (!HasAuthority())
+		{
+			// When player takes ownership of a pawn, it already has replicated effect tags that will never be removed, idk if this is a bug or intended
+			// f.e if player possessed a pawn on a main phase, main phase effect tags will not be removed ever
+			FGameplayTagContainer AppliedTags;
+			TPCharacter->GetAbilitySystemComponent()->GetOwnedGameplayTags(AppliedTags);
+			for (auto& item : AppliedTags)
+				TPCharacter->GetAbilitySystemComponent()->SetTagMapCount(item, 0);
+		}
+
+		TPCharacter->GetAbilitySystemComponent()->InitAbilityActorInfo(this, TPCharacter);
 	}
-	else if(!IsInState(NAME_Spectating)) ChangeState(NAME_Spectating);
 }
 
 void AGamePlayerController::JoinGameAsPlayer()
@@ -67,19 +78,7 @@ void AGamePlayerController::JoinGameAsPlayer()
 void AGamePlayerController::JoinGameAsSpectator()
 {
 	GameplayHUD->GameplayMenu_Show();
-
-	if (IsInState(NAME_Inactive))
-	{
-		// Its our first join as a spectator that has no pawn. Without this check spectator will probably spawn at FVector::ZeroVector with zero rotation. We have a special Player Start for that
-		auto GameState = GetWorld()->GetGameState<AGameplayGameState>();
-		ControlRotation = GameState->GetSpectatorInitialSpawnRotation(); // Spectator pawn`s rotation is set from Control Rotation
-		ChangeState(NAME_Spectating); // Creating and posessing local Spectator Pawn
-		GetSpectatorPawn()->SetActorLocation(GameState->GetSpectatorInitialSpawnLocation()); // Manually setting spectator`s location
-
-		GameplayHUD->MainMenu_Hide();
-	}
-	
-	Server_PlayerWantsToSpectate(); // Server will update state to spectating
+	Server_PlayerWantsToSpectate();
 }
 
 void AGamePlayerController::ReturnToLobby()
@@ -145,6 +144,20 @@ void AGamePlayerController::Server_PlayerWantsToSpectate_Implementation()
 
 // END Server logic
 
+// BEGIN Client logic
+
+void AGamePlayerController::Client_ReplicateShot_Implementation(const FShootData& ShootData)
+{
+	if (ShootData.Shooter) CastChecked<AThirdPersonCharacter>(ShootData.Shooter)->OnRep_Shot(ShootData);
+}
+
+void AGamePlayerController::Client_ReplicateReload_Implementation(AActor* ReloadingActor)
+{
+	if (ReloadingActor) CastChecked<AThirdPersonCharacter>(ReloadingActor)->OnRep_Reload();
+}
+
+// END Client logic
+
 void AGamePlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -159,13 +172,20 @@ const FName AGamePlayerController::HorizontalAxisBindingName("AxisHorizontal");
 const FName AGamePlayerController::VerticalAxisBindingName("AxisVertical");
 const FName AGamePlayerController::MoveForwardAxisBindingName("MoveForward");
 const FName AGamePlayerController::MoveRightAxisBindingName("MoveRight");
-const FName AGamePlayerController::PrimaryActionAxisBindingName("AxisPrimaryAction");
-const FName AGamePlayerController::SecondaryActionAxisBindingName("AxisSecondaryAction");
 
 // Actions
 const FName AGamePlayerController::MenuActionBindingName("Menu");
 const FName AGamePlayerController::GamePlayHUDBindingName("HUDToggle");
 const FName AGamePlayerController::AdditionalActionBindingName("AdditionalAction");
+const FName AGamePlayerController::SwitchShoulderBindingName("SwitchShoulder");
+const FName AGamePlayerController::ShootBindingName("Shoot");
+const FName AGamePlayerController::AimBindingName("Aim");
+const FName AGamePlayerController::ReloadBindingName("Reload");
+const FName AGamePlayerController::SprintBindingName("Sprint");
+const FName AGamePlayerController::AbilityConfirmBindingName("AbilityConfirm");
+const FName AGamePlayerController::AbilityCancelBindingName("AbilityCancel");
+
+// Debug
 const FName AGamePlayerController::DebugKillBindingName("DebugKill");
 
 void AGamePlayerController::MenuActionInput()

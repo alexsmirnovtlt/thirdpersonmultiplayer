@@ -38,7 +38,7 @@ void SLobbyFoundGameInfoWidget::Construct(const FArguments& InArgs)
 		.HAlign(HAlign_Fill)
 		[
 			SAssignNew(Button, SButton)
-			.OnClicked_Raw(this, &SLobbyFoundGameInfoWidget::OnClicked)
+			.OnClicked(this, &SLobbyFoundGameInfoWidget::OnClicked)
 			.ButtonStyle(&Style.DefaultButtonStyle)
 		]
 

@@ -75,7 +75,7 @@ void AGameplayFlagArea::NotifyActorBeginOverlap(AActor* OtherActor)
 	auto Player = Cast<AThirdPersonCharacter>(OtherActor);
 	if (!Player) return;
 
-	if (Player->HasFlag())  // TODO Maybe check sould be different (GAS?)
+	if (Player->IsVIP())  // TODO Maybe check sould be different (GAS?)
 	{
 		MainGameMode->OnAreaStateChanged(EAreaState::BeingCaptured);
 		SetActorTickEnabled(true);
@@ -91,7 +91,7 @@ void AGameplayFlagArea::NotifyActorEndOverlap(AActor* OtherActor)
 	auto Player = Cast<AThirdPersonCharacter>(OtherActor);
 	if (!Player) return;
 
-	if (Player->HasFlag()) // TODO Maybe check sould be different (GAS?)
+	if (Player->IsVIP()) // TODO Maybe check sould be different (GAS?)
 	{
 		MainGameMode->OnAreaStateChanged(EAreaState::Default);
 		CaptureTimeProgressSec = 0;
