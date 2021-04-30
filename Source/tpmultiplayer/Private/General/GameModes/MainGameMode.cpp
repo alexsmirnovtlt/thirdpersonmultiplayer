@@ -371,6 +371,10 @@ void AMainGameMode::ResetPawnsForNewRound()
 	
 		if (Character->TeamType == ETeamType::RedTeam) RedTeamSpawnIndex = ChosenIndex + 1;
 		else BlueTeamSpawnIndex = ChosenIndex + 1;
+
+		// Removing Dead state effects from pawns
+		auto AbilitySystem = Character->GetAbilitySystemComponent();
+		AbilitySystem->RemoveActiveGameplayEffectBySourceEffect(DeadStateEffect, nullptr);
 	}
 
 	int32 ArrayIndex = 0;
@@ -442,8 +446,7 @@ void AMainGameMode::GiveFlagToARandomPawn(ETeamType TeamWithFlag)
 	if (VIPPawnIndex > -1)
 	{
 		auto AbilitySystem = TeamPawns[VIPPawnIndex]->GetAbilitySystemComponent();
-		AbilitySystem->RemoveActiveGameplayEffectBySourceEffect(ZoneCaptureEffect, AbilitySystem);
-		UE_LOG(LogTemp, Warning, TEXT("Effect removed from %s"), *TeamPawns[VIPPawnIndex]->GetName());
+		AbilitySystem->RemoveActiveGameplayEffectBySourceEffect(ZoneCaptureEffect, nullptr);
 	}
 	
 	TArray<int32> SelectedPawnsIndexes;
@@ -454,7 +457,6 @@ void AMainGameMode::GiveFlagToARandomPawn(ETeamType TeamWithFlag)
 	VIPPawnIndex = SelectedPawnsIndexes[FMath::RandRange(0, SelectedPawnsIndexes.Num() - 1)];
 	auto Context = TeamPawns[VIPPawnIndex]->GetAbilitySystemComponent()->MakeEffectContext();
 	TeamPawns[VIPPawnIndex]->GetAbilitySystemComponent()->ApplyGameplayEffectToSelf(ZoneCaptureEffect.GetDefaultObject(), 1, Context);
-	UE_LOG(LogTemp, Warning, TEXT("Effect added to %s"), *TeamPawns[VIPPawnIndex]->GetName());
 }
 
 int32 AMainGameMode::GetNextSpawnLocationIndex(int32 StartingIndex, ETeamType TeamType)
@@ -496,6 +498,10 @@ int32 AMainGameMode::GetNextUnpossessedPawnIndex(int32 StartingIndex, ETeamType 
 
 void AMainGameMode::OnPawnKilled(AThirdPersonCharacter* DiedPawn)
 {
+	// Applying dead effect to a pawn so it cannot move, aim and shoot
+	auto Context = DiedPawn->GetAbilitySystemComponent()->MakeEffectContext();
+	DiedPawn->GetAbilitySystemComponent()->ApplyGameplayEffectToSelf(DeadStateEffect.GetDefaultObject(), 1, Context);
+
 	if (!DiedPawn->IsPlayerControlled())
 	{
 		if (auto AIController = DiedPawn->GetController<AGameplayAIController>())

@@ -76,6 +76,13 @@ void AThirdPersonCharacter::BeginPlay()
 	
 	AbilitySystemComponent->RegisterGameplayTagEvent(AimingTagForSimulatedProxies).AddUObject(this, &AThirdPersonCharacter::OnAimStateTagChanged);
 	AbilitySystemComponent->RegisterGameplayTagEvent(VIPTag).AddUObject(this, &AThirdPersonCharacter::OnVIPTagChanged);
+
+	// When client joins the game, tag events will not be triggered yet so no VIP tags or aiming will be shown. Assuming we already got this tags replicated to us, we need to trigger this manually
+	if (!HasAuthority())
+	{
+		if( AbilitySystemComponent->HasMatchingGameplayTag(VIPTag)) OnVIPTagChanged(VIPTag, 1);
+		if (AbilitySystemComponent->HasMatchingGameplayTag(AimingTagForSimulatedProxies)) OnAimStateTagChanged(AimingTagForSimulatedProxies, 1);
+	}
 }
 
 void AThirdPersonCharacter::Tick(float DeltaTime)

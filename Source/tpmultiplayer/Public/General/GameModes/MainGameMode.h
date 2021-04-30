@@ -96,6 +96,8 @@ protected:
 	TSubclassOf<class UGameplayEffect> EndPhaseEffect;
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TSubclassOf<class UGameplayEffect> WeaponDamageEffect;
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayEffect> DeadStateEffect;
 	// Permanent effect that will be applied to one random pawn at the start of the round. This pawn is able to capture game zones
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
 	TSubclassOf<class UGameplayEffect> ZoneCaptureEffect;
