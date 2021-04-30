@@ -190,6 +190,8 @@ void AMainGameMode::AddPlayerToAMatch(AGamePlayerController* PlayerController)
 	PlayerController->Possess(ChosenPawn);
 	InGameControllers_Human.Add(PlayerController);
 
+	ChosenPawn->ForceNetUpdate();
+
 	PlayerController->ForceNetUpdate();
 	if (PlayerController->IsLocalPlayerController()) PlayerController->OnRep_Pawn();
 }
@@ -367,7 +369,7 @@ void AMainGameMode::ResetPawnsForNewRound()
 			ChosenIndex = GetNextSpawnLocationIndex(BlueTeamSpawnIndex, ETeamType::BlueTeam);
 
 		if (ChosenIndex > -1)
-			Character->SetActorLocationAndRotation(TeamSpawnLocations[ChosenIndex]->GetActorLocation(), TeamSpawnLocations[ChosenIndex]->GetActorRotation(), false, nullptr, ETeleportType::ResetPhysics);
+			Character->SetActorLocation(TeamSpawnLocations[ChosenIndex]->GetActorLocation(), false, nullptr, ETeleportType::ResetPhysics);
 	
 		if (Character->TeamType == ETeamType::RedTeam) RedTeamSpawnIndex = ChosenIndex + 1;
 		else BlueTeamSpawnIndex = ChosenIndex + 1;
@@ -498,6 +500,8 @@ int32 AMainGameMode::GetNextUnpossessedPawnIndex(int32 StartingIndex, ETeamType 
 
 void AMainGameMode::OnPawnKilled(AThirdPersonCharacter* DiedPawn)
 {
+	if (DiedPawn->IsAlive()) return;
+
 	// Applying dead effect to a pawn so it cannot move, aim and shoot
 	auto Context = DiedPawn->GetAbilitySystemComponent()->MakeEffectContext();
 	DiedPawn->GetAbilitySystemComponent()->ApplyGameplayEffectToSelf(DeadStateEffect.GetDefaultObject(), 1, Context);
@@ -582,14 +586,14 @@ void AMainGameMode::OnAreaStateChanged(EAreaState AreaState)
 
 void AMainGameMode::OnPawnDamaged(AThirdPersonCharacter* DamagedPawn)
 {
-	ApplyShootDamageToAPawn(DamagedPawn);
+	if(DamagedPawn->IsAlive()) ApplyShootDamageToAPawn(DamagedPawn);
 }
 
 void AMainGameMode::ApplyShootDamageToAPawn(AThirdPersonCharacter* DamagedPawn)
 {
 	auto Context = DamagedPawn->GetAbilitySystemComponent()->MakeEffectContext();
 	DamagedPawn->GetAbilitySystemComponent()->ApplyGameplayEffectToSelf(WeaponDamageEffect.GetDefaultObject(), 1, Context);
-	if (!DamagedPawn->IsAlive()) OnPawnKilled(DamagedPawn);
+	OnPawnKilled(DamagedPawn);
 }
 
 // END Match related logic

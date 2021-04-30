@@ -62,8 +62,6 @@ AThirdPersonCharacter::AThirdPersonCharacter(const class FObjectInitializer& Obj
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
-	AttributeSet = CreateDefaultSubobject<UDefaultPawnAttributeSet>(TEXT("AttributeSet"));
-
 	AutoPossessAI = EAutoPossessAI::Disabled;
 }
 
@@ -71,15 +69,18 @@ void AThirdPersonCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	AttributeSet = AbilitySystemComponent->GetSet<UDefaultPawnAttributeSet>();
+
 	if (AttributeSet)
 		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(AttributeSet->GetHealthAttribute()).AddUObject(this, &AThirdPersonCharacter::OnHealthAttibuteChanged);
 	
 	AbilitySystemComponent->RegisterGameplayTagEvent(AimingTagForSimulatedProxies).AddUObject(this, &AThirdPersonCharacter::OnAimStateTagChanged);
 	AbilitySystemComponent->RegisterGameplayTagEvent(VIPTag).AddUObject(this, &AThirdPersonCharacter::OnVIPTagChanged);
 
-	// When client joins the game, tag events will not be triggered yet so no VIP tags or aiming will be shown. Assuming we already got this tags replicated to us, we need to trigger this manually
-	if (!HasAuthority())
+	// When client joins the game, tag events will not be triggered yet so no VIP tags, dead montage or aiming will be shown. Assuming we already got this tags replicated to us, we need to trigger this manually
+	if (!HasAuthority() && AttributeSet)
 	{
+		OnHealthChanged(AttributeSet->GetMaxHealth(), AttributeSet->GetHealth());
 		if( AbilitySystemComponent->HasMatchingGameplayTag(VIPTag)) OnVIPTagChanged(VIPTag, 1);
 		if (AbilitySystemComponent->HasMatchingGameplayTag(AimingTagForSimulatedProxies)) OnAimStateTagChanged(AimingTagForSimulatedProxies, 1);
 	}
@@ -377,14 +378,33 @@ bool AThirdPersonCharacter::StartAiming_LocalPlayer()
 	OnAnimStateChanged_Aiming(true);
 
 	return true;
+
+	/*if (bViewObstructed) return false; // If local player have an obstacle before him, ability should end immediately
+	
+	if (IsPlayerControlled() && IsLocallyControlled())
+	{
+		CameraBoom->TargetArmLength = AimingCameraSpringDistance;
+		CameraBoom->SetRelativeLocation(AimingCameraDistance);
+
+		auto TargetCntrRot = CameraBoom->GetComponentRotation();
+		TargetCntrRot.Pitch = 0;
+		TargetCntrRot.Roll = 0;
+		GetController<AGamePlayerController>()->SetControlRotation(TargetCntrRot);
+	}
+
+	OnAnimStateChanged_Aiming(true);
+	return true;*/
 }
 
 void AThirdPersonCharacter::EndAiming_LocalPlayer()
 {
-	if (!IsLocallyControlled() || !IsPlayerControlled()) return;
+	if (!IsLocallyControlled()) return;
 
-	CameraBoom->TargetArmLength = IdleCameraSpringDistance;
-	CameraBoom->SetRelativeLocation(IdleCameraDistance);
+	if (IsPlayerControlled())
+	{
+		CameraBoom->TargetArmLength = IdleCameraSpringDistance;
+		CameraBoom->SetRelativeLocation(IdleCameraDistance);
+	}
 
 	OnAnimStateChanged_Aiming(false);
 }

@@ -41,6 +41,8 @@ protected:
 	float DEBUG_RotationSpeed;
 	float DEBUG_JumpPeriod;
 	float DEBUG_MovementsSpeed;
+
+	float ActionTime = 0.f;
 	//
 	class AThirdPersonCharacter* PossessedCharacter;
 };

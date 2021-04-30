@@ -12,7 +12,7 @@ void UDefaultPawnAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 {
 	Super::PostGameplayEffectExecute(Data);
 
-	AThirdPersonCharacter* TargetPawn = nullptr;
+	/*AThirdPersonCharacter* TargetPawn = nullptr;
 
 	if (Data.Target.AbilityActorInfo.IsValid() && Data.Target.AbilityActorInfo->AvatarActor.IsValid())
 	{
@@ -22,9 +22,8 @@ void UDefaultPawnAttributeSet::PostGameplayEffectExecute(const FGameplayEffectMo
 
 	if (Data.EvaluatedData.Attribute == GetHealthAttribute())
 	{
-		// TODO Clamp Health, notify BP
-		// TODO Handle Health <= 0
-	}
+		// TODO Clamp Health?
+	}*/
 }
 
 void UDefaultPawnAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

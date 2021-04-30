@@ -43,6 +43,9 @@ public:
 
 	FOnPawnDamagedDelegate OnPawnDamagedEvent;
 
+	UFUNCTION(BlueprintNativeEvent, Category = "Override - Third Person Character")
+	bool IsInAimingAnimation();
+
 protected:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Third Person Char - Animation")
@@ -54,8 +57,6 @@ protected:
 
 	UFUNCTION(BlueprintNativeEvent, Category = "Override - Third Person Character")
 	class USceneComponent* GetShootCheckOrigin();
-	UFUNCTION(BlueprintNativeEvent, Category = "Override - Third Person Character")
-	bool IsInAimingAnimation();
 
 	// BEGIN GAS related 
 protected:
@@ -71,6 +72,7 @@ protected:
 	void OnAimStateTagChanged(const struct FGameplayTag CallbackTag, int32 NewCount);
 	void OnVIPTagChanged(const struct FGameplayTag CallbackTag, int32 NewCount);
 
+	UPROPERTY()
 	const class UDefaultPawnAttributeSet* AttributeSet;
 
 	// Tag that will be used on simulated proxies to update Aiming Animation. Tag will be replicated to them when aiming on owning player happens

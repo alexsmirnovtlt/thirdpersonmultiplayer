@@ -30,9 +30,17 @@ public:
 	FGameplayAttributeData Health;
 	ATTRIBUTE_ACCESSORS(UDefaultPawnAttributeSet, Health)
 
+	UPROPERTY(BlueprintReadOnly, Category = "AttributeSet")
+	FGameplayAttributeData MaxHealth;
+	ATTRIBUTE_ACCESSORS(UDefaultPawnAttributeSet, MaxHealth)
+
 	UPROPERTY(BlueprintReadOnly, Category = "AttributeSet", ReplicatedUsing = OnRep_AmmoCount)
 	FGameplayAttributeData AmmoCount;
 	ATTRIBUTE_ACCESSORS(UDefaultPawnAttributeSet, AmmoCount)
+
+	UPROPERTY(BlueprintReadOnly, Category = "AttributeSet")
+	FGameplayAttributeData PistolClipSize;
+	ATTRIBUTE_ACCESSORS(UDefaultPawnAttributeSet, PistolClipSize)
 
 	UPROPERTY(BlueprintReadOnly, Category = "AttributeSet")
 	FGameplayAttributeData WeaponDamage;
