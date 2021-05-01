@@ -8,6 +8,8 @@
 #include "GameFramework/Character.h"
 #include "General/GameplayStructs.h"
 
+#include "FMODEvent.h"
+
 #include "ThirdPersonCharacter.generated.h"
 
 enum class ETeamType : uint8;
@@ -83,6 +85,13 @@ protected:
 	FGameplayTag VIPTag;
 
 	// END GAS related 
+
+	// FMOD related
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "FMOD Audio")
+	TArray<UFMODEvent*> WeaponFireSounds;
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "FMOD Audio")
+	UFMODEvent* EmptyWeaponClipSound;
+	//
 
 protected:
 
