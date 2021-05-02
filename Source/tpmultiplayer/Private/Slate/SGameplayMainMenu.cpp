@@ -9,6 +9,7 @@
 #include "General/Controllers/GamePlayerController.h"
 #include "Slate/Styles/GameplayMainMenuWidgetStyle.h"
 #include "General/States/GameplayGameState.h"
+#include "General/HUD/GameplayHUD.h"
 
 #define LOCTEXT_NAMESPACE "MainMenu"
 
@@ -16,6 +17,8 @@ BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 void SGameplayMainMenuWidget::Construct(const FArguments& InArgs)
 {
 	PlayerController = InArgs._PlayerController;
+	PlayerHUD = InArgs._PlayerHUD;
+
 	auto& Style = InArgs._MainMenuStyle->WidgetStyle;
 
 	ChildSlot
@@ -100,6 +103,8 @@ FReply SGameplayMainMenuWidget::OnPlayButtonPress()
 {
 	if (!PlayerController.IsValid()) return FReply::Handled();
 	
+	if (PlayerHUD.IsValid()) PlayerHUD.Get()->PlayButtonClickSound();
+
 	DisableButtons();
 	PlayerController.Get()->JoinGameAsPlayer();
 	return FReply::Handled();
@@ -108,7 +113,9 @@ FReply SGameplayMainMenuWidget::OnPlayButtonPress()
 FReply SGameplayMainMenuWidget::OSpectateButtonPress()
 {
 	if (!PlayerController.IsValid()) return FReply::Handled();
-	
+
+	if (PlayerHUD.IsValid()) PlayerHUD.Get()->PlayButtonClickSound();
+
 	DisableButtons();
 	PlayerController.Get()->JoinGameAsSpectator();
 	return FReply::Handled();
@@ -117,6 +124,8 @@ FReply SGameplayMainMenuWidget::OSpectateButtonPress()
 FReply SGameplayMainMenuWidget::OnBackToLobbyButtonPress()
 {
 	if (!PlayerController.IsValid()) return FReply::Handled();
+
+	if (PlayerHUD.IsValid()) PlayerHUD.Get()->PlayButtonClickSound();
 
 	DisableButtons();
 	PlayerController.Get()->ReturnToLobby();

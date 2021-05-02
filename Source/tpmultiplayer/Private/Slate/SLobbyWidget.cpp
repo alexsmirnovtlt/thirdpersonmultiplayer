@@ -244,31 +244,37 @@ END_SLATE_FUNCTION_BUILD_OPTIMIZATION
 
 FReply SLobbyWidget::OnHostButtonClick()
 {
+	if(!LobbyGameMode.IsValid()) return FReply::Handled();
 	if (SessionName.IsEmpty() || PlayerName.IsEmpty()) return FReply::Handled();
 
+	LobbyGameMode.Get()->PlayButtonClickSound();
 	SetButtonsEnabled(false, false, false);
 
-	LobbyGameMode->OnStartHosting(SessionName);
+	LobbyGameMode.Get()->OnStartHosting(SessionName);
 
 	return FReply::Handled();
 }
 
 FReply SLobbyWidget::OnSearchButtonClick()
 {
+	if (!LobbyGameMode.IsValid()) return FReply::Handled();
 	WaitingTextBlock.Get()->SetVisibility(EVisibility::Visible);
 	NothingFoundTextBlock.Get()->SetVisibility(EVisibility::Hidden);
 
+	LobbyGameMode.Get()->PlayButtonClickSound();
 	SetButtonsEnabled(false, false, false);
 
-	LobbyGameMode->OnStartSearchingGames();
+	LobbyGameMode.Get()->OnStartSearchingGames();
 
 	return FReply::Handled();
 }
 
 FReply SLobbyWidget::OnJoinButtonClick()
 {
+	if (!LobbyGameMode.IsValid()) return FReply::Handled();
 	if (SessionName.IsEmpty() || PlayerName.IsEmpty()) return FReply::Handled();
 
+	LobbyGameMode.Get()->PlayButtonClickSound();
 	SetButtonsEnabled(false, false, false);
 
 	LobbyGameMode.Get()->OnStartJoining(SessionName, ChosenSessionIndex);
@@ -334,6 +340,7 @@ void SLobbyWidget::OnSessionItemSelected(int32 index)
 {
 	if (ChosenSessionIndex > -1) RunningGamesArray[ChosenSessionIndex]->Deselect();
 
+	if(LobbyGameMode.IsValid()) LobbyGameMode.Get()->PlayButtonClickSound();
 	JoinButton.Get()->SetEnabled(true);
 
 	ChosenSessionIndex = index;

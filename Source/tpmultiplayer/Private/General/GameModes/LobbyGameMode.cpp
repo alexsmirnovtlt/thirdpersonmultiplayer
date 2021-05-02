@@ -10,6 +10,7 @@
 #include "FMODUtils.h"
 #include "fmod_studio.hpp"
 #include "FMODStudioModule.h"
+#include "FMODBlueprintStatics.h" 
 
 #include "Slate/Styles/LobbyFoundGameInfoWidgetStyle.h"
 #include "Slate/Styles/LobbyMenuSlateWidgetStyle.h"
@@ -244,6 +245,11 @@ void ALobbyGameMode::FMOD_HandleBanksOnMapChange()
 	// Load sound banks that will be used in game
 	UnloadFMODBanks(LobbyFMODBanks);
 	LoadFMODBanks(MainGameMapFMODBanks);
+}
+
+void ALobbyGameMode::PlayButtonClickSound()
+{
+	UFMODBlueprintStatics::PlayEventAtLocation(this, ButtonClickSound, FTransform(), true);
 }
 
 void ALobbyGameMode::LoadFMODBanks(TArray<UFMODBank*>& ArrayToLoad)

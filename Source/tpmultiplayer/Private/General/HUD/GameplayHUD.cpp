@@ -5,6 +5,8 @@
 
 #include "Widgets/SWeakWidget.h"
 
+#include "FMODBlueprintStatics.h" 
+
 #include "General/Controllers/GamePlayerController.h"
 #include "Slate/Styles/GameplayMainMenuWidgetStyle.h"
 #include "Slate/Styles/GameplayMainHUDWidgetStyle.h"
@@ -41,7 +43,7 @@ void AGameplayHUD::MainMenu_Show()
 	if (!MainMenuStyleClass) { UE_LOG(LogTemp, Error, TEXT("AGameplayHUD: Defaults must be assigned!")); return; };
 
 	if (!MainMenuWidget.IsValid())
-		MainMenuWidget = SNew(SGameplayMainMenuWidget).PlayerController(GameplayPlayerController).MainMenuStyle(MainMenuStyleClass.GetDefaultObject());
+		MainMenuWidget = SNew(SGameplayMainMenuWidget).PlayerController(GameplayPlayerController).MainMenuStyle(MainMenuStyleClass.GetDefaultObject()).PlayerHUD(this);
 
 	GEngine->GameViewport->AddViewportWidgetContent(
 		SAssignNew(MainMenuWidgetContainer, SWeakWidget)
@@ -81,7 +83,7 @@ void AGameplayHUD::GameplayMenu_Show()
 	if (!GEngine || (GEngine && !GEngine->GameViewport)) return;
 	if (!GameplayHUDStyleClass) { UE_LOG(LogTemp, Error, TEXT("AGameplayHUD: Defaults must be assigned!")); return; };
 
-	GameplayWidget = SNew(SGameplayMainHUDWidget).MainStyle(GameplayHUDStyleClass.GetDefaultObject());
+	GameplayWidget = SNew(SGameplayMainHUDWidget).PlayerHUD(this).MainStyle(GameplayHUDStyleClass.GetDefaultObject());
 
 	OnMatchDataUpdated(); // updating widget data manually on widget creation
 
@@ -115,4 +117,14 @@ void AGameplayHUD::OnMatchDataUpdated()
 	uint8 TeamType = (uint8)GameplayPlayerController->GetTeamType();
 
 	GameplayWidget.Get()->UpdateWidgetData(MatchData, MatchParameters, TimePassed, TeamType);
+}
+
+void AGameplayHUD::PlayButtonClickSound()
+{
+	UFMODBlueprintStatics::PlayEventAtLocation(this, ButtonClickSound, FTransform(), true);
+}
+
+void AGameplayHUD::PlayMatchWonSound()
+{
+	UFMODBlueprintStatics::PlayEventAtLocation(this, MatchWonSound, FTransform(), true);
 }

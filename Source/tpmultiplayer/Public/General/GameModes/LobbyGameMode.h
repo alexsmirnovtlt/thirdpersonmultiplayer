@@ -7,6 +7,8 @@
 #include "GameFramework/GameModeBase.h"
 #include "Interfaces/OnlineSessionInterface.h"
 
+#include "FMODEvent.h"
+
 #include "LobbyGameMode.generated.h"
 
 /**
@@ -27,11 +29,16 @@ public:
 	void OnStartSearchingGames();
 	void OnStartJoining(FText& SessionName, int32 SessionIndex);
 
+	void PlayButtonClickSound();
+
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Slate Styling")
 	TSubclassOf<class ULobbyMenuSlateWidgetStyle> MenuStyleClass;
 	UPROPERTY(EditDefaultsOnly, Category = "Slate Styling")
 	TSubclassOf<class ULobbyFoundGameInfoWidgetStyle> SessionItemStyleClass;
+
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "FMOD Audio")
+	UFMODEvent* ButtonClickSound;
 
 	UPROPERTY(EditDefaultsOnly, Category = "OnlineSubsystem")
 	int32 MaxSearchResults = 10;

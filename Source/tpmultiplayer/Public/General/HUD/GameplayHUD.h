@@ -4,6 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
+
+#include "FMODEvent.h"
+
 #include "GameplayHUD.generated.h"
 
 /**
@@ -27,6 +30,9 @@ public:
 	void GameplayMenu_Hide();
 	void GameplayMenu_Toggle();
 
+	void PlayButtonClickSound();
+	void PlayMatchWonSound();
+
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Slate")
 	TSubclassOf <class UGameplayMainMenuWidgetStyle> MainMenuStyleClass;
@@ -39,6 +45,11 @@ protected:
 	TSharedPtr<class SWeakWidget> GemaplayHUDWidgetContainer;
 
 	class AGamePlayerController* GameplayPlayerController;
+
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "FMOD Audio")
+	UFMODEvent* ButtonClickSound;
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "FMOD Audio")
+	UFMODEvent* MatchWonSound;
 
 	UFUNCTION()
 	void OnMatchDataUpdated();
