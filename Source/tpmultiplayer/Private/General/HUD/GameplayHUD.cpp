@@ -20,11 +20,6 @@ void AGameplayHUD::BeginPlay()
 
 	GameplayPlayerController = Cast<AGamePlayerController>(GetOwningPlayerController());
 	if (!GameplayPlayerController) UE_LOG(LogTemp, Error, TEXT("AGameplayHUD::BeginPlay() was not able to cast GameplayPlayerController!"));
-	
-	// Event that will fire every time MatchData was received from the server so we need to update out HUD info about current match state (time, score, etc)
-	if (auto GameState = GameplayPlayerController->GetGameplayState())
-		GameState->OnMatchDataChanged().AddUObject(this, &AGameplayHUD::OnMatchDataUpdated);
-
 
 	MainMenu_Show(); // Creating and showing main menu widget so player can join a game or return to lobby
 }
@@ -79,6 +74,18 @@ void AGameplayHUD::GameplayMenu_Toggle()
 
 void AGameplayHUD::GameplayMenu_Show()
 {
+	// Previously we subscribed on BeginPlay(), but in shipping build GameState is always nullptr there so it was moved
+	if (!bSubscribedToEventDataChange)
+	{
+		// Event that will fire every time MatchData was received from the server so we need to update out HUD info about current match state (time, score, etc)
+		if (auto GameState = GameplayPlayerController->GetGameplayState())
+		{
+			GameState->OnMatchDataChanged().AddUObject(this, &AGameplayHUD::OnMatchDataUpdated);
+			bSubscribedToEventDataChange = true;
+		}
+		else { UE_LOG(LogTemp, Error, TEXT("AGameplayHUD: No GameState was available to subsribe!")) }
+	}
+
 	if (GameplayWidget.IsValid()) return;
 	if (!GEngine || (GEngine && !GEngine->GameViewport)) return;
 	if (!GameplayHUDStyleClass) { UE_LOG(LogTemp, Error, TEXT("AGameplayHUD: Defaults must be assigned!")); return; };

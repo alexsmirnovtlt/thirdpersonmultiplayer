@@ -51,6 +51,8 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "FMOD Audio")
 	UFMODEvent* MatchWonSound;
 
+	bool bSubscribedToEventDataChange = false;
+
 	UFUNCTION()
 	void OnMatchDataUpdated();
 };
