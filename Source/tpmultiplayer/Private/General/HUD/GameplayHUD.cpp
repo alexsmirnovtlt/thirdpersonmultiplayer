@@ -133,5 +133,8 @@ void AGameplayHUD::PlayButtonClickSound()
 
 void AGameplayHUD::PlayMatchWonSound()
 {
-	UFMODBlueprintStatics::PlayEventAtLocation(this, MatchWonSound, FTransform(), true);
+	auto EventInstance = UFMODBlueprintStatics::PlayEventAtLocation(this, MatchWonSound, FTransform(), false);
+	EventInstance.Instance->setVolume(0.3);
+	EventInstance.Instance->start();
+	EventInstance.Instance->release();
 }

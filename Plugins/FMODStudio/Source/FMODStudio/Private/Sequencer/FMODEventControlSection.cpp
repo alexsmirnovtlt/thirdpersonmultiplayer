@@ -7,7 +7,7 @@
 
 FFMODEventControlChannel::FFMODEventControlChannel()
 {
-    SetEnum(StaticEnum<EFMODEventControlKey>());
+   // SetEnum(StaticEnum<EFMODEventControlKey>()); CRASHES ON HOTRELOAD
 }
 
 UFMODEventControlSection::UFMODEventControlSection(const FObjectInitializer &ObjectInitializer)
