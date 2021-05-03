@@ -28,7 +28,7 @@ public:
 
     // Sounds to Play
     UPROPERTY(EditDefaultsOnly, Category = "Setup")
-    TArray<TAssetPtr<class UFMODEvent>> Events;
+    TArray<class UFMODEvent*> Events;
 
     UPROPERTY(EditDefaultsOnly, Category = "Setup")
     float MaxSoundDistance;

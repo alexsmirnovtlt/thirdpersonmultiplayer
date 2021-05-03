@@ -29,8 +29,8 @@ void FFMODBankUpdateNotifier::Update(float DeltaTime)
 
         if (CurTime >= NextRefreshTime)
         {
-            NextRefreshTime = CurTime + FTimespan(0, 0, 1);
             Refresh();
+            NextRefreshTime = CurTime + FTimespan(0, 0, 1);
         }
 
         if (Countdown > 0.0f)
@@ -63,7 +63,8 @@ void FFMODBankUpdateNotifier::Refresh()
 {
     if (!FilePath.IsEmpty())
     {
-        const FDateTime NewFileTime = IFileManager::Get().GetTimeStamp(*FilePath);
+        FDateTime NewFileTime = MostRecentFileTime();
+
         if (NewFileTime != FileTime)
         {
             const UFMODSettings &Settings = *GetDefault<UFMODSettings>();

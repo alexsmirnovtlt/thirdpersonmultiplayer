@@ -25,7 +25,7 @@ void UStepAnimNotify_FMOD::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenc
     int32 ChosenIndex = FMath::RandRange(0, Events.Num() - 1);
     if (ChosenIndex == Events.Num()) return; // Array is empty
    
-    UFMODEvent* ChosenEvent = Events[ChosenIndex].Get();
+    UFMODEvent* ChosenEvent = Events[ChosenIndex];
     if (!ChosenEvent) { UE_LOG(LogTemp, Warning, TEXT("UStepAnimNotify_FMOD::Notify TSoftObjPtr returned null!")); return; }
    
     auto CreatedAudioComponent = UFMODBlueprintStatics::PlayEventAttached(ChosenEvent, MeshComp, *BoneName, FVector(0, 0, 0), EAttachLocation::KeepRelativeOffset, true, false, true);
