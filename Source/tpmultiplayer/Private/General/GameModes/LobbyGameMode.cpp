@@ -7,6 +7,11 @@
 #include "Widgets/SWeakWidget.h"
 #include "OnlineSubsystem.h"
 
+#include "FMODUtils.h"
+#include "fmod_studio.hpp"
+#include "FMODStudioModule.h"
+#include "FMODBlueprintStatics.h" 
+
 #include "Slate/Styles/LobbyFoundGameInfoWidgetStyle.h"
 #include "Slate/Styles/LobbyMenuSlateWidgetStyle.h"
 #include "General/MultiplayerGameInstance.h"
@@ -15,13 +20,15 @@
 FName ALobbyGameMode::CreatedSessionName(TEXT(""));
 const FName ALobbyGameMode::SERVER_NAME_SETTINGS_KEY("ServerName");
 
-
 void ALobbyGameMode::StartPlay()
 {
 	Super::StartPlay();
 
 	CreateMainWidget();
 	InitOnlineSubsystem();
+
+	UnloadFMODBanks(MainGameMapFMODBanks);
+	LoadFMODBanks(LobbyFMODBanks);
 
 	// Showing mouse cursor when fullscreen
 	if (APlayerController* PlayerController = GetWorld()->GetFirstPlayerController())
@@ -180,6 +187,8 @@ void ALobbyGameMode::OnCreateSessionComplete(FName SessionName, bool Success)
 	auto GameInstance = CastChecked<UMultiplayerGameInstance>(GetWorld()->GetGameInstance());
 	const FString& OptionsStr = GameInstance->GetGameplayMapNameForHost() + "?CustomName=" + LobbyWidget.Get()->GetPlayerName();
 
+	FMOD_HandleBanksOnMapChange();
+
 	World->ServerTravel(OptionsStr, true);
 }
 
@@ -225,6 +234,53 @@ void ALobbyGameMode::OnJoinSessionComplete(FName SessionName, EOnJoinSessionComp
 
 	Address.Append("?CustomName=" + LobbyWidget.Get()->GetPlayerName());
 
+	FMOD_HandleBanksOnMapChange();
+
 	if (APlayerController* PlayerController = GetWorld()->GetFirstPlayerController())
 		PlayerController->ClientTravel(Address, ETravelType::TRAVEL_Absolute);
+}
+
+void ALobbyGameMode::FMOD_HandleBanksOnMapChange()
+{
+	// Load sound banks that will be used in game
+	UnloadFMODBanks(LobbyFMODBanks);
+	LoadFMODBanks(MainGameMapFMODBanks);
+}
+
+void ALobbyGameMode::PlayButtonClickSound()
+{
+	UFMODBlueprintStatics::PlayEventAtLocation(this, ButtonClickSound, FTransform(), true);
+}
+
+void ALobbyGameMode::LoadFMODBanks(TArray<UFMODBank*>& ArrayToLoad)
+{
+	if (!IFMODStudioModule::IsAvailable()) { UE_LOG(LogTemp, Error, TEXT("ALobbyGameMode::LoadFMODBanks IFMODStudioModule not available")); return; }
+
+	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+	if (!StudioSystem->isValid()) { UE_LOG(LogTemp, Error, TEXT("ALobbyGameMode::LoadFMODBanks StudioSystem is not valid")); return; }
+
+	for (auto* BankToLoad : ArrayToLoad)
+	{
+		FString BankPath = IFMODStudioModule::Get().GetBankPath(*BankToLoad);
+		FMOD::Studio::Bank* OutBank = nullptr;
+		FMOD_RESULT result = StudioSystem->loadBankFile(TCHAR_TO_UTF8(*BankPath), FMOD_STUDIO_LOAD_BANK_NORMAL, &OutBank);
+		if (result == FMOD_OK) OutBank->loadSampleData();
+	}
+}
+
+void ALobbyGameMode::UnloadFMODBanks(TArray<UFMODBank*>& ArrayToUnload)
+{
+	if (!IFMODStudioModule::IsAvailable()) { UE_LOG(LogTemp, Error, TEXT("ALobbyGameMode::UnloadFMODBanks IFMODStudioModule not available")); return; }
+
+	FMOD::Studio::System* StudioSystem = IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime);
+	if (!StudioSystem->isValid()) { UE_LOG(LogTemp, Error, TEXT("ALobbyGameMode::UnloadFMODBanks StudioSystem is not valid")); return; }
+
+	for (auto* BankToUnload : ArrayToUnload)
+	{
+		FMOD::Studio::ID guid = FMODUtils::ConvertGuid(BankToUnload->AssetGuid);
+		FMOD::Studio::Bank* OutBank = nullptr;
+
+		FMOD_RESULT result = StudioSystem->getBankByID(&guid, &OutBank);
+		if (result == FMOD_OK && OutBank != nullptr) OutBank->unload();
+	}
 }

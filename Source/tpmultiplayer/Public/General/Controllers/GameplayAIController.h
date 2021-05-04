@@ -29,6 +29,22 @@ public:
 
 protected:
 
+	// BEGIN GAS Related
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> AimAbility;
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> ReloadAbility;
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> ShootAbility;
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TSubclassOf<class UGameplayAbility> SprintAbility;
+
+	void CancelAllAbilities();
+	// END GAS Related
+
+	UFUNCTION()
+	void OnDamaged(class AThirdPersonCharacter* Self);
+
 	UFUNCTION()
 	void OnMatchStateChanged();
 	EMatchState CurrentMatchState;

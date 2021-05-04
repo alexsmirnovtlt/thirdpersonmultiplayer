@@ -6,13 +6,15 @@
 #include "SlateOptMacros.h"
 
 #include "Slate/Styles/GameplayMainHUDWidgetStyle.h"
-#include "General/States/GameplayGameState.h"
+#include "General/HUD/GameplayHUD.h"
+#include "General/GameplayStructs.h"
 
 #define LOCTEXT_NAMESPACE "GameplayHUD"
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 void SGameplayMainHUDWidget::Construct(const FArguments& InArgs)
 {
+	PlayerHUD = InArgs._PlayerHUD;
 	auto Style = InArgs._MainStyle->WidgetStyle;
 
 	ChildSlot
@@ -233,4 +235,7 @@ void SGameplayMainHUDWidget::UpdateWidgetData(const FMatchData& MatchData, const
 	RoundWonHint_Blue.Get()->SetVisibility(MatchData.SpecialMessage == EInGameSpecialMessage::BlueTeamWonLastRound ? EVisibility::Visible : EVisibility::Collapsed);
 	GameWonHint_Red.Get()->SetVisibility(MatchData.SpecialMessage == EInGameSpecialMessage::RedTeamWonLastGame ? EVisibility::Visible : EVisibility::Collapsed);
 	GameWonHint_Blue.Get()->SetVisibility(MatchData.SpecialMessage == EInGameSpecialMessage::BlueTeamWonLastGame ? EVisibility::Visible : EVisibility::Collapsed);
+
+	if(MatchData.SpecialMessage == EInGameSpecialMessage::RedTeamWonLastGame || MatchData.SpecialMessage == EInGameSpecialMessage::BlueTeamWonLastGame)
+		if (PlayerHUD.IsValid()) PlayerHUD.Get()->PlayMatchWonSound();
 }

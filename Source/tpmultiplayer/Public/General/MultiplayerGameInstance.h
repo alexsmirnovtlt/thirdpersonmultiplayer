@@ -22,5 +22,5 @@ public:
 private:
 	int32 MaxOnlinePlayers = 6;
 	FString LobbyMapName = "/Game/Maps/MainMenu";
-	FString MapNameForHost = "/Game/Maps/GameplayLevel?listen";
+	FString MapNameForHost = "/Game/Maps/DockLevel?listen";
 };

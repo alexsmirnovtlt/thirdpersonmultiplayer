@@ -14,6 +14,7 @@ public:
 	SLATE_BEGIN_ARGS(SGameplayMainMenuWidget)
 	{}
 	SLATE_ARGUMENT(TWeakObjectPtr<class AGamePlayerController>, PlayerController)
+	SLATE_ARGUMENT(TWeakObjectPtr<class AGameplayHUD>, PlayerHUD)
 	SLATE_ARGUMENT(const class UGameplayMainMenuWidgetStyle*, MainMenuStyle)
 	SLATE_END_ARGS()
 
@@ -21,6 +22,7 @@ public:
 
 protected:
 	TWeakObjectPtr<class AGamePlayerController> PlayerController;
+	TWeakObjectPtr<class AGameplayHUD> PlayerHUD;
 
 	TSharedPtr<class SButton> PlayButton;
 	TSharedPtr<class SButton> SpectateButton;

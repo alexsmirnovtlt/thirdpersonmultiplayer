@@ -2,9 +2,12 @@
 
 #pragma once
 
+#include "FMODBank.h"
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Interfaces/OnlineSessionInterface.h"
+
+#include "FMODEvent.h"
 
 #include "LobbyGameMode.generated.h"
 
@@ -26,20 +29,37 @@ public:
 	void OnStartSearchingGames();
 	void OnStartJoining(FText& SessionName, int32 SessionIndex);
 
+	void PlayButtonClickSound();
+
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Slate Styling")
 	TSubclassOf<class ULobbyMenuSlateWidgetStyle> MenuStyleClass;
 	UPROPERTY(EditDefaultsOnly, Category = "Slate Styling")
 	TSubclassOf<class ULobbyFoundGameInfoWidgetStyle> SessionItemStyleClass;
 
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "FMOD Audio")
+	UFMODEvent* ButtonClickSound;
+
 	UPROPERTY(EditDefaultsOnly, Category = "OnlineSubsystem")
 	int32 MaxSearchResults = 10;
+
+	UPROPERTY(EditDefaultsOnly, Category = "FMOD Audio")
+	TArray<UFMODBank*> LobbyFMODBanks;
+	UPROPERTY(EditDefaultsOnly, Category = "FMOD Audio")
+	TArray<UFMODBank*> MainGameMapFMODBanks;
 
 	TSharedPtr<class SLobbyWidget> LobbyWidget;
 	TSharedPtr<class SWeakWidget> LobbyWidgetContainer;
 
 	void InitOnlineSubsystem();
 	void CreateMainWidget();
+
+	void FMOD_HandleBanksOnMapChange();
+
+	// FMOD Related
+	void LoadFMODBanks(TArray<UFMODBank*>& ArrayToLoad);
+	void UnloadFMODBanks(TArray<UFMODBank*>& ArrayToUnload);
+	//
 
 	// Begin Online Sybsystem
 

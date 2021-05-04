@@ -52,9 +52,7 @@ void AGameplayAIController::Tick(float DeltaTime)
 		if (bActionTime)
 		{
 			PossessedCharacter->StopJumping();
-			FGameplayTagContainer tagcontainer;
-			tagcontainer.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Reload")));
-			//PossessedCharacter->GetAbilitySystemComponent()->TryActivateAbilitiesByTag(tagcontainer);
+			PossessedCharacter->GetAbilitySystemComponent()->TryActivateAbilityByClass(ReloadAbility, false);
 		}
 		
 		PossessedCharacter->MoveForward(DEBUG_MovementsSpeed);
@@ -65,10 +63,7 @@ void AGameplayAIController::Tick(float DeltaTime)
 		{
 			if (!PossessedCharacter->IsInAimingAnimation())
 			{
-				FGameplayTagContainer tagcontainer;
-				tagcontainer.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Aim")));
-				//PossessedCharacter->GetAbilitySystemComponent()->TryActivateAbilitiesByTag(tagcontainer);
-				//PossessedCharacter->GetAbilitySystemComponent()->AbilityLocalInputPressed((int32)EAbilityInputID::Aim);
+				PossessedCharacter->GetAbilitySystemComponent()->TryActivateAbilityByClass(AimAbility, false);
 			}
 		}
 
@@ -80,8 +75,9 @@ void AGameplayAIController::Tick(float DeltaTime)
 		{
 			if (PossessedCharacter->IsInAimingAnimation())
 			{
-				FGameplayTagContainer tagcontainer;
-				tagcontainer.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Aim")));
+				//FGameplayTagContainer tagcontainer;
+				//tagcontainer.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Aim")));
+				PossessedCharacter->GetAbilitySystemComponent()->CancelAbility(AimAbility.GetDefaultObject());
 				//PossessedCharacter->GetAbilitySystemComponent()->CancelAbilities(&tagcontainer);
 				//PossessedCharacter->GetAbilitySystemComponent()->AbilityLocalInputReleased((int32)EAbilityInputID::Aim);
 			}
@@ -106,6 +102,8 @@ void AGameplayAIController::OnPossess(class APawn* InPawn)
 
 	OnMatchStateChanged();
 	MatchStateChangedDelegateHandle = GameState->OnMatchDataChanged().AddUObject(this, &AGameplayAIController::OnMatchStateChanged);
+
+	PossessedCharacter->OnPawnDamagedEvent.AddDynamic(this, &AGameplayAIController::OnDamaged);
 }
 
 void AGameplayAIController::OnUnPossess()
@@ -113,6 +111,12 @@ void AGameplayAIController::OnUnPossess()
 	Super::OnUnPossess();
 
 	GameState->OnMatchDataChanged().Remove(MatchStateChangedDelegateHandle);
+
+	if (PossessedCharacter)
+	{
+		PossessedCharacter->OnPawnDamagedEvent.RemoveDynamic(this, &AGameplayAIController::OnDamaged);
+		PossessedCharacter->GetAbilitySystemComponent()->CancelAllAbilities();
+	}
 }
 
 void AGameplayAIController::OnMatchStateChanged()
@@ -121,4 +125,10 @@ void AGameplayAIController::OnMatchStateChanged()
 
 	auto& MatchData = GameState->GetCurrentMatchData();
 	CurrentMatchState = MatchData.MatchState;
+}
+
+void AGameplayAIController::OnDamaged(class AThirdPersonCharacter* Self)
+{
+	// DEBUG, check health first
+	PossessedCharacter->GetAbilitySystemComponent()->CancelAllAbilities();
 }

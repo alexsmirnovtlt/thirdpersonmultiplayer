@@ -365,15 +365,18 @@ bool AThirdPersonCharacter::IsInAimingAnimation_Implementation()
 bool AThirdPersonCharacter::StartAiming_LocalPlayer()
 {
 	if (bViewObstructed) return false; // If local player have an obstacle before him, ability should end immediately
-	if (!IsLocallyControlled() || !IsPlayerControlled()) return true; // Skip camera update for non local player
+	//if (!Controller->IsLocalPlayerController()) return true; // Skip camera update for non local player
 
-	CameraBoom->TargetArmLength = AimingCameraSpringDistance;
-	CameraBoom->SetRelativeLocation(AimingCameraDistance);
+	if (IsPlayerControlled())
+	{
+		CameraBoom->TargetArmLength = AimingCameraSpringDistance;
+		CameraBoom->SetRelativeLocation(AimingCameraDistance);
 
-	auto TargetCntrRot = CameraBoom->GetComponentRotation();
-	TargetCntrRot.Pitch = 0;
-	TargetCntrRot.Roll = 0;
-	GetController<AGamePlayerController>()->SetControlRotation(TargetCntrRot);
+		auto TargetCntrRot = CameraBoom->GetComponentRotation();
+		TargetCntrRot.Pitch = 0;
+		TargetCntrRot.Roll = 0;
+		GetController<AGamePlayerController>()->SetControlRotation(TargetCntrRot);
+	}
 
 	OnAnimStateChanged_Aiming(true);
 

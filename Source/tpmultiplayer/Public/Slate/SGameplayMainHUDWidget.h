@@ -13,8 +13,9 @@ class TPMULTIPLAYER_API SGameplayMainHUDWidget : public SCompoundWidget
 public:
 	SLATE_BEGIN_ARGS(SGameplayMainHUDWidget)
 	{}
+	SLATE_ARGUMENT(TWeakObjectPtr<class AGameplayHUD>, PlayerHUD)
 	SLATE_ARGUMENT(const class UGameplayMainHUDWidgetStyle*, MainStyle)
-	//SLATE_ARGUMENT(TWeakObjectPtr<class AGameplayGameState>, GameState)
+	
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -25,7 +26,7 @@ public:
 
 protected:
 
-	TWeakObjectPtr<class AGameplayGameState> GameState;
+	TWeakObjectPtr<class AGameplayHUD> PlayerHUD;
 
 	// Left side text block references
 	TSharedPtr<class STextBlock> WarmupHint;
