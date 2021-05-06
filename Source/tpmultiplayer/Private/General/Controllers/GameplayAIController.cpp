@@ -3,6 +3,8 @@
 
 #include "General/Controllers/GameplayAIController.h"
 
+#include "BehaviorTree/BlackboardComponent.h"
+#include "BehaviorTree/BlackboardData.h"
 #include "Delegates/IDelegateInstance.h"
 #include "AbilitySystemComponent.h"
 
@@ -12,7 +14,7 @@
 
 AGameplayAIController::AGameplayAIController()
 {
-
+	AIBBComponent = CreateDefaultSubobject<UBlackboardComponent>(TEXT("AI Blackboard Component"));
 }
 
 void AGameplayAIController::BeginPlay()
@@ -35,62 +37,6 @@ void AGameplayAIController::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	if (!GetPawn() || !PossessedCharacter) return;
-
-	// TMP DEBUG
-	ActionTime += DeltaTime;
-
-	bool bActionTime = false;
-	
-	if (ActionTime > 1.f)
-	{
-		ActionTime = 0.f;
-		bActionTime = true;
-	}
-
-	if (CurrentMatchState == EMatchState::Warmup)
-	{
-		if (bActionTime)
-		{
-			PossessedCharacter->StopJumping();
-			PossessedCharacter->GetAbilitySystemComponent()->TryActivateAbilityByClass(ReloadAbility, false);
-		}
-		
-		PossessedCharacter->MoveForward(DEBUG_MovementsSpeed);
-	}
-	else if (CurrentMatchState == EMatchState::Gameplay)
-	{
-		if (bActionTime)
-		{
-			if (!PossessedCharacter->IsInAimingAnimation())
-			{
-				PossessedCharacter->GetAbilitySystemComponent()->TryActivateAbilityByClass(AimAbility, false);
-			}
-		}
-
-		PossessedCharacter->MoveForward(DEBUG_MovementsSpeed);
-	}
-	else if (CurrentMatchState == EMatchState::RoundEnd)
-	{
-		if (bActionTime)
-		{
-			if (PossessedCharacter->IsInAimingAnimation())
-			{
-				//FGameplayTagContainer tagcontainer;
-				//tagcontainer.AddTag(FGameplayTag::RequestGameplayTag(FName("Ability.Aim")));
-				PossessedCharacter->GetAbilitySystemComponent()->CancelAbility(AimAbility.GetDefaultObject());
-				//PossessedCharacter->GetAbilitySystemComponent()->CancelAbilities(&tagcontainer);
-				//PossessedCharacter->GetAbilitySystemComponent()->AbilityLocalInputReleased((int32)EAbilityInputID::Aim);
-			}
-		}
-
-		DEBUG_DeltaTimePassed += DeltaTime;
-		if (DEBUG_DeltaTimePassed > DEBUG_JumpPeriod)
-		{
-			DEBUG_DeltaTimePassed = 0;
-			PossessedCharacter->Jump();
-		}
-	}
-	// TMP DEBUG
 }
 
 void AGameplayAIController::OnPossess(class APawn* InPawn)
@@ -102,6 +48,9 @@ void AGameplayAIController::OnPossess(class APawn* InPawn)
 
 	OnMatchStateChanged();
 	MatchStateChangedDelegateHandle = GameState->OnMatchDataChanged().AddUObject(this, &AGameplayAIController::OnMatchStateChanged);
+	
+	if(BehaviorTree) RunBehaviorTree(BehaviorTree);
+	else { UE_LOG(LogTemp, Error, TEXT("AGameplayAIController::OnPossess Could not sse BT!")); }
 
 	PossessedCharacter->OnPawnDamagedEvent.AddDynamic(this, &AGameplayAIController::OnDamaged);
 }
@@ -111,6 +60,8 @@ void AGameplayAIController::OnUnPossess()
 	Super::OnUnPossess();
 
 	GameState->OnMatchDataChanged().Remove(MatchStateChangedDelegateHandle);
+
+	// TODO Stop BT?
 
 	if (PossessedCharacter)
 	{
@@ -124,7 +75,8 @@ void AGameplayAIController::OnMatchStateChanged()
 	if (!GameState) return;
 
 	auto& MatchData = GameState->GetCurrentMatchData();
-	CurrentMatchState = MatchData.MatchState;
+	
+	if (Blackboard) Blackboard->SetValueAsEnum(KeyName_MatchState, (uint8)MatchData.MatchState);
 }
 
 void AGameplayAIController::OnDamaged(class AThirdPersonCharacter* Self)
@@ -132,3 +84,18 @@ void AGameplayAIController::OnDamaged(class AThirdPersonCharacter* Self)
 	// DEBUG, check health first
 	PossessedCharacter->GetAbilitySystemComponent()->CancelAllAbilities();
 }
+
+// Begin Action Logic that be called from Behavior Tree
+
+void AGameplayAIController::ChangeAbilityState(EAIUsableAbility AbilityEnum, bool bSetActive)
+{
+	if (!GetPawn() || !PossessedCharacter) return;
+	if (!AbilitiesMap.Contains(AbilityEnum)) { UE_LOG(LogTemp, Warning, TEXT("AGameplayAIController::ChangeAbilityState trying to change state of ability that is not present in a Map!")); return; }
+
+	if(bSetActive)
+		PossessedCharacter->GetAbilitySystemComponent()->TryActivateAbilityByClass(AbilitiesMap[AbilityEnum], false);
+	else
+		PossessedCharacter->GetAbilitySystemComponent()->CancelAbility(AbilitiesMap[AbilityEnum].GetDefaultObject());
+}
+
+// END Action Logic that be called from Behavior Tree

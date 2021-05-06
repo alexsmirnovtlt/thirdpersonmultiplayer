@@ -7,6 +7,7 @@
 #include "GameplayAIController.generated.h"
 
 enum class EMatchState : uint8;
+enum class EAIUsableAbility : uint8;
 
 /**
  * 
@@ -28,26 +29,38 @@ public:
 	class AGameplayGameState* GameState;
 
 protected:
-
 	// BEGIN GAS Related
+	// Map of all abilities that are available to AIs
 	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<class UGameplayAbility> AimAbility;
-	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<class UGameplayAbility> ReloadAbility;
-	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<class UGameplayAbility> ShootAbility;
-	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<class UGameplayAbility> SprintAbility;
+	TMap<EAIUsableAbility, TSubclassOf<class UGameplayAbility>> AbilitiesMap;
 
-	void CancelAllAbilities();
+public:
+	UFUNCTION(BlueprintCallable, Category = "Blackboard and GAS")
+	void ChangeAbilityState(EAIUsableAbility AbilityEnum, bool bSetActive);
+	//void CancelAllAbilities();
 	// END GAS Related
+
+	// BEGIN Blackboard and BTree related
+	
+protected:
+	UPROPERTY(EditDefaultsOnly, Category = "Blackboard")
+	class UBehaviorTree* BehaviorTree;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Blackboard")
+	FName KeyName_MatchState;
+
+	// END Blackboard and BTree related
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Blackboard")
+	class UBlackboardComponent* AIBBComponent;
+
+	void ChangeAbilityState();
 
 	UFUNCTION()
 	void OnDamaged(class AThirdPersonCharacter* Self);
 
 	UFUNCTION()
 	void OnMatchStateChanged();
-	EMatchState CurrentMatchState;
 
 	FDelegateHandle MatchStateChangedDelegateHandle;
 

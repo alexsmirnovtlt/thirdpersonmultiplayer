@@ -42,6 +42,14 @@ enum class EInGameSpecialMessage : uint8 {
 	AreaCaptureInProgress = 5
 };
 
+UENUM()
+enum class EAIUsableAbility : uint8 {
+	Shooting = 0,
+	Aiming = 1,
+	Reloading = 2,
+	Sprinting = 3
+};
+
 USTRUCT()
 struct FMatchData
 {
