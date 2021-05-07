@@ -3,7 +3,10 @@
 
 #include "General/Controllers/GameplayAIController.h"
 
+#include "Perception/AISenseConfig_Hearing.h"
+#include "Perception/AIPerceptionComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
+#include "Perception/AISenseConfig_Sight.h"
 #include "BehaviorTree/BlackboardData.h"
 #include "Delegates/IDelegateInstance.h"
 #include "AbilitySystemComponent.h"
@@ -15,6 +18,25 @@
 AGameplayAIController::AGameplayAIController()
 {
 	AIBBComponent = CreateDefaultSubobject<UBlackboardComponent>(TEXT("AI Blackboard Component"));
+
+	PerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AI Perception Component"));
+	
+	SenseConfig_Sight = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("Sight Config"));
+	SenseConfig_Sight->SightRadius = 3000.f;
+	SenseConfig_Sight->LoseSightRadius = 3500.f;
+	SenseConfig_Sight->PeripheralVisionAngleDegrees = 90.f;
+	SenseConfig_Sight->SetMaxAge(1.f);
+	PerceptionComponent->ConfigureSense(*SenseConfig_Sight);
+	PerceptionComponent->SetDominantSense(SenseConfig_Sight->GetSenseImplementation());
+
+	SenseConfig_Hearing = CreateDefaultSubobject<UAISenseConfig_Hearing>(TEXT("Hearing Config"));
+	PerceptionComponent->ConfigureSense(*SenseConfig_Hearing);
+	SenseConfig_Hearing->HearingRange = 3000.f;
+	SenseConfig_Hearing->SetMaxAge(2.f);
+
+	//PerceptionComponent->OnPerceptionUpdated.AddDynamic(this, &AGameplayAIController::OnPerceptionUpdated);
+	
+	bNetLoadOnClient = false;
 }
 
 void AGameplayAIController::BeginPlay()
@@ -50,7 +72,10 @@ void AGameplayAIController::OnPossess(class APawn* InPawn)
 	MatchStateChangedDelegateHandle = GameState->OnMatchDataChanged().AddUObject(this, &AGameplayAIController::OnMatchStateChanged);
 	
 	if(BehaviorTree) RunBehaviorTree(BehaviorTree);
-	else { UE_LOG(LogTemp, Error, TEXT("AGameplayAIController::OnPossess Could not sse BT!")); }
+	else { UE_LOG(LogTemp, Error, TEXT("AGameplayAIController::OnPossess BehaviorTree was not set!")); }
+	
+	auto NewTeamId = FGenericTeamId((uint8)PossessedCharacter->TeamType);
+	SetGenericTeamId(NewTeamId);
 
 	PossessedCharacter->OnPawnDamagedEvent.AddDynamic(this, &AGameplayAIController::OnDamaged);
 }
@@ -84,6 +109,15 @@ void AGameplayAIController::OnDamaged(class AThirdPersonCharacter* Self)
 	// DEBUG, check health first
 	PossessedCharacter->GetAbilitySystemComponent()->CancelAllAbilities();
 }
+
+// Begin AI logic
+
+/*void AGameplayAIController::OnPerceptionUpdated(const TArray<AActor*>& Actors)
+{
+	UE_LOG(LogTemp, Warning, TEXT("OnPerceptionUpdated : %d"), Actors.Num());
+}*/
+
+// End AI logic
 
 // Begin Action Logic that be called from Behavior Tree
 

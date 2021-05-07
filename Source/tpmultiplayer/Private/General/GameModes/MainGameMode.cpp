@@ -150,16 +150,14 @@ void AMainGameMode::GrantGameplayAbilities()
 
 void AMainGameMode::AddPlayerToAMatch(AGamePlayerController* PlayerController)
 {
-	if (HumanPlayersCount_BlueTeam < HumanPlayersCount_RedTeam)
-	{
-		PlayerController->TeamType = ETeamType::BlueTeam;
-		HumanPlayersCount_BlueTeam++;
-	}
-	else
-	{
-		PlayerController->TeamType = ETeamType::RedTeam;
-		HumanPlayersCount_RedTeam++;
-	}
+	// Choosing a team for a new player
+	ETeamType ChosenTeam = ETeamType::RedTeam;
+	if (HumanPlayersCount_BlueTeam == HumanPlayersCount_RedTeam) { if(FMath::SRand() >= 0.5f) ChosenTeam = ETeamType::BlueTeam; }
+	else if (HumanPlayersCount_BlueTeam < HumanPlayersCount_RedTeam) ChosenTeam = ETeamType::BlueTeam;
+	
+	PlayerController->TeamType = ChosenTeam;
+	if (ChosenTeam == ETeamType::RedTeam) HumanPlayersCount_RedTeam++;
+	else HumanPlayersCount_BlueTeam++;
 
 	// Finding non player pawn to posess
 	AThirdPersonCharacter* LastAvailablePawn = nullptr; // We are trying to possess a pawn that is still alive but in some cases there will be none so we will possess a pawn that died

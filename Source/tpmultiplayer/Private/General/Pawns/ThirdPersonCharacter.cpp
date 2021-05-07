@@ -3,7 +3,10 @@
 
 #include "General/Pawns/ThirdPersonCharacter.h"
 
+#include "Perception/AIPerceptionStimuliSourceComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Perception/AISenseConfig_Hearing.h"
+#include "Perception/AISenseConfig_Sight.h"
 #include "Components/CapsuleComponent.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Components/InputComponent.h"
@@ -62,6 +65,9 @@ AThirdPersonCharacter::AThirdPersonCharacter(const class FObjectInitializer& Obj
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
+	AIStimuliSourceComponent = CreateDefaultSubobject<UAIPerceptionStimuliSourceComponent>(TEXT("AI Stimuli Source Component"));
+	AIStimuliSourceComponent->bAutoRegister = false;
+
 	AutoPossessAI = EAutoPossessAI::Disabled;
 }
 
@@ -115,7 +121,18 @@ void AThirdPersonCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
+	// Registering on a server as a source for AI`s senses
+	AIStimuliSourceComponent->RegisterForSense(UAISenseConfig_Sight::StaticClass());
+	AIStimuliSourceComponent->RegisterForSense(UAISenseConfig_Hearing::StaticClass());
+
 	AbilitySystemComponent->InitAbilityActorInfo(NewController, this);
+}
+
+void AThirdPersonCharacter::UnPossessed()
+{
+	Super::UnPossessed();
+
+	AIStimuliSourceComponent->UnregisterFromPerceptionSystem();
 }
 
 void AThirdPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -257,7 +274,7 @@ bool AThirdPersonCharacter::ShootIfAble_Local()
 		ShootData.ImpactNormal = FVector::ZeroVector;
 		ShootData.ServerTime = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
 
-		if(!HasAuthority()) OnRep_Shot(ShootData); // servil will call that in Server_Shoot
+		if(!HasAuthority()) OnRep_Shot(ShootData); // server will call that in Server_Shoot
 		Server_Shoot(ShootData);
 		return false;
 	}
@@ -467,6 +484,12 @@ void AThirdPersonCharacter::Server_Shoot_Implementation(FShootData Data)
 		if(!PC->IsLocalController()) CastChecked<AGamePlayerController>(PC)->Client_ReplicateShot(Data);
 	}
 
+	if (!Data.bIsClipEmpty)
+	{
+		// Making noise for AIs to perceive
+		UAISense_Hearing::ReportNoiseEvent(this, Data.Shooter->GetActorLocation(), 1.0, ShooterPawn, ShootingSoundDistance);
+	}
+
 	// Broadcasting event that will be picked up by GameMode.
 	// This allows us to decouple Pawn and GameMode and in theory have separate client build that does not contain Auth GameMode class where all main logic happens
 	if (TargetPawn) TargetPawn->OnPawnDamagedEvent.Broadcast(TargetPawn);
@@ -475,3 +498,9 @@ void AThirdPersonCharacter::Server_Shoot_Implementation(FShootData Data)
 }
 
 // END Server logic
+
+// IGenericTeamAgentInterface
+FGenericTeamId AThirdPersonCharacter::GetGenericTeamId() const
+{
+	return FGenericTeamId((uint8)TeamType);
+}

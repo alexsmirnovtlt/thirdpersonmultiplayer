@@ -6,9 +6,10 @@
 #include "GameplayTagContainer.h"
 #include "AbilitySystemInterface.h"
 #include "GameFramework/Character.h"
-#include "General/GameplayStructs.h"
+#include "GenericTeamAgentInterface.h"
 
 #include "FMODEvent.h"
+#include "General/GameplayStructs.h"
 
 #include "ThirdPersonCharacter.generated.h"
 
@@ -17,7 +18,7 @@ enum class ETeamType : uint8;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPawnDamagedDelegate, AThirdPersonCharacter*, DamagedPawn);
 
 UCLASS(abstract)
-class TPMULTIPLAYER_API AThirdPersonCharacter : public ACharacter, public IAbilitySystemInterface
+class TPMULTIPLAYER_API AThirdPersonCharacter : public ACharacter, public IAbilitySystemInterface, public IGenericTeamAgentInterface
 {
 	GENERATED_BODY()
 
@@ -31,6 +32,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void PossessedBy(class AController* NewController) override;
+	virtual void UnPossessed() override;
 
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override { return AbilitySystemComponent; }
 
@@ -93,6 +95,17 @@ protected:
 	UFMODEvent* EmptyWeaponClipSound;
 	//
 
+	// BEGIN AI Related
+
+protected:
+	class UAIPerceptionStimuliSourceComponent* AIStimuliSourceComponent;
+
+	// IGenericTeamAgentInterface
+private:
+	virtual FGenericTeamId GetGenericTeamId() const override;
+
+	// END AI Related
+
 protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Effects")
@@ -143,8 +156,12 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Shooting")
 	float ForwardDistanceToAbleToAim = 65.f;
+	// Basically a raycast distance
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Shooting")
 	float ShootingDistance = 10000.f;
+	// Max distance to AI to hear a shot
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Custom Parameters - Shooting")
+	float ShootingSoundDistance = 3000.f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class USceneComponent* CameraGimbal;

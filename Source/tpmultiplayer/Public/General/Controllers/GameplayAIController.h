@@ -12,7 +12,7 @@ enum class EAIUsableAbility : uint8;
 /**
  * 
  */
-UCLASS()
+UCLASS(hidecategories = ("ActorTick|ComponentTick|Tags|ComponentReplication|Activation|Variable|Cooking|Replication|Actor|Input"))
 class TPMULTIPLAYER_API AGameplayAIController : public AAIController
 {
 	GENERATED_BODY()
@@ -28,34 +28,40 @@ protected:
 public:
 	class AGameplayGameState* GameState;
 
-protected:
 	// BEGIN GAS Related
-	// Map of all abilities that are available to AIs
-	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TMap<EAIUsableAbility, TSubclassOf<class UGameplayAbility>> AbilitiesMap;
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Blackboard and GAS")
 	void ChangeAbilityState(EAIUsableAbility AbilityEnum, bool bSetActive);
-	//void CancelAllAbilities();
+
+protected:
+	// Map of all abilities that are available to AIs
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TMap<EAIUsableAbility, TSubclassOf<class UGameplayAbility>> AbilitiesMap;
+	
 	// END GAS Related
 
-	// BEGIN Blackboard and BTree related
+	// BEGIN AI related
 	
 protected:
-	UPROPERTY(EditDefaultsOnly, Category = "Blackboard")
+	UPROPERTY(EditDefaultsOnly, Category = "Custom AI mad Behaviour Tree Settings")
 	class UBehaviorTree* BehaviorTree;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Blackboard")
+	UPROPERTY(EditDefaultsOnly, Category = "Blackboard Keys")
 	FName KeyName_MatchState;
 
-	// END Blackboard and BTree related
-
-	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Blackboard")
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Blackboard Keys")
 	class UBlackboardComponent* AIBBComponent;
 
-	void ChangeAbilityState();
+	class UAISenseConfig_Sight* SenseConfig_Sight;
+	class UAISenseConfig_Hearing* SenseConfig_Hearing;
 
+	//UFUNCTION()
+	//void OnPerceptionUpdated(const TArray<AActor*>& Actors);
+
+	// END AI related
+
+protected:
 	UFUNCTION()
 	void OnDamaged(class AThirdPersonCharacter* Self);
 

@@ -39,6 +39,13 @@ void AGamePlayerController::BeginPlay()
 			if(HasAuthority()) InputComponent->BindAction(DebugKillBindingName, EInputEvent::IE_Pressed, this, &AGamePlayerController::Debug_KillRandomPawn);
 		}
 	}
+
+	// TMP
+	
+	//PerceptionStimuliSourceComponent->RegisterForSense(UAISenseConfig_Sight::StaticClass());
+	//PerceptionStimuliSourceComponent->RegisterForSense(UAISenseConfig_Hearing::StaticClass());
+	//PerceptionStimuliSourceComponent->RegisterWithPerceptionSystem();
+	//PerceptionStimuliSourceComponent->unreg
 }
 
 void AGamePlayerController::OnRep_Pawn()
