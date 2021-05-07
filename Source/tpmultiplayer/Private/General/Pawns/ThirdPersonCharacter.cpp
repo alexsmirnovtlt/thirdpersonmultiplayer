@@ -3,7 +3,7 @@
 
 #include "General/Pawns/ThirdPersonCharacter.h"
 
-#include "Perception/AIPerceptionStimuliSourceComponent.h"
+//#include "Perception/AIPerceptionStimuliSourceComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Perception/AISenseConfig_Hearing.h"
 #include "Perception/AISenseConfig_Sight.h"
@@ -65,8 +65,8 @@ AThirdPersonCharacter::AThirdPersonCharacter(const class FObjectInitializer& Obj
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
-	AIStimuliSourceComponent = CreateDefaultSubobject<UAIPerceptionStimuliSourceComponent>(TEXT("AI Stimuli Source Component"));
-	AIStimuliSourceComponent->bAutoRegister = false;
+	//AIStimuliSourceComponent = CreateDefaultSubobject<UAIPerceptionStimuliSourceComponent>(TEXT("AI Stimuli Source Component"));
+	//AIStimuliSourceComponent->bAutoRegister = false;
 
 	AutoPossessAI = EAutoPossessAI::Disabled;
 }
@@ -122,8 +122,8 @@ void AThirdPersonCharacter::PossessedBy(AController* NewController)
 	Super::PossessedBy(NewController);
 
 	// Registering on a server as a source for AI`s senses
-	AIStimuliSourceComponent->RegisterForSense(UAISenseConfig_Sight::StaticClass());
-	AIStimuliSourceComponent->RegisterForSense(UAISenseConfig_Hearing::StaticClass());
+	//AIStimuliSourceComponent->RegisterForSense(UAISenseConfig_Sight::StaticClass());
+	//AIStimuliSourceComponent->RegisterForSense(UAISenseConfig_Hearing::StaticClass());
 
 	AbilitySystemComponent->InitAbilityActorInfo(NewController, this);
 }
@@ -132,7 +132,7 @@ void AThirdPersonCharacter::UnPossessed()
 {
 	Super::UnPossessed();
 
-	AIStimuliSourceComponent->UnregisterFromPerceptionSystem();
+	//AIStimuliSourceComponent->UnregisterFromPerceptionSystem();
 }
 
 void AThirdPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

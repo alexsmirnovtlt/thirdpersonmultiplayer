@@ -4,7 +4,6 @@
 #include "General/Controllers/GameplayAIController.h"
 
 #include "Perception/AISenseConfig_Hearing.h"
-#include "Perception/AIPerceptionComponent.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 #include "BehaviorTree/BlackboardData.h"
@@ -34,8 +33,10 @@ AGameplayAIController::AGameplayAIController()
 	SenseConfig_Hearing->HearingRange = 3000.f;
 	SenseConfig_Hearing->SetMaxAge(2.f);
 
-	//PerceptionComponent->OnPerceptionUpdated.AddDynamic(this, &AGameplayAIController::OnPerceptionUpdated);
-	
+	PerceptionComponent->OnTargetPerceptionInfoUpdated.AddDynamic(this, &AGameplayAIController::OnTargetPerceptionUpdated);
+
+	CurrentMatchState = EMatchState::Gameplay; // so it will pass check in OnMatchStateChanged() initially
+
 	bNetLoadOnClient = false;
 }
 
@@ -100,8 +101,23 @@ void AGameplayAIController::OnMatchStateChanged()
 	if (!GameState) return;
 
 	auto& MatchData = GameState->GetCurrentMatchData();
+	if (CurrentMatchState == MatchData.MatchState) return; // will not update anything twice
 	
-	if (Blackboard) Blackboard->SetValueAsEnum(KeyName_MatchState, (uint8)MatchData.MatchState);
+	CurrentMatchState = MatchData.MatchState;
+
+	if (Blackboard)
+	{
+		// Updating blackboards values. Depending on a matchstate, we may reset or update some blackboard values
+		Blackboard->SetValueAsEnum(KeyName_MatchState, (uint8)MatchData.MatchState);
+
+		if (MatchData.MatchState == EMatchState::Warmup)
+		{
+			// Some keys must be reset on warmup
+			Blackboard->SetValueAsObject(KeyName_VisibleEnemy, nullptr);
+			Blackboard->SetValueAsVector(KeyName_LastHeardShot, FVector::ZeroVector);
+			if(PossessedCharacter) Blackboard->SetValueAsBool(KeyName_IsVIP, PossessedCharacter->IsVIP());
+		}
+	}
 }
 
 void AGameplayAIController::OnDamaged(class AThirdPersonCharacter* Self)
@@ -112,10 +128,72 @@ void AGameplayAIController::OnDamaged(class AThirdPersonCharacter* Self)
 
 // Begin AI logic
 
-/*void AGameplayAIController::OnPerceptionUpdated(const TArray<AActor*>& Actors)
+void AGameplayAIController::OnTargetPerceptionUpdated(const FActorPerceptionUpdateInfo& UpdateInfo)
 {
-	UE_LOG(LogTemp, Warning, TEXT("OnPerceptionUpdated : %d"), Actors.Num());
-}*/
+	// Weird stuff that i cannot fix: Shooting sounds that server makes are all considered as Enemy for everyone, but sight works fine, so we need to skip this if shot was made by a friendly pawn
+	// TODO Fix that issue
+
+	if (CurrentMatchState != EMatchState::Gameplay) return; // We dont care about any new data if not in a main game state
+
+	if (UpdateInfo.Stimulus.Type == SenseConfig_Sight->GetSenseID())
+	{
+		// TODO Set/Reset VisibleEnemy
+		if (!UpdateInfo.Target.IsValid()) return;
+		UObject* CurrentVisibleActor = Blackboard->GetValueAsObject(KeyName_VisibleEnemy);
+
+		if (UpdateInfo.Stimulus.WasSuccessfullySensed())
+		{
+			if (CurrentVisibleActor != nullptr)
+			{
+				// Change actor only if he is closer
+				if (!PossessedCharacter) return;
+				FVector ActorLocation = PossessedCharacter->GetActorLocation();
+				FVector CurrentTargetActorLocation = Cast<AActor>(CurrentVisibleActor)->GetActorLocation();
+				FVector NewTargetActorLocation = Cast<AActor>(UpdateInfo.Target)->GetActorLocation();
+	
+				auto CurrentDistanceToTarget = FVector::DistSquared2D(ActorLocation, CurrentTargetActorLocation);
+				auto DistanceToNewTarget = FVector::DistSquared2D(ActorLocation, NewTargetActorLocation);
+
+				if (DistanceToNewTarget < CurrentDistanceToTarget) Blackboard->SetValueAsObject(KeyName_VisibleEnemy, UpdateInfo.Target.Get());
+			}
+			else Blackboard->SetValueAsObject(KeyName_VisibleEnemy, UpdateInfo.Target.Get());
+		}
+		else if(UpdateInfo.Target == CurrentVisibleActor) Blackboard->SetValueAsObject(KeyName_VisibleEnemy, nullptr);
+		//UE_LOG(LogTemp, Warning, TEXT("SIGHT"));
+	}
+	else if (UpdateInfo.Stimulus.Type == SenseConfig_Hearing->GetSenseID())
+	{
+		// Basically now we are skipping every update if target is in the same team, which may not be preffered logic
+		// Actually this workaround can be skipped if we want AIs to always face last heard shot(if no actual enemy in sight of course), no matter its from ally or enemy. More realistic?
+		auto TargetAsTeamInterface = Cast<IGenericTeamAgentInterface>(UpdateInfo.Target);
+		if (TargetAsTeamInterface && TargetAsTeamInterface->GetGenericTeamId() == GetGenericTeamId()) return;
+
+		FVector CurrentLastHeardShot = Blackboard->GetValueAsVector(KeyName_LastHeardShot);
+
+		if (UpdateInfo.Stimulus.WasSuccessfullySensed())
+		{
+			// New sound, update it
+			if(CurrentLastHeardShot.IsNearlyZero()) Blackboard->SetValueAsVector(KeyName_LastHeardShot, UpdateInfo.Stimulus.ReceiverLocation);
+			else
+			{
+				// Change value only if that shot is closer
+				if (!PossessedCharacter) return;
+				FVector ActorLocation = PossessedCharacter->GetActorLocation();
+				auto CurrentDistanceToSound = FVector::DistSquared2D(ActorLocation, CurrentLastHeardShot);
+				auto DistanceToNewSound = FVector::DistSquared2D(ActorLocation, UpdateInfo.Stimulus.ReceiverLocation);
+
+				if(DistanceToNewSound < CurrentDistanceToSound) Blackboard->SetValueAsVector(KeyName_LastHeardShot, UpdateInfo.Stimulus.ReceiverLocation);
+			}
+		}
+		else
+		{
+			// Resetting Blackboard value only if the same sound location was reported 
+			if(UpdateInfo.Stimulus.ReceiverLocation == CurrentLastHeardShot) Blackboard->SetValueAsVector(KeyName_LastHeardShot, FVector::ZeroVector);
+		}
+
+		//UE_LOG(LogTemp, Warning, TEXT("HEARING"));
+	}
+}
 
 // End AI logic
 

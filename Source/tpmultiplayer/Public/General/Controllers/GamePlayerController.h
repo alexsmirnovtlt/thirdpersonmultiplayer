@@ -89,7 +89,4 @@ public:
 	void Debug_KillRandomPawn();
 
 	// END Input
-
-//private:
-	//static const float NewControlRotationPitchOnPawnPossess;
 };

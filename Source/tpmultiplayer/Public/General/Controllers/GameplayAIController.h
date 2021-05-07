@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+#include "Perception/AIPerceptionComponent.h"
 #include "GameplayAIController.generated.h"
 
 enum class EMatchState : uint8;
@@ -49,6 +50,12 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Blackboard Keys")
 	FName KeyName_MatchState;
+	UPROPERTY(EditDefaultsOnly, Category = "Blackboard Keys")
+	FName KeyName_VisibleEnemy;
+	UPROPERTY(EditDefaultsOnly, Category = "Blackboard Keys")
+	FName KeyName_LastHeardShot;
+	UPROPERTY(EditDefaultsOnly, Category = "Blackboard Keys")
+	FName KeyName_IsVIP;
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Blackboard Keys")
 	class UBlackboardComponent* AIBBComponent;
@@ -56,8 +63,8 @@ protected:
 	class UAISenseConfig_Sight* SenseConfig_Sight;
 	class UAISenseConfig_Hearing* SenseConfig_Hearing;
 
-	//UFUNCTION()
-	//void OnPerceptionUpdated(const TArray<AActor*>& Actors);
+	UFUNCTION()
+	void OnTargetPerceptionUpdated(const struct FActorPerceptionUpdateInfo& UpdateInfo);
 
 	// END AI related
 
@@ -69,6 +76,8 @@ protected:
 	void OnMatchStateChanged();
 
 	FDelegateHandle MatchStateChangedDelegateHandle;
+
+	EMatchState CurrentMatchState;
 
 	// DEBUG
 	float DEBUG_DeltaTimePassed;

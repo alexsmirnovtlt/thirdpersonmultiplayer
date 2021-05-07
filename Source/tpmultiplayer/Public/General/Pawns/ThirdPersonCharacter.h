@@ -97,13 +97,13 @@ protected:
 
 	// BEGIN AI Related
 
-protected:
-	class UAIPerceptionStimuliSourceComponent* AIStimuliSourceComponent;
+/*protected:
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Perception")
+	class UAIPerceptionStimuliSourceComponent* AIStimuliSourceComponent;*/
 
 	// IGenericTeamAgentInterface
 private:
 	virtual FGenericTeamId GetGenericTeamId() const override;
-
 	// END AI Related
 
 protected:
