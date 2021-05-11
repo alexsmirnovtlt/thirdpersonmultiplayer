@@ -114,7 +114,7 @@ void AGameplayAIController::OnMatchStateChanged()
 		{
 			// Some keys must be reset on warmup
 			Blackboard->SetValueAsObject(KeyName_VisibleEnemy, nullptr);
-			Blackboard->SetValueAsVector(KeyName_LastHeardShot, FVector::ZeroVector);
+			Blackboard->SetValueAsVector(KeyName_LastHeardShot, FAISystem::InvalidLocation);
 			if(PossessedCharacter) Blackboard->SetValueAsBool(KeyName_IsVIP, PossessedCharacter->IsVIP());
 		}
 	}
@@ -173,7 +173,7 @@ void AGameplayAIController::OnTargetPerceptionUpdated(const FActorPerceptionUpda
 		if (UpdateInfo.Stimulus.WasSuccessfullySensed())
 		{
 			// New sound, update it
-			if(CurrentLastHeardShot.IsNearlyZero()) Blackboard->SetValueAsVector(KeyName_LastHeardShot, UpdateInfo.Stimulus.ReceiverLocation);
+			if(!FAISystem::IsValidLocation(CurrentLastHeardShot)) Blackboard->SetValueAsVector(KeyName_LastHeardShot, UpdateInfo.Stimulus.StimulusLocation);
 			else
 			{
 				// Change value only if that shot is closer
@@ -182,13 +182,13 @@ void AGameplayAIController::OnTargetPerceptionUpdated(const FActorPerceptionUpda
 				auto CurrentDistanceToSound = FVector::DistSquared2D(ActorLocation, CurrentLastHeardShot);
 				auto DistanceToNewSound = FVector::DistSquared2D(ActorLocation, UpdateInfo.Stimulus.ReceiverLocation);
 
-				if(DistanceToNewSound < CurrentDistanceToSound) Blackboard->SetValueAsVector(KeyName_LastHeardShot, UpdateInfo.Stimulus.ReceiverLocation);
+				if(DistanceToNewSound < CurrentDistanceToSound) Blackboard->SetValueAsVector(KeyName_LastHeardShot, UpdateInfo.Stimulus.StimulusLocation);
 			}
 		}
 		else
 		{
 			// Resetting Blackboard value only if the same sound location was reported 
-			if(UpdateInfo.Stimulus.ReceiverLocation == CurrentLastHeardShot) Blackboard->SetValueAsVector(KeyName_LastHeardShot, FVector::ZeroVector);
+			if(UpdateInfo.Stimulus.ReceiverLocation == CurrentLastHeardShot) Blackboard->SetValueAsVector(KeyName_LastHeardShot, FAISystem::InvalidLocation);
 		}
 
 		//UE_LOG(LogTemp, Warning, TEXT("HEARING"));
