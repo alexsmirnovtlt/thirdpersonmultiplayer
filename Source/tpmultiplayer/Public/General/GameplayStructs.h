@@ -128,7 +128,7 @@ struct FMatchParameters
 		EndRoundPeriodSec = 4; // TODO Change to 8
 		MaxGameRounds = 3; // TODO Change to 5 (15)
 		MaxGameRoundsToWin = 2; // TODO Change to 3 (8)
-		FlagDefenseTime = 5; // TODO Change to 20?
+		FlagDefenseTime = 25; // TODO Change to fraction of MatchPeriodSec
 	}
 
 public:

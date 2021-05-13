@@ -101,7 +101,13 @@ void AGameplayAIController::OnMatchStateChanged()
 	if (!GameState) return;
 
 	auto& MatchData = GameState->GetCurrentMatchData();
-	if (CurrentMatchState == MatchData.MatchState) return; // will not update anything twice
+
+	if (Blackboard) // will update AreaCapture state that may happen a lot on EMatchState::Gameplay
+	{
+		bool AreaCaptureInProgress = MatchData.SpecialMessage == EInGameSpecialMessage::AreaCaptureInProgress;
+		Blackboard->SetValueAsBool(KeyName_IsAreaCaptureInProgress, AreaCaptureInProgress);
+	}
+	if (CurrentMatchState == MatchData.MatchState) return; // will not update anything else twice
 	
 	CurrentMatchState = MatchData.MatchState;
 
@@ -115,7 +121,15 @@ void AGameplayAIController::OnMatchStateChanged()
 			// Some keys must be reset on warmup
 			Blackboard->SetValueAsObject(KeyName_VisibleEnemy, nullptr);
 			Blackboard->SetValueAsVector(KeyName_LastHeardShot, FAISystem::InvalidLocation);
-			if(PossessedCharacter) Blackboard->SetValueAsBool(KeyName_IsVIP, PossessedCharacter->IsVIP());
+			if (PossessedCharacter) Blackboard->SetValueAsBool(KeyName_IsVIP, PossessedCharacter->IsVIP());
+		}
+		else if (MatchData.MatchState == EMatchState::Gameplay)
+		{
+			Blackboard->SetValueAsBool(KeyName_IsVIP, PossessedCharacter->IsVIP());
+		}
+		else if (MatchData.MatchState == EMatchState::RoundEnd)
+		{
+			
 		}
 	}
 }

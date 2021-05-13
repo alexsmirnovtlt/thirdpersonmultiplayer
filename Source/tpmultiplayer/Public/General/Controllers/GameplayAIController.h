@@ -56,6 +56,8 @@ protected:
 	FName KeyName_LastHeardShot;
 	UPROPERTY(EditDefaultsOnly, Category = "Blackboard Keys")
 	FName KeyName_IsVIP;
+	UPROPERTY(EditDefaultsOnly, Category = "Blackboard Keys")
+	FName KeyName_IsAreaCaptureInProgress;
 
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Blackboard Keys")
 	class UBlackboardComponent* AIBBComponent;

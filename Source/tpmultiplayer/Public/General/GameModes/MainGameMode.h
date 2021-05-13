@@ -13,7 +13,7 @@ enum class EInGameFlagState : uint8;
 enum class EAreaState : uint8;
 
 /**
- * Handles login and logout of PlayerControllersMain and main server game logic
+ * Handles login and logout of Player Controllers and executes main server game match logic
  */
 UCLASS()
 class TPMULTIPLAYER_API AMainGameMode : public AGameModeBase
@@ -32,6 +32,9 @@ public:
 
 	void ApplyShootDamageToAPawn(class AThirdPersonCharacter* DamagedPawn);
 	void OnAreaStateChanged(EAreaState AreaState);
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Game Mode")
+	const TArray<class AGameplayFlagArea*>& GetVIPAreas() const { return FlagPlacements; };
 
 protected:
 

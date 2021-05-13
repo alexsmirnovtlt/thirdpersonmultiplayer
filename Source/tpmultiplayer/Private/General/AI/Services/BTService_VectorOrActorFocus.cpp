@@ -61,10 +61,10 @@ void UBTService_VectorOrActorFocus::OnCeaseRelevant(UBehaviorTreeComponent& Owne
 	if (OwnerController != NULL)
 	{
 		bool bClearFocus = false;
-		if (MyMemory->bActorSet) bClearFocus = (MyMemory->FocusActorSet == OwnerController->GetFocusActorForPriority(EAIFocusPriority::Default));
-		else bClearFocus = (MyMemory->FocusLocationSet == OwnerController->GetFocalPointForPriority(EAIFocusPriority::Default));
+		if (MyMemory->bActorSet) bClearFocus = (MyMemory->FocusActorSet == OwnerController->GetFocusActorForPriority(EAIFocusPriority::Gameplay));
+		else bClearFocus = (MyMemory->FocusLocationSet == OwnerController->GetFocalPointForPriority(EAIFocusPriority::Gameplay));
 
-		if (bClearFocus) OwnerController->ClearFocus(EAIFocusPriority::Default);
+		if (bClearFocus) OwnerController->ClearFocus(EAIFocusPriority::Gameplay);
 	}
 
 	UBlackboardComponent* BlackboardComp = OwnerComp.GetBlackboardComponent();
@@ -80,13 +80,13 @@ EBlackboardNotificationResult UBTService_VectorOrActorFocus::OnBlackboardKeyValu
 	const int32 NodeInstanceIdx = OwnerComp->FindInstanceContainingNode(this);
 	FBTFocusMemory* MyMemory = (FBTFocusMemory*)OwnerComp->GetNodeMemory(this, NodeInstanceIdx);
 	MyMemory->Reset();
-	OwnerController->ClearFocus(EAIFocusPriority::Default);
+	OwnerController->ClearFocus(EAIFocusPriority::Gameplay);
 
 	UObject* KeyValue = Blackboard.GetValue<UBlackboardKeyType_Object>(ChangedKeyID);
 	AActor* TargetActor = Cast<AActor>(KeyValue);
 	if (TargetActor)
 	{
-		OwnerController->SetFocus(TargetActor, EAIFocusPriority::Default);
+		OwnerController->SetFocus(TargetActor, EAIFocusPriority::Gameplay);
 		MyMemory->FocusActorSet = TargetActor;
 		MyMemory->bActorSet = true;
 	}
@@ -106,10 +106,10 @@ EBlackboardNotificationResult UBTService_VectorOrActorFocus::OnBlackboardKeyValu
 	if (MyMemory->bActorSet) return EBlackboardNotificationResult::ContinueObserving; // Ignore if have enemy in sight
 
 	MyMemory->Reset();
-	OwnerController->ClearFocus(EAIFocusPriority::Default);
+	OwnerController->ClearFocus(EAIFocusPriority::Gameplay);
 
 	const FVector FocusLocation = Blackboard.GetValue<UBlackboardKeyType_Vector>(ChangedKeyID);
-	OwnerController->SetFocalPoint(FocusLocation, EAIFocusPriority::Default);
+	OwnerController->SetFocalPoint(FocusLocation, EAIFocusPriority::Gameplay);
 	MyMemory->FocusLocationSet = FocusLocation;
 
 	return EBlackboardNotificationResult::ContinueObserving;
