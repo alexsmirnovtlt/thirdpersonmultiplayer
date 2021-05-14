@@ -504,11 +504,11 @@ void AMainGameMode::OnPawnKilled(AThirdPersonCharacter* DiedPawn)
 	auto Context = DiedPawn->GetAbilitySystemComponent()->MakeEffectContext();
 	DiedPawn->GetAbilitySystemComponent()->ApplyGameplayEffectToSelf(DeadStateEffect.GetDefaultObject(), 1, Context);
 
-	if (!DiedPawn->IsPlayerControlled())
+	/*if (!DiedPawn->IsPlayerControlled())
 	{
 		if (auto AIController = DiedPawn->GetController<AGameplayAIController>())
 			AIController->UnPossess();
-	}
+	}*/
 
 	auto& CurrentMatchData = GameplayState->CurrentMatchData;
 

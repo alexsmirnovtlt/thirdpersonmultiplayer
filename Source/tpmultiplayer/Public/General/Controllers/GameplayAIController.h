@@ -78,17 +78,7 @@ protected:
 	void OnMatchStateChanged();
 
 	FDelegateHandle MatchStateChangedDelegateHandle;
-
 	EMatchState CurrentMatchState;
 
-	// DEBUG
-	float DEBUG_DeltaTimePassed;
-	bool DEBUG_ClockwiseRotation;
-	float DEBUG_RotationSpeed;
-	float DEBUG_JumpPeriod;
-	float DEBUG_MovementsSpeed;
-
-	float ActionTime = 0.f;
-	//
 	class AThirdPersonCharacter* PossessedCharacter;
 };

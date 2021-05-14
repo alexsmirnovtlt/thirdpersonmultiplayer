@@ -41,6 +41,8 @@ public:
 	bool IsAlive();
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
 	bool IsVIP();
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn State")
+	bool HasAmmo();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadonly)
 	ETeamType TeamType;

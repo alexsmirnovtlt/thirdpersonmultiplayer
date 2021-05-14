@@ -3,7 +3,6 @@
 
 #include "General/Pawns/ThirdPersonCharacter.h"
 
-//#include "Perception/AIPerceptionStimuliSourceComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Perception/AISenseConfig_Hearing.h"
 #include "Perception/AISenseConfig_Sight.h"
@@ -65,9 +64,6 @@ AThirdPersonCharacter::AThirdPersonCharacter(const class FObjectInitializer& Obj
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
-	//AIStimuliSourceComponent = CreateDefaultSubobject<UAIPerceptionStimuliSourceComponent>(TEXT("AI Stimuli Source Component"));
-	//AIStimuliSourceComponent->bAutoRegister = false;
-
 	AutoPossessAI = EAutoPossessAI::Disabled;
 }
 
@@ -121,10 +117,6 @@ void AThirdPersonCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
-	// Registering on a server as a source for AI`s senses
-	//AIStimuliSourceComponent->RegisterForSense(UAISenseConfig_Sight::StaticClass());
-	//AIStimuliSourceComponent->RegisterForSense(UAISenseConfig_Hearing::StaticClass());
-
 	AbilitySystemComponent->InitAbilityActorInfo(NewController, this);
 }
 
@@ -132,7 +124,7 @@ void AThirdPersonCharacter::UnPossessed()
 {
 	Super::UnPossessed();
 
-	//AIStimuliSourceComponent->UnregisterFromPerceptionSystem();
+	
 }
 
 void AThirdPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -259,6 +251,12 @@ bool AThirdPersonCharacter::IsVIP()
 {
 	if (!AbilitySystemComponent) return false;
 	return AbilitySystemComponent->HasMatchingGameplayTag(VIPTag);
+}
+
+bool AThirdPersonCharacter::HasAmmo()
+{
+	if (!AttributeSet) return false;
+	return AttributeSet->GetAmmoCount() > 0;
 }
 
 bool AThirdPersonCharacter::ShootIfAble_Local()

@@ -43,11 +43,6 @@ AGameplayAIController::AGameplayAIController()
 void AGameplayAIController::BeginPlay()
 {
 	Super::BeginPlay();
-
-	DEBUG_ClockwiseRotation = FMath::SRand() > 0.5f;
-	DEBUG_JumpPeriod = FMath::RandRange(0.2f, 0.8f);
-	DEBUG_MovementsSpeed = FMath::RandRange(0.3f, 1.f);
-	DEBUG_RotationSpeed = FMath::RandRange(0.2f, 1.3f);
 }
 
 void AGameplayAIController::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -69,31 +64,29 @@ void AGameplayAIController::OnPossess(class APawn* InPawn)
 	PossessedCharacter = Cast<AThirdPersonCharacter>(InPawn);
 	if (!PossessedCharacter || !GameState) return;
 
-	OnMatchStateChanged();
-	MatchStateChangedDelegateHandle = GameState->OnMatchDataChanged().AddUObject(this, &AGameplayAIController::OnMatchStateChanged);
-	
-	if(BehaviorTree) RunBehaviorTree(BehaviorTree);
-	else { UE_LOG(LogTemp, Error, TEXT("AGameplayAIController::OnPossess BehaviorTree was not set!")); }
-	
 	auto NewTeamId = FGenericTeamId((uint8)PossessedCharacter->TeamType);
 	SetGenericTeamId(NewTeamId);
+
+	OnMatchStateChanged();
+	MatchStateChangedDelegateHandle = GameState->OnMatchDataChanged().AddUObject(this, &AGameplayAIController::OnMatchStateChanged);
+
+	if(BehaviorTree) RunBehaviorTree(BehaviorTree);
+	else { UE_LOG(LogTemp, Error, TEXT("AGameplayAIController::OnPossess BehaviorTree was not set!")); }
 
 	PossessedCharacter->OnPawnDamagedEvent.AddDynamic(this, &AGameplayAIController::OnDamaged);
 }
 
 void AGameplayAIController::OnUnPossess()
 {
-	Super::OnUnPossess();
-
 	GameState->OnMatchDataChanged().Remove(MatchStateChangedDelegateHandle);
-
-	// TODO Stop BT?
 
 	if (PossessedCharacter)
 	{
 		PossessedCharacter->OnPawnDamagedEvent.RemoveDynamic(this, &AGameplayAIController::OnDamaged);
 		PossessedCharacter->GetAbilitySystemComponent()->CancelAllAbilities();
 	}
+
+	Super::OnUnPossess();
 }
 
 void AGameplayAIController::OnMatchStateChanged()
@@ -101,14 +94,6 @@ void AGameplayAIController::OnMatchStateChanged()
 	if (!GameState) return;
 
 	auto& MatchData = GameState->GetCurrentMatchData();
-
-	if (Blackboard) // will update AreaCapture state that may happen a lot on EMatchState::Gameplay
-	{
-		bool AreaCaptureInProgress = MatchData.SpecialMessage == EInGameSpecialMessage::AreaCaptureInProgress;
-		Blackboard->SetValueAsBool(KeyName_IsAreaCaptureInProgress, AreaCaptureInProgress);
-	}
-	if (CurrentMatchState == MatchData.MatchState) return; // will not update anything else twice
-	
 	CurrentMatchState = MatchData.MatchState;
 
 	if (Blackboard)
@@ -116,42 +101,38 @@ void AGameplayAIController::OnMatchStateChanged()
 		// Updating blackboards values. Depending on a matchstate, we may reset or update some blackboard values
 		Blackboard->SetValueAsEnum(KeyName_MatchState, (uint8)MatchData.MatchState);
 
+		bool AreaCaptureInProgress = MatchData.SpecialMessage == EInGameSpecialMessage::AreaCaptureInProgress;
+		Blackboard->SetValueAsBool(KeyName_IsAreaCaptureInProgress, AreaCaptureInProgress);
+
 		if (MatchData.MatchState == EMatchState::Warmup)
 		{
-			// Some keys must be reset on warmup
 			Blackboard->SetValueAsObject(KeyName_VisibleEnemy, nullptr);
 			Blackboard->SetValueAsVector(KeyName_LastHeardShot, FAISystem::InvalidLocation);
-			if (PossessedCharacter) Blackboard->SetValueAsBool(KeyName_IsVIP, PossessedCharacter->IsVIP());
 		}
 		else if (MatchData.MatchState == EMatchState::Gameplay)
 		{
-			Blackboard->SetValueAsBool(KeyName_IsVIP, PossessedCharacter->IsVIP());
-		}
-		else if (MatchData.MatchState == EMatchState::RoundEnd)
-		{
-			
+			Blackboard->SetValueAsBool(KeyName_IsVIP, PossessedCharacter ? PossessedCharacter->IsVIP() : false);
 		}
 	}
 }
 
 void AGameplayAIController::OnDamaged(class AThirdPersonCharacter* Self)
 {
-	// DEBUG, check health first
-	PossessedCharacter->GetAbilitySystemComponent()->CancelAllAbilities();
+	if (PossessedCharacter && !PossessedCharacter->IsAlive())
+		PossessedCharacter->GetAbilitySystemComponent()->CancelAllAbilities();	
 }
 
 // Begin AI logic
 
 void AGameplayAIController::OnTargetPerceptionUpdated(const FActorPerceptionUpdateInfo& UpdateInfo)
 {
-	// Weird stuff that i cannot fix: Shooting sounds that server makes are all considered as Enemy for everyone, but sight works fine, so we need to skip this if shot was made by a friendly pawn
+	// Weird stuff that i cannot fix: Shooting sounds that server makes are all considered as Enemy for everyone, but sight works fine, so we may want to skip execution if shot was made by a friendly pawn
 	// TODO Fix that issue
 
 	if (CurrentMatchState != EMatchState::Gameplay) return; // We dont care about any new data if not in a main game state
 
 	if (UpdateInfo.Stimulus.Type == SenseConfig_Sight->GetSenseID())
 	{
-		// TODO Set/Reset VisibleEnemy
 		if (!UpdateInfo.Target.IsValid()) return;
 		UObject* CurrentVisibleActor = Blackboard->GetValueAsObject(KeyName_VisibleEnemy);
 
@@ -173,12 +154,11 @@ void AGameplayAIController::OnTargetPerceptionUpdated(const FActorPerceptionUpda
 			else Blackboard->SetValueAsObject(KeyName_VisibleEnemy, UpdateInfo.Target.Get());
 		}
 		else if(UpdateInfo.Target == CurrentVisibleActor) Blackboard->SetValueAsObject(KeyName_VisibleEnemy, nullptr);
-		//UE_LOG(LogTemp, Warning, TEXT("SIGHT"));
 	}
 	else if (UpdateInfo.Stimulus.Type == SenseConfig_Hearing->GetSenseID())
 	{
-		// Basically now we are skipping every update if target is in the same team, which may not be preffered logic
-		// Actually this workaround can be skipped if we want AIs to always face last heard shot(if no actual enemy in sight of course), no matter its from ally or enemy. More realistic?
+		// Basically now we are skipping every sense update if target is in the same team, which may not be preffered logic. Look for TODO above for explanation
+		// Actually this workaround can be skipped if we WANT AIs to always face last heard shot(if no actual enemy in sight of course), no matter its from ally or enemy. More realistic?
 		auto TargetAsTeamInterface = Cast<IGenericTeamAgentInterface>(UpdateInfo.Target);
 		if (TargetAsTeamInterface && TargetAsTeamInterface->GetGenericTeamId() == GetGenericTeamId()) return;
 
@@ -204,8 +184,6 @@ void AGameplayAIController::OnTargetPerceptionUpdated(const FActorPerceptionUpda
 			// Resetting Blackboard value only if the same sound location was reported 
 			if(UpdateInfo.Stimulus.ReceiverLocation == CurrentLastHeardShot) Blackboard->SetValueAsVector(KeyName_LastHeardShot, FAISystem::InvalidLocation);
 		}
-
-		//UE_LOG(LogTemp, Warning, TEXT("HEARING"));
 	}
 }
 
