@@ -78,28 +78,25 @@ void AGameplayAIController::OnUnPossess()
 
 void AGameplayAIController::OnMatchStateChanged()
 {
-	if (!GameState) return;
+	if (!GameState || !Blackboard) return;
 
 	auto& MatchData = GameState->GetCurrentMatchData();
 	CurrentMatchState = MatchData.MatchState;
 
-	if (Blackboard)
+	// Updating blackboards values. Depending on a matchstate, we may reset or update some blackboard values
+	Blackboard->SetValueAsEnum(KeyName_MatchState, (uint8)MatchData.MatchState);
+
+	bool AreaCaptureInProgress = MatchData.SpecialMessage == EInGameSpecialMessage::AreaCaptureInProgress;
+	Blackboard->SetValueAsBool(KeyName_IsAreaCaptureInProgress, AreaCaptureInProgress);
+
+	if (MatchData.MatchState == EMatchState::Warmup)
 	{
-		// Updating blackboards values. Depending on a matchstate, we may reset or update some blackboard values
-		Blackboard->SetValueAsEnum(KeyName_MatchState, (uint8)MatchData.MatchState);
-
-		bool AreaCaptureInProgress = MatchData.SpecialMessage == EInGameSpecialMessage::AreaCaptureInProgress;
-		Blackboard->SetValueAsBool(KeyName_IsAreaCaptureInProgress, AreaCaptureInProgress);
-
-		if (MatchData.MatchState == EMatchState::Warmup)
-		{
-			Blackboard->SetValueAsObject(KeyName_VisibleEnemy, nullptr);
-			Blackboard->SetValueAsVector(KeyName_LastHeardShot, FAISystem::InvalidLocation);
-		}
-		else if (MatchData.MatchState == EMatchState::Gameplay)
-		{
-			Blackboard->SetValueAsBool(KeyName_IsVIP, PossessedCharacter ? PossessedCharacter->IsVIP() : false);
-		}
+		Blackboard->SetValueAsObject(KeyName_VisibleEnemy, nullptr);
+		Blackboard->SetValueAsVector(KeyName_LastHeardShot, FAISystem::InvalidLocation);
+	}
+	else if (MatchData.MatchState == EMatchState::Gameplay)
+	{
+		Blackboard->SetValueAsBool(KeyName_IsVIP, PossessedCharacter ? PossessedCharacter->IsVIP() : false);
 	}
 }
 

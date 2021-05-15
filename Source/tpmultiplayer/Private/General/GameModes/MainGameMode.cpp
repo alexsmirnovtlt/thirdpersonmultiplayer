@@ -202,12 +202,13 @@ void AMainGameMode::RemovePlayerFromAMatch(AGamePlayerController* PlayerControll
 
 	if (auto PlayerPawn = PlayerController->GetPawn<AThirdPersonCharacter>()) // Need to create new AI and assign it to a pawn
 	{
+		PlayerPawn->AbilitySystemComponent->CancelAllAbilities();
 		PlayerController->UnPossess();
 
 		auto AIController = GetWorld()->SpawnActor<AGameplayAIController>(AIControllerClass);
 		InGameControllers_AI.Add(AIController);
 
-		if (PlayerPawn && PlayerPawn->IsAlive()) AIController->Possess(PlayerPawn);
+		if (PlayerPawn->IsAlive()) AIController->Possess(PlayerPawn);
 	}
 
 	PlayerController->TeamType = ETeamType::Spectator;

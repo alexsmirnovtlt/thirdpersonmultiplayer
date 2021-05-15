@@ -131,6 +131,7 @@ void AThirdPersonCharacter::PossessedBy(AController* NewController)
 void AThirdPersonCharacter::UnPossessed()
 {
 	UnregisterFromPerceptionSystem();
+	AbilitySystemComponent->ClearActorInfo();
 
 	Super::UnPossessed(); // important to call it last because GetOwner() in UnregisterFromPerceptionSystem() will return nullptr otherwise
 }
