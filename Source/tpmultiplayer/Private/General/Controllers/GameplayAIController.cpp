@@ -6,6 +6,7 @@
 #include "Perception/AISenseConfig_Hearing.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
+#include "General/GameModes/MainGameMode.h"
 #include "BehaviorTree/BlackboardData.h"
 #include "Delegates/IDelegateInstance.h"
 #include "AbilitySystemComponent.h"
@@ -19,23 +20,22 @@ AGameplayAIController::AGameplayAIController()
 	AIBBComponent = CreateDefaultSubobject<UBlackboardComponent>(TEXT("AI Blackboard Component"));
 
 	PerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AI Perception Component"));
-	
+
 	SenseConfig_Sight = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("Sight Config"));
 	SenseConfig_Sight->SightRadius = 3000.f;
 	SenseConfig_Sight->LoseSightRadius = 3500.f;
 	SenseConfig_Sight->PeripheralVisionAngleDegrees = 90.f;
 	SenseConfig_Sight->SetMaxAge(1.f);
-	PerceptionComponent->ConfigureSense(*SenseConfig_Sight);
-	PerceptionComponent->SetDominantSense(SenseConfig_Sight->GetSenseImplementation());
 
 	SenseConfig_Hearing = CreateDefaultSubobject<UAISenseConfig_Hearing>(TEXT("Hearing Config"));
-	PerceptionComponent->ConfigureSense(*SenseConfig_Hearing);
 	SenseConfig_Hearing->HearingRange = 3000.f;
 	SenseConfig_Hearing->SetMaxAge(2.f);
 
-	PerceptionComponent->OnTargetPerceptionInfoUpdated.AddDynamic(this, &AGameplayAIController::OnTargetPerceptionUpdated);
+	PerceptionComponent->ConfigureSense(*SenseConfig_Sight);
+	PerceptionComponent->ConfigureSense(*SenseConfig_Hearing);
+	PerceptionComponent->SetDominantSense(SenseConfig_Sight->GetSenseImplementation());
 
-	CurrentMatchState = EMatchState::Gameplay; // so it will pass check in OnMatchStateChanged() initially
+	PerceptionComponent->OnTargetPerceptionInfoUpdated.AddDynamic(this, &AGameplayAIController::OnTargetPerceptionUpdated);
 
 	bNetLoadOnClient = false;
 }
@@ -43,18 +43,8 @@ AGameplayAIController::AGameplayAIController()
 void AGameplayAIController::BeginPlay()
 {
 	Super::BeginPlay();
-}
 
-void AGameplayAIController::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	Super::EndPlay(EndPlayReason);
-}
-
-void AGameplayAIController::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-	if (!GetPawn() || !PossessedCharacter) return;
+	GameState = GetWorld()->GetGameState<AGameplayGameState>();
 }
 
 void AGameplayAIController::OnPossess(class APawn* InPawn)
@@ -62,24 +52,21 @@ void AGameplayAIController::OnPossess(class APawn* InPawn)
 	Super::OnPossess(InPawn);
 
 	PossessedCharacter = Cast<AThirdPersonCharacter>(InPawn);
-	if (!PossessedCharacter || !GameState) return;
+	if (!PossessedCharacter || !GameState) { UE_LOG(LogTemp, Error, TEXT("AGameplayAIController::OnPossess no PossessedCharacter or GameState!")); return; }
 
-	auto NewTeamId = FGenericTeamId((uint8)PossessedCharacter->TeamType);
-	SetGenericTeamId(NewTeamId);
-
-	OnMatchStateChanged();
-	MatchStateChangedDelegateHandle = GameState->OnMatchDataChanged().AddUObject(this, &AGameplayAIController::OnMatchStateChanged);
-
-	if(BehaviorTree) RunBehaviorTree(BehaviorTree);
+	if (BehaviorTree) RunBehaviorTree(BehaviorTree);
 	else { UE_LOG(LogTemp, Error, TEXT("AGameplayAIController::OnPossess BehaviorTree was not set!")); }
 
+	OnMatchStateChanged();
+
+	MatchStateChangedDelegateHandle = GameState->OnMatchDataChanged().AddUObject(this, &AGameplayAIController::OnMatchStateChanged);
 	PossessedCharacter->OnPawnDamagedEvent.AddDynamic(this, &AGameplayAIController::OnDamaged);
 }
 
 void AGameplayAIController::OnUnPossess()
 {
 	GameState->OnMatchDataChanged().Remove(MatchStateChangedDelegateHandle);
-
+	
 	if (PossessedCharacter)
 	{
 		PossessedCharacter->OnPawnDamagedEvent.RemoveDynamic(this, &AGameplayAIController::OnDamaged);
@@ -119,14 +106,16 @@ void AGameplayAIController::OnMatchStateChanged()
 void AGameplayAIController::OnDamaged(class AThirdPersonCharacter* Self)
 {
 	if (PossessedCharacter && !PossessedCharacter->IsAlive())
-		PossessedCharacter->GetAbilitySystemComponent()->CancelAllAbilities();	
+	{
+		PossessedCharacter->GetAbilitySystemComponent()->CancelAllAbilities();
+	}	
 }
 
 // Begin AI logic
 
 void AGameplayAIController::OnTargetPerceptionUpdated(const FActorPerceptionUpdateInfo& UpdateInfo)
 {
-	// Weird stuff that i cannot fix: Shooting sounds that server makes are all considered as Enemy for everyone, but sight works fine, so we may want to skip execution if shot was made by a friendly pawn
+	// Shooting sounds that server makes are all considered as Enemy for everyone (probably because we calling UAISense_Hearing::ReportNoiseEvent), so we may want to skip execution if shot was made by a friendly pawn
 	// TODO Fix that issue
 
 	if (CurrentMatchState != EMatchState::Gameplay) return; // We dont care about any new data if not in a main game state
@@ -182,9 +171,33 @@ void AGameplayAIController::OnTargetPerceptionUpdated(const FActorPerceptionUpda
 		else
 		{
 			// Resetting Blackboard value only if the same sound location was reported 
-			if(UpdateInfo.Stimulus.ReceiverLocation == CurrentLastHeardShot) Blackboard->SetValueAsVector(KeyName_LastHeardShot, FAISystem::InvalidLocation);
+			if(UpdateInfo.Stimulus.StimulusLocation == CurrentLastHeardShot) Blackboard->SetValueAsVector(KeyName_LastHeardShot, FAISystem::InvalidLocation);
 		}
 	}
+}
+
+ETeamAttitude::Type AGameplayAIController::GetTeamAttitudeTowards(const AActor& Other) const
+{
+	// At some points, when player Unpossesses a pawn (to spectate) and before AI possesses it, we have no PossessedCharacter and GetGenericTeamId() returns 255. 
+	// It makes new AI that will possess it either hostile or indifferent to everyone. (Attacks teammates)
+	// TODO Find where and how to change it. It should not be happening
+	
+	const IGenericTeamAgentInterface* OtherTeamAgent = Cast<const IGenericTeamAgentInterface>(&Other);
+	if (!OtherTeamAgent) ETeamAttitude::Neutral;
+
+	if (!PossessedCharacter || GetGenericTeamId().GetId() == 255)
+	{
+		// Catching that or else this pawn considers everyone an enemy
+		// TODO this check should be removed and reworked
+
+		uint8 PresumedTeamType = GetWorld()->GetAuthGameMode<AMainGameMode>()->GetTeamTypeForNewController(this);
+		
+		if ((uint8)OtherTeamAgent->GetGenericTeamId() == PresumedTeamType) return ETeamAttitude::Friendly;
+		else return ETeamAttitude::Hostile;
+	}
+
+	if (GetGenericTeamId() == OtherTeamAgent->GetGenericTeamId()) return ETeamAttitude::Friendly;
+	return ETeamAttitude::Hostile;
 }
 
 // End AI logic

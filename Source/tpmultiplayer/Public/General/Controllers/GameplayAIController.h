@@ -20,8 +20,8 @@ class TPMULTIPLAYER_API AGameplayAIController : public AAIController
 public:
 	AGameplayAIController();
 	virtual void BeginPlay() override;
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-	virtual void Tick(float DeltaTime) override;
+	//virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	//virtual void Tick(float DeltaTime) override;
 protected:
 	virtual void OnPossess(class APawn* InPawn) override;
 	virtual void OnUnPossess() override;
@@ -67,6 +67,9 @@ protected:
 
 	UFUNCTION()
 	void OnTargetPerceptionUpdated(const struct FActorPerceptionUpdateInfo& UpdateInfo);
+
+	// IGenericTeamAgentInterface
+	virtual ETeamAttitude::Type GetTeamAttitudeTowards(const AActor& Other) const override;
 
 	// END AI related
 

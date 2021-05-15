@@ -52,6 +52,8 @@ public:
 	UFUNCTION(BlueprintNativeEvent, Category = "Override - Third Person Character")
 	bool IsInAimingAnimation();
 
+	void UnregisterFromPerceptionSystem();
+
 protected:
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "Third Person Char - Animation")
@@ -99,12 +101,12 @@ protected:
 
 	// BEGIN AI Related
 
-/*protected:
+protected:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Perception")
-	class UAIPerceptionStimuliSourceComponent* AIStimuliSourceComponent;*/
+	class UAIPerceptionStimuliSourceComponent* AIStimuliSourceComponent;
 
 	// IGenericTeamAgentInterface
-private:
+public:
 	virtual FGenericTeamId GetGenericTeamId() const override;
 	// END AI Related
 

@@ -3,6 +3,7 @@
 
 #include "General/Pawns/ThirdPersonCharacter.h"
 
+#include "Perception/AIPerceptionStimuliSourceComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Perception/AISenseConfig_Hearing.h"
 #include "Perception/AISenseConfig_Sight.h"
@@ -64,6 +65,9 @@ AThirdPersonCharacter::AThirdPersonCharacter(const class FObjectInitializer& Obj
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
+	AIStimuliSourceComponent = CreateDefaultSubobject<UAIPerceptionStimuliSourceComponent>(TEXT("AI Stimuli Source Component"));
+	// Note that senses must be set in BP. For sound we using UAISense_Hearing::ReportNoiseEvent so we dont need to define it here apparently
+
 	AutoPossessAI = EAutoPossessAI::Disabled;
 }
 
@@ -117,14 +121,18 @@ void AThirdPersonCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 
+	if (auto TeamAgentInterface = Cast<IGenericTeamAgentInterface>(NewController))
+		TeamAgentInterface->SetGenericTeamId(FGenericTeamId((uint8)TeamType));
+
+	AIStimuliSourceComponent->RegisterWithPerceptionSystem();
 	AbilitySystemComponent->InitAbilityActorInfo(NewController, this);
 }
 
 void AThirdPersonCharacter::UnPossessed()
 {
-	Super::UnPossessed();
+	UnregisterFromPerceptionSystem();
 
-	
+	Super::UnPossessed(); // important to call it last because GetOwner() in UnregisterFromPerceptionSystem() will return nullptr otherwise
 }
 
 void AThirdPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -371,6 +379,11 @@ USceneComponent* AThirdPersonCharacter::GetShootCheckOrigin_Implementation()
 bool AThirdPersonCharacter::IsInAimingAnimation_Implementation()
 {
 	return false; // Should be overriden in BP
+}
+
+void AThirdPersonCharacter::UnregisterFromPerceptionSystem()
+{
+	AIStimuliSourceComponent->UnregisterFromPerceptionSystem();
 }
 
 // END General logic

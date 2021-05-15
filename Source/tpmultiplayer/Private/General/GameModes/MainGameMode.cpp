@@ -118,7 +118,6 @@ void AMainGameMode::SetupPlayableCharacters()
 		Character->TeamType = SpawnLocation->TeamType;
 
 		auto AIController = World->SpawnActor<AGameplayAIController>(AIControllerClass);
-		AIController->GameState = GameplayState;
 		AIController->Possess(Character);
 
 		Character->OnPawnDamagedEvent.AddDynamic(this, &AMainGameMode::OnPawnDamaged);
@@ -207,14 +206,13 @@ void AMainGameMode::RemovePlayerFromAMatch(AGamePlayerController* PlayerControll
 
 		auto AIController = GetWorld()->SpawnActor<AGameplayAIController>(AIControllerClass);
 		InGameControllers_AI.Add(AIController);
-		AIController->GameState = GameplayState;
 
 		if (PlayerPawn && PlayerPawn->IsAlive()) AIController->Possess(PlayerPawn);
 	}
 
 	PlayerController->TeamType = ETeamType::Spectator;
 	PlayerController->ForceNetUpdate();
-
+	
 	// Need to specifically call this on a server controled pawn because we still need to hide UI and server itself will never call it on its own
 	if (PlayerController->IsLocalPlayerController()) PlayerController->OnRep_Pawn();
 }
@@ -416,7 +414,6 @@ void AMainGameMode::ResetPawnsForNewRound()
 			for (int32 i = 0; i < AIControllersNeeded; ++i)
 			{
 				auto AIController = GetWorld()->SpawnActor<AGameplayAIController>(AIControllerClass);
-				AIController->GameState = GameplayState;
 				InGameControllers_AI.Add(AIController);
 			}
 		}
@@ -507,8 +504,16 @@ void AMainGameMode::OnPawnKilled(AThirdPersonCharacter* DiedPawn)
 	/*if (!DiedPawn->IsPlayerControlled())
 	{
 		if (auto AIController = DiedPawn->GetController<AGameplayAIController>())
+		{
 			AIController->UnPossess();
-	}*/
+			InGameControllers_AI.Remove(AIController);
+			AIController->Destroy();
+		}
+	}
+	else
+	{*/
+		DiedPawn->UnregisterFromPerceptionSystem(); // Make it so dead player cannot be a shooting target anymore.
+	//}
 
 	auto& CurrentMatchData = GameplayState->CurrentMatchData;
 
@@ -561,7 +566,7 @@ void AMainGameMode::OnAreaStateChanged(EAreaState AreaState)
 	auto& MatchParameters = GameplayState->GetMatchParameters();
 	auto& CurrentMatchData = GameplayState->CurrentMatchData;
 
-	if (CurrentMatchData.MatchState != EMatchState::Gameplay) { UE_LOG(LogTemp, Warning, TEXT("AMainGameMode::OnAreaStateChanged was called when not in Gameplay state!")); return; }
+	if (CurrentMatchData.MatchState != EMatchState::Gameplay) { /*UE_LOG(LogTemp, Warning, TEXT("AMainGameMode::OnAreaStateChanged was called when not in Gameplay state!"));*/ return; }
 
 	if (AreaState == EAreaState::Default)
 	{
@@ -592,6 +597,16 @@ void AMainGameMode::ApplyShootDamageToAPawn(AThirdPersonCharacter* DamagedPawn)
 	auto Context = DamagedPawn->GetAbilitySystemComponent()->MakeEffectContext();
 	DamagedPawn->GetAbilitySystemComponent()->ApplyGameplayEffectToSelf(WeaponDamageEffect.GetDefaultObject(), 1, Context);
 	OnPawnKilled(DamagedPawn);
+}
+
+uint8 AMainGameMode::GetTeamTypeForNewController(const AGameplayAIController* PawnlessController)
+{
+	for (auto& Character : TeamPawns)
+	{
+		if (!Character->IsControlled()) return (uint8)Character->TeamType;
+	}
+
+	return (uint8)ETeamType::RedTeam;
 }
 
 // END Match related logic

@@ -36,6 +36,8 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Game Mode")
 	const TArray<class AGameplayFlagArea*>& GetVIPAreas() const { return FlagPlacements; };
 
+	uint8 GetTeamTypeForNewController(const class AGameplayAIController* PawnlessController);
+
 protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Gameplay Classes")
