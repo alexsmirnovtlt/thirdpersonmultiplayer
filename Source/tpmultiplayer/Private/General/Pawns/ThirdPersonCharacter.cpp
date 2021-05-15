@@ -124,8 +124,8 @@ void AThirdPersonCharacter::PossessedBy(AController* NewController)
 	if (auto TeamAgentInterface = Cast<IGenericTeamAgentInterface>(NewController))
 		TeamAgentInterface->SetGenericTeamId(FGenericTeamId((uint8)TeamType));
 
-	AIStimuliSourceComponent->RegisterWithPerceptionSystem();
 	AbilitySystemComponent->InitAbilityActorInfo(NewController, this);
+	RegisterWithPerceptionSystem();
 }
 
 void AThirdPersonCharacter::UnPossessed()
@@ -383,7 +383,16 @@ bool AThirdPersonCharacter::IsInAimingAnimation_Implementation()
 
 void AThirdPersonCharacter::UnregisterFromPerceptionSystem()
 {
+	if (!bIsRegisteredAsPerceptionStimuli) return;
 	AIStimuliSourceComponent->UnregisterFromPerceptionSystem();
+	bIsRegisteredAsPerceptionStimuli = false;
+}
+
+void AThirdPersonCharacter::RegisterWithPerceptionSystem()
+{
+	if (bIsRegisteredAsPerceptionStimuli) return;
+	AIStimuliSourceComponent->RegisterWithPerceptionSystem();
+	bIsRegisteredAsPerceptionStimuli = true;
 }
 
 // END General logic

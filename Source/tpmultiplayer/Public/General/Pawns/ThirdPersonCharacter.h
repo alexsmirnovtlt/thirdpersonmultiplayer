@@ -53,6 +53,8 @@ public:
 	bool IsInAimingAnimation();
 
 	void UnregisterFromPerceptionSystem();
+	void RegisterWithPerceptionSystem();
+	bool bIsRegisteredAsPerceptionStimuli = false;
 
 protected:
 

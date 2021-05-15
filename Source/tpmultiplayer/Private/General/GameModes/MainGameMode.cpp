@@ -373,6 +373,8 @@ void AMainGameMode::ResetPawnsForNewRound()
 		// Removing Dead state effects from pawns
 		auto AbilitySystem = Character->GetAbilitySystemComponent();
 		AbilitySystem->RemoveActiveGameplayEffectBySourceEffect(DeadStateEffect, nullptr);
+
+		Character->RegisterWithPerceptionSystem(); // Will register stimului if was dead
 	}
 
 	int32 ArrayIndex = 0;
