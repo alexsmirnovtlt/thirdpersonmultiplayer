@@ -180,9 +180,9 @@ ETeamAttitude::Type AGameplayAIController::GetTeamAttitudeTowards(const AActor& 
 	// TODO Find where and how to change it. It should not be happening
 	
 	const IGenericTeamAgentInterface* OtherTeamAgent = Cast<const IGenericTeamAgentInterface>(&Other);
-	if (!OtherTeamAgent) ETeamAttitude::Neutral;
+	if (!OtherTeamAgent || !PossessedCharacter) return ETeamAttitude::Neutral;
 
-	if (!PossessedCharacter || GetGenericTeamId().GetId() == 255)
+	if (GetGenericTeamId().GetId() == 255)
 	{
 		// Catching that or else this pawn considers everyone an enemy
 		// TODO this check should be removed and reworked
