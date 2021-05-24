@@ -1,6 +1,17 @@
 # Third Person Multiplayer
     
-Work in Progress!   
+Gameplay video:    
+https://youtu.be/QZgjtVrhdLo      
+    
+Download link:    
+https://alexsmirnovtlt.itch.io/ue4-third-person-multiplayer-example    
+      
+Screenshots    
+![Alt text](/Screenshots/Screenshot_01.jpg?raw=true "Screenshot1")
+![Alt text](/Screenshots/Screenshot_02.jpg?raw=true "Screenshot2")
+![Alt text](/Screenshots/Screenshot_03.jpg?raw=true "Screenshot3")
+     
+## Description (RU)   
     
 Мультиплейерный шутер от третьего лица.   
 В проекте используется:   

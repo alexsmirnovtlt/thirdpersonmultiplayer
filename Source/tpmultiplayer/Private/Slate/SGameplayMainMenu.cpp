@@ -91,6 +91,101 @@ void SGameplayMainMenuWidget::Construct(const FArguments& InArgs)
 				]
 			]
 		]
+
+		+ SOverlay::Slot()
+		.VAlign(VAlign_Bottom)
+		.HAlign(HAlign_Right)
+		[
+			SNew(SVerticalBox)
+
+			+ SVerticalBox::Slot()
+			.Padding(0, 0, 30.f, 0)
+			[
+				SNew(STextBlock)
+				.Justification(ETextJustify::Left)
+				.TextStyle(&Style.HintTextStyle)
+				.Text(LOCTEXT("mainmenu.tutorial.1", "Keybinds:"))
+			]
+
+			+ SVerticalBox::Slot()
+				.Padding(0, 0, 30.f, 0)
+			[
+				SNew(STextBlock)
+				.Justification(ETextJustify::Left)
+				.TextStyle(&Style.HintTextStyle)
+				.Text(LOCTEXT("mainmenu.tutorial.2", "- WASD to move, RMB to AIM, LMB to Shoot"))
+			]
+
+			+ SVerticalBox::Slot()
+			.Padding(0, 0, 30.f, 0)
+			[
+				SNew(STextBlock)
+				.Justification(ETextJustify::Left)
+				.TextStyle(&Style.HintTextStyle)
+				.Text(LOCTEXT("mainmenu.tutorial.3", "- Middle mouse to switch shoulder"))
+			]
+
+			+ SVerticalBox::Slot()
+			.Padding(0, 0, 30.f, 0)
+			[
+				SNew(STextBlock)
+				.Justification(ETextJustify::Left)
+				.TextStyle(&Style.HintTextStyle)
+				.Text(LOCTEXT("mainmenu.tutorial.4", "- R reload, Shift to sprint"))
+			]
+
+			+ SVerticalBox::Slot()
+				.Padding(0, 0, 30.f, 10.f)
+			[
+				SNew(STextBlock)
+				.Justification(ETextJustify::Left)
+				.TextStyle(&Style.HintTextStyle)
+				.Text(LOCTEXT("mainmenu.tutorial.5", "- U Hide/show UI"))
+			]
+		]
+
+		+ SOverlay::Slot()
+		.VAlign(VAlign_Bottom)
+		.HAlign(HAlign_Left)
+		[
+			SNew(SVerticalBox)
+
+			+ SVerticalBox::Slot()
+			.Padding(30.f, 0, 0, 0)
+			[
+				SNew(STextBlock)
+				.Justification(ETextJustify::Left)
+				.TextStyle(&Style.HintTextStyle)
+				.Text(LOCTEXT("mainmenu.rules.1", "Game Rules:"))
+			]
+
+			+ SVerticalBox::Slot()
+			.Padding(30.f, 0, 0, 0)
+			[
+				SNew(STextBlock)
+				.Justification(ETextJustify::Left)
+				.TextStyle(&Style.HintTextStyle)
+				.Text(LOCTEXT("mainmenu.rules.2", "- Map has 2 VIP areas"))
+			]
+			
+			+ SVerticalBox::Slot()
+			.Padding(30.f, 0, 0, 0)
+			[
+					SNew(STextBlock)
+					.Justification(ETextJustify::Left)
+					.TextStyle(&Style.HintTextStyle)
+					.Text(LOCTEXT("mainmenu.rules.3", "- Player with a star above him (VIP) need to stay in this area for some time to win"))
+			]
+			
+			+ SVerticalBox::Slot()
+			.Padding(30.f, 0, 0, 10.f)
+			[
+				SNew(STextBlock)
+				.Justification(ETextJustify::Left)
+				.TextStyle(&Style.HintTextStyle)
+				.Text(LOCTEXT("mainmenu.rules.4", "- You can also win if there is no enemies alive"))
+			]
+		]
 	];
 
 	EnableButtons();

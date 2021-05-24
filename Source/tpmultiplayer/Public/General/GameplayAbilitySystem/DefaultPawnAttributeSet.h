@@ -46,6 +46,10 @@ public:
 	FGameplayAttributeData WeaponDamage;
 	ATTRIBUTE_ACCESSORS(UDefaultPawnAttributeSet, WeaponDamage)
 
+	UPROPERTY(BlueprintReadOnly, Category = "AttributeSet")
+	FGameplayAttributeData VIPHealth;
+	ATTRIBUTE_ACCESSORS(UDefaultPawnAttributeSet, VIPHealth)
+
 protected:
 
 	UFUNCTION()

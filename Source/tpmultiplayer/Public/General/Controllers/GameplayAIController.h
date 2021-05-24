@@ -4,22 +4,24 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+#include "Perception/AIPerceptionComponent.h"
 #include "GameplayAIController.generated.h"
 
 enum class EMatchState : uint8;
+enum class EAIUsableAbility : uint8;
 
 /**
  * 
  */
-UCLASS()
+UCLASS(hidecategories = ("ActorTick|ComponentTick|Tags|ComponentReplication|Activation|Variable|Cooking|Replication|Actor|Input"))
 class TPMULTIPLAYER_API AGameplayAIController : public AAIController
 {
 	GENERATED_BODY()
 public:
 	AGameplayAIController();
 	virtual void BeginPlay() override;
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-	virtual void Tick(float DeltaTime) override;
+	//virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	//virtual void Tick(float DeltaTime) override;
 protected:
 	virtual void OnPossess(class APawn* InPawn) override;
 	virtual void OnUnPossess() override;
@@ -27,38 +29,59 @@ protected:
 public:
 	class AGameplayGameState* GameState;
 
-protected:
-
 	// BEGIN GAS Related
-	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<class UGameplayAbility> AimAbility;
-	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<class UGameplayAbility> ReloadAbility;
-	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<class UGameplayAbility> ShootAbility;
-	UPROPERTY(EditDefaultsOnly, Category = "GAS")
-	TSubclassOf<class UGameplayAbility> SprintAbility;
 
-	void CancelAllAbilities();
+public:
+	UFUNCTION(BlueprintCallable, Category = "Blackboard and GAS")
+	void ChangeAbilityState(EAIUsableAbility AbilityEnum, bool bSetActive);
+
+protected:
+	// Map of all abilities that are available to AIs
+	UPROPERTY(EditDefaultsOnly, Category = "GAS")
+	TMap<EAIUsableAbility, TSubclassOf<class UGameplayAbility>> AbilitiesMap;
+	
 	// END GAS Related
 
+	// BEGIN AI related
+	
+protected:
+	UPROPERTY(EditDefaultsOnly, Category = "Custom AI mad Behaviour Tree Settings")
+	class UBehaviorTree* BehaviorTree;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Blackboard Keys")
+	FName KeyName_MatchState;
+	UPROPERTY(EditDefaultsOnly, Category = "Blackboard Keys")
+	FName KeyName_VisibleEnemy;
+	UPROPERTY(EditDefaultsOnly, Category = "Blackboard Keys")
+	FName KeyName_LastHeardShot;
+	UPROPERTY(EditDefaultsOnly, Category = "Blackboard Keys")
+	FName KeyName_IsVIP;
+	UPROPERTY(EditDefaultsOnly, Category = "Blackboard Keys")
+	FName KeyName_IsAreaCaptureInProgress;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Blackboard Keys")
+	class UBlackboardComponent* AIBBComponent;
+
+	class UAISenseConfig_Sight* SenseConfig_Sight;
+	class UAISenseConfig_Hearing* SenseConfig_Hearing;
+
+	UFUNCTION()
+	void OnTargetPerceptionUpdated(const struct FActorPerceptionUpdateInfo& UpdateInfo);
+
+	// IGenericTeamAgentInterface
+	virtual ETeamAttitude::Type GetTeamAttitudeTowards(const AActor& Other) const override;
+
+	// END AI related
+
+protected:
 	UFUNCTION()
 	void OnDamaged(class AThirdPersonCharacter* Self);
 
 	UFUNCTION()
 	void OnMatchStateChanged();
-	EMatchState CurrentMatchState;
 
 	FDelegateHandle MatchStateChangedDelegateHandle;
+	EMatchState CurrentMatchState;
 
-	// DEBUG
-	float DEBUG_DeltaTimePassed;
-	bool DEBUG_ClockwiseRotation;
-	float DEBUG_RotationSpeed;
-	float DEBUG_JumpPeriod;
-	float DEBUG_MovementsSpeed;
-
-	float ActionTime = 0.f;
-	//
 	class AThirdPersonCharacter* PossessedCharacter;
 };

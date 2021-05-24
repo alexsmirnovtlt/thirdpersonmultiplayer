@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "General/GameplayStructs.h"
+#include "GenericTeamAgentInterface.h"
 #include "GameFramework/PlayerController.h"
 
 #include "GamePlayerController.generated.h"
@@ -14,7 +15,7 @@ enum class ETeamType : uint8;
  * Main Player Controller
  */
 UCLASS()
-class TPMULTIPLAYER_API AGamePlayerController : public APlayerController
+class TPMULTIPLAYER_API AGamePlayerController : public APlayerController, public IGenericTeamAgentInterface
 {
 	GENERATED_BODY()
 
@@ -60,8 +61,15 @@ protected:
 	class AGameplayHUD* GameplayHUD;
 	class AGameplayGameState* GameplayState;
 	
-	UPROPERTY(Replicated)
+	UPROPERTY(Replicated) // TODO replication can probably be removed
 	ETeamType TeamType;
+
+	// IGenericTeamAgentInterface
+private:
+	FGenericTeamId TeamID;
+public:
+	virtual void SetGenericTeamId(const FGenericTeamId& NewTeamID) override { TeamType = (ETeamType)NewTeamID.GetId(); };
+	virtual FGenericTeamId GetGenericTeamId() const override { return FGenericTeamId((uint8)TeamType); }
 
 	// BEGIN Input 
 
@@ -89,7 +97,4 @@ public:
 	void Debug_KillRandomPawn();
 
 	// END Input
-
-//private:
-	//static const float NewControlRotationPitchOnPawnPossess;
 };

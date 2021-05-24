@@ -222,6 +222,8 @@ void SGameplayMainHUDWidget::UpdateWidgetData(const FMatchData& MatchData, const
 		bool DisplayDefenseHint = (TeamTypeEnum == ETeamType::RedTeam && MatchData.RedTeamHasFlag) || (TeamTypeEnum == ETeamType::BlueTeam && !MatchData.RedTeamHasFlag);
 		bool DisplayOffenseHint = (TeamTypeEnum == ETeamType::RedTeam && !MatchData.RedTeamHasFlag) || (TeamTypeEnum == ETeamType::BlueTeam && MatchData.RedTeamHasFlag);
 
+		if (TeamTypeEnum == ETeamType::Spectator) DisplayDefenseHint = true; // Mostly for the debug purposes
+
 		DefendFlagHint.Get()->SetVisibility(DisplayDefenseHint ? EVisibility::Visible : EVisibility::Collapsed);
 		CaptureFlagHint.Get()->SetVisibility(DisplayOffenseHint ? EVisibility::Visible : EVisibility::Collapsed);
 	}

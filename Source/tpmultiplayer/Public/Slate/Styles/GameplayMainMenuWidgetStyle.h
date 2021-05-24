@@ -30,6 +30,9 @@ struct TPMULTIPLAYER_API FGameplayMainMenuStyle : public FSlateWidgetStyle
 	UPROPERTY(EditAnywhere, Category = "Default")
 	FTextBlockStyle TextStyle;
 
+	UPROPERTY(EditAnywhere, Category = "Default")
+	FTextBlockStyle HintTextStyle;
+
 	// FSlateWidgetStyle
 	virtual void GetResources(TArray<const FSlateBrush*>& OutBrushes) const override;
 	static const FName TypeName;
