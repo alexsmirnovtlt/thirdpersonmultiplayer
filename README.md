@@ -11,6 +11,32 @@ Screenshots
 ![Alt text](/Screenshots/Screenshot_02.jpg?raw=true "Screenshot2")
 ![Alt text](/Screenshots/Screenshot_03.jpg?raw=true "Screenshot3")
      
+## Description (EN)    
+        
+Multiplayer third person shooter example.   
+This project uses:   
+- Slate   
+- Online Subsystem   
+- ACharacter (Third Person)    
+- Gameplay Ability System   
+- FMOD audio   
+- Environment Query System + AI   
+- Mostly С++   
+    
+GAmeplay:   
+- 1 map, 2 teams with 3 players each
+- One of the players becomes VIP for a round
+- VIP player must stay in a designated area for some time for their team to win
+- Round ends if
+	* every player of a team was downed
+	* VIP was downed
+	* VIP held a designated area for some time 
+   
+   
+Notes for successfully compiling the project:    
+- FMOD for UE4 must be downloaded from the official FMOD page and those files must be placed at Plugins\FMODStudio\Binaries\PlatformName (where PlatformName is one of the following: - Win64, Win32, UWP64 and so on). Chapter 2.4 Compiling the plugin (Optional) - https://www.fmod.com/resources/documentation-ue4?version=2.0&page=user-guide.html   
+
+     
 ## Description (RU)   
     
 Мультиплейерный шутер от третьего лица.   
